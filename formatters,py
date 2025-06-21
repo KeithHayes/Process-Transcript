@@ -1,0 +1,41 @@
+# text_formatter.py
+from langchain.chains import LLMChain
+from langchain.prompts import PromptTemplate
+from typing import Optional, Dict, Any
+import logging
+
+class ContextAwareFormatter:
+    """Complete implementation of context-aware text formatter with transition smoothing."""
+
+    def __init__(self, llm, verbose: bool = False, max_retries: int = 3):
+        """
+        Initialize the formatter with an LLM instance.
+        
+        Args:
+            llm: Language model instance (e.g., OpenAI, Ollama)
+            verbose: Enable verbose logging
+            max_retries: Maximum formatting attempt retries
+        """
+        self.llm = llm
+        self.verbose = verbose
+        self.max_retries = max_retries
+        self.logger = logging.getLogger(__name__)
+
+        # Configure prompts
+        self._initialize_prompts()
+        self._initialize_chains()
+        
+        # Default formatting rules
+        self.default_format_instructions = (
+            "- Maintain original meaning and facts\n"
+            "- Preserve technical terminology\n"
+            "- Use consistent formatting\n"
+            "- Ensure smooth transitions"
+        )
+
+    def _initialize_prompts(self):
+        """Initialize all prompt templates."""
+        self.format_prompt = PromptTemplate(
+            input_variables=["context", "new_content", "format_instructions"],
+            template="""[CONTEXT-AWARE FORMATTING TASK]
+Previous Context (reference only):

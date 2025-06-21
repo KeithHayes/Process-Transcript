@@ -1,0 +1,29 @@
+This provides the model which is preloaded.
+
+Activating virtual environment...
+Checking system requirements...
+Checking RAG extension...
+Initializing system...
+Starting server...
+14:56:43-894866 INFO     Starting Text generation web UI                        
+14:56:43-897671 WARNING  trust_remote_code is enabled. This is dangerous.       
+14:56:43-898355 WARNING                                                         
+                         You are potentially exposing the web UI to the entire  
+                         internet without any access password.                  
+                         You can create one with the "--gradio-auth" flag like  
+                         this:                                                  
+                                                                                
+                         --gradio-auth username:password                        
+                                                                                
+                         Make sure to replace username:password with your own.  
+14:56:44-151951 INFO     Loading the extension "openai"                         
+14:56:44-273369 INFO     OpenAI-compatible API URL:                             
+                                                                                
+                         http://0.0.0.0:5000    
+
+Thy python files will have to be corrected to use the llm through the API
+
+transcript.txt is the audio transcript input to bbe formatted into complete sentences and paragraphs.
+
+README will describe how to use the project.
+
