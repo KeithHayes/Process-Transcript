@@ -15,26 +15,28 @@ class LLMFormatter:
     
     async def format_with_llm(self, text: str) -> str:
         """Send text to LLM for proper formatting"""
-        prompt = f"""Please reformat this transcript into clear paragraphs with proper punctuation:
-{text}
+        prompt = f"""Rephrase this transcript into well-structured paragraphs with proper grammar:
+        
+    {text}
 
-Rules:
-1. Keep all factual information
-2. Fix grammar and capitalization
-3. Group related ideas into paragraphs
-4. Maintain the original meaning
+    Guidelines:
+    - Keep all factual content
+    - Fix punctuation and capitalization
+    - Group related ideas together
+    - Output in clean paragraphs
+    - Never omit or add information
 
-Formatted version:"""
+    Formatted version:\n\n"""  # Added extra newlines to encourage response
         
         payload = {
             "prompt": prompt,
             "max_tokens": 2000,
-            "temperature": 0.3,
-            "stop": ["\n\n"],
-            "echo": False,  # Don't echo back the prompt
-            "top_p": 0.9,   # Typical sampling parameter
-            "frequency_penalty": 0.1,
-            "presence_penalty": 0.1
+            "temperature": 0.5,  # Slightly higher for more creativity
+            "stop": ["\n\n\n"],  # Stop on triple newline
+            "top_p": 0.9,
+            "frequency_penalty": 0.2,
+            "presence_penalty": 0.2,
+            "echo": False
         }
         
         try:
@@ -42,23 +44,40 @@ Formatted version:"""
                 async with session.post(
                     self.api_url,
                     json=payload,
-                    timeout=30
+                    timeout=aiohttp.ClientTimeout(total=120)  # Longer timeout
                 ) as response:
+                    response_text = await response.text()
+                    self.logger.debug(f"Raw API response: {response_text}")  # Log raw response
+                    
                     if response.status != 200:
-                        error = await response.text()
-                        raise ValueError(f"LLM API error {response.status}: {error}")
+                        raise ValueError(f"API error {response.status}: {response_text}")
                     
                     result = await response.json()
-                    return result['choices'][0]['text'].strip()
                     
+                    # More robust response handling
+                    if not result.get('choices'):
+                        self.logger.error("No 'choices' in response")
+                        return text
+                    
+                    if not result['choices'][0].get('text'):
+                        self.logger.error("No 'text' in choices")
+                        return text
+                    
+                    formatted = result['choices'][0]['text'].strip()
+                    if not formatted:
+                        self.logger.warning("Empty formatted text received")
+                        return text
+                    
+                    return formatted
+                
         except Exception as e:
             self.logger.error(f"LLM formatting failed: {str(e)}")
-            return text  # Fallback to original text
+            return text
 
 class TextProcessingPipeline:
     """Complete text processing pipeline with LLM integration"""
     
-    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200):
+    def __init__(self, chunk_size: int = 600, chunk_overlap: int = 150):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.aligner = AlignmentProcessor()
@@ -66,60 +85,71 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Split text into chunks while respecting sentence boundaries"""
-        sentences = re.split(r'(?<=[.!?])\s+', text)
+        """More conservative chunking approach"""
+        # First split by double newlines (paragraphs)
+        paras = [p.strip() for p in text.split('\n\n') if p.strip()]
+        
         chunks = []
         current_chunk = []
         current_length = 0
         
-        for sent in sentences:
-            sent_length = len(sent)
-            if current_length + sent_length > self.chunk_size and current_chunk:
-                chunks.append(' '.join(current_chunk))
-                # Keep overlap for context
-                current_chunk = current_chunk[-self.chunk_overlap//20:]
-                current_length = sum(len(s) + 1 for s in current_chunk)
+        for para in paras:
+            para_length = len(para)
+            if current_length + para_length > self.chunk_size and current_chunk:
+                chunks.append('\n\n'.join(current_chunk))
+                # Keep last 1-2 paragraphs as overlap
+                current_chunk = current_chunk[-min(2, len(current_chunk)):]
+                current_length = sum(len(p) for p in current_chunk)
             
-            current_chunk.append(sent)
-            current_length += sent_length + 1
+            current_chunk.append(para)
+            current_length += para_length
         
         if current_chunk:
-            chunks.append(' '.join(current_chunk))
+            chunks.append('\n\n'.join(current_chunk))
+        
         return chunks
     
     async def process_file(self, input_path: str, output_path: str) -> None:
-        """Process input file through the full pipeline"""
         try:
             with open(input_path, 'r') as f:
                 text = f.read()
             
             chunks = self._chunk_text(text)
+            self.logger.info(f"Created {len(chunks)} chunks from input")
+            
             formatted_paragraphs = []
             previous_tail = ""
             
             for i, chunk in enumerate(chunks):
-                self.logger.info(f"Processing chunk {i+1}/{len(chunks)}")
+                self.logger.info(f"Processing chunk {i+1}/{len(chunks)} (length: {len(chunk)})")
                 
-                # Combine with previous context
-                combined = f"{previous_tail} {chunk}".strip()
+                combined = f"{previous_tail}\n\n{chunk}".strip()
+                self.logger.debug(f"Combined text sent to LLM:\n{combined[:200]}...")  # Log first 200 chars
                 
-                # Format with LLM
                 formatted = await self.formatter.format_with_llm(combined)
+                self.logger.debug(f"Formatted response:\n{formatted[:200]}...")  # Log first 200 chars
+                
                 if not formatted.strip():
                     self.logger.warning(f"Empty LLM response for chunk {i+1}")
                     formatted = chunk
                 
-                # Extract new content
                 new_content = self.aligner.extract_new_content(formatted, previous_tail)
                 formatted_paragraphs.append(new_content)
                 
-                # Update context for next chunk
                 previous_tail = self.aligner.get_tail_for_context(
-                    formatted,
+                    
+            
+            final_text = self.aligner.merge_paragraphs(formatted_paragraphs)
+            
+            with open(output_path, 'w') as f:
+                f.write(final_text)
+                
+        except Exception as e:
+            self.logger.error(f"Processing failed: {str(e)}")
+            raiseformatted,
                     target_length=self.chunk_overlap
                 )
             
-            # Merge all paragraphs
             final_text = self.aligner.merge_paragraphs(formatted_paragraphs)
             
             with open(output_path, 'w') as f:
