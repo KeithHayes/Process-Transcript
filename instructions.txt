@@ -33,6 +33,5 @@ Examine the python files and understand that this is unfinished code which will 
 
 Current status is the llm is not formatting the input into output which has complete sentences and paragraphs.
 
-We know tth ellm is not being used because multiple requests for multiple chunks should take a while and 
-output is almost instant.
+
 

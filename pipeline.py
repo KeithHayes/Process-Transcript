@@ -15,24 +15,26 @@ class LLMFormatter:
     
     async def format_with_llm(self, text: str) -> str:
         """Send text to LLM for proper formatting"""
-        prompt = f"""Please format this transcript into proper paragraphs and complete sentences:
-        
-Original Transcript:
+        prompt = f"""Please reformat this transcript into clear paragraphs with proper punctuation:
 {text}
 
 Rules:
-1. Maintain all factual information
-2. Fix punctuation and capitalization
-3. Add proper paragraph breaks
-4. Keep the original meaning intact
+1. Keep all factual information
+2. Fix grammar and capitalization
+3. Group related ideas into paragraphs
+4. Maintain the original meaning
 
-Formatted Transcript:"""
+Formatted version:"""
         
         payload = {
             "prompt": prompt,
             "max_tokens": 2000,
             "temperature": 0.3,
-            "stop": ["\n\n"]
+            "stop": ["\n\n"],
+            "echo": False,  # Don't echo back the prompt
+            "top_p": 0.9,   # Typical sampling parameter
+            "frequency_penalty": 0.1,
+            "presence_penalty": 0.1
         }
         
         try:
@@ -103,6 +105,9 @@ class TextProcessingPipeline:
                 
                 # Format with LLM
                 formatted = await self.formatter.format_with_llm(combined)
+                if not formatted.strip():
+                    self.logger.warning(f"Empty LLM response for chunk {i+1}")
+                    formatted = chunk
                 
                 # Extract new content
                 new_content = self.aligner.extract_new_content(formatted, previous_tail)
