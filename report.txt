@@ -353,6 +353,9 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 
+=== PY formatted_transcript.txt ===
+Pepe Escobar: "I Nema, they are not going to be able to do regime change, so-called regime change, they’re not going to be able to defeat Iran but…" Nema: "It would be devastating for…" Pepe Escobar: "The future and…" Nema: "The way…" Pepe Escobar: "That don’t…" Nema: "If…".
+
 === PY transcript.txt ===
 hi everybody Today is Saturday June 21st 2025 and our friend Pepe Scobar is back
 with us Welcome back Pep Nema Always a pleasure I turned uh Russia upside down
@@ -1046,7 +1049,4 @@ Thank you so much Papy for being I wish we had more apicious things to talk abou
 that's it that this is this is our reality Yes Yeah Yeah It's hitting us
 See you in in Brazil See you see you soon in Brazil Okay Chowo chiao
 Cha Byebye
-
-=== PY formatted_transcript.txt ===
-Pepe Escobar: "I Nema, they are not going to be able to do regime change, so-called regime change, they’re not going to be able to defeat Iran but…" Nema: "It would be devastating for…" Pepe Escobar: "The future and…" Nema: "The way…" Pepe Escobar: "That don’t…" Nema: "If…".
 
