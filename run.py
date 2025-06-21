@@ -3,26 +3,34 @@ import logging
 import asyncio
 from pipeline import TextProcessingPipeline
 
-# Configure basic logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+def configure_logging():
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        handlers=[
+            logging.FileHandler('transcript_processor.log'),
+            logging.StreamHandler()
+        ]
+    )
 
 async def main():
-    pipeline = TextProcessingPipeline(
-        chunk_size=1200,
-        chunk_overlap=200
-    )
+    configure_logging()
     
     try:
+        pipeline = TextProcessingPipeline(
+            chunk_size=1200,  # Optimal for most LLMs
+            chunk_overlap=200  # Maintains context between chunks
+        )
+        
         await pipeline.process_file(
             input_path="transcript.txt",
-            output_path="formatted.txt"
+            output_path="formatted_transcript.txt"
         )
-        print("Successfully created formatted.txt")
+        print("Successfully created formatted_transcript.txt")
+        
     except Exception as e:
-        logging.error(f"Failed to process file: {e}")
+        logging.error(f"Fatal error: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     asyncio.run(main())

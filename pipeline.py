@@ -1,70 +1,84 @@
 import re
 import logging
 import asyncio
+import json
+from urllib.request import Request, urlopen
+from urllib.error import URLError
 from typing import List, Optional
 from alignment import AlignmentProcessor
 
-class TextFormatter:
-    """Handles text formatting with proper sentence and paragraph structure."""
+class LLMFormatter:
+    """Handles text formatting using the LLM API"""
     
-    def __init__(self):
-        self.paragraph_splitter = re.compile(r'\n\s*\n')
-        self.sentence_splitter = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s')
+    def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
+        self.api_url = api_url
         self.logger = logging.getLogger(__name__)
     
-    async def format_chunk(self, chunk: str) -> str:
-        """Formats a text chunk into proper sentences and paragraphs."""
-        paragraphs = []
-        for para in self.paragraph_splitter.split(chunk):
-            if not para.strip():
-                continue
-                
-            sentences = self.sentence_splitter.split(para)
-            formatted_sentences = []
-            
-            for sent in sentences:
-                sent = sent.strip()
-                if not sent:
-                    continue
-                if sent and sent[-1] not in {'.', '?', '!'}:
-                    sent += '.'
-                formatted_sentences.append(sent[0].upper() + sent[1:])
-            
-            paragraphs.append(' '.join(formatted_sentences))
+    async def format_with_llm(self, text: str) -> str:
+        """Send text to LLM for formatting"""
+        prompt = f"""Please format this transcript into proper paragraphs and sentences. 
+Maintain all original content while fixing punctuation, capitalization and paragraph structure:
+
+{text}
+
+Formatted version:"""
         
-        return '\n\n'.join(paragraphs)
+        payload = {
+            "prompt": prompt,
+            "max_tokens": 2000,
+            "temperature": 0.3,
+            "stop": ["\n\n"]
+        }
+        
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self.api_url,
+                    json=payload,
+                    timeout=30
+                ) as response:
+                    if response.status != 200:
+                        raise ValueError(f"LLM API error: {response.status}")
+                    result = await response.json()
+                    return result['choices'][0]['text'].strip()
+        except Exception as e:
+            self.logger.error(f"LLM formatting failed: {str(e)}")
+            return text  # Fallback to original text
 
 class TextProcessingPipeline:
-    """Complete text processing pipeline."""
+    """Complete processing pipeline with LLM integration"""
     
     def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.aligner = AlignmentProcessor()
-        self.formatter = TextFormatter()
+        self.formatter = LLMFormatter()
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Split text into chunks with overlap."""
-        words = text.split()
+        """Split text into chunks respecting sentence boundaries"""
+        sentences = re.split(r'(?<=[.!?])\s+', text)
         chunks = []
         current_chunk = []
         current_length = 0
         
-        for word in words:
-            if current_length + len(word) > self.chunk_size and current_chunk:
+        for sent in sentences:
+            sent_length = len(sent)
+            if current_length + sent_length > self.chunk_size and current_chunk:
                 chunks.append(' '.join(current_chunk))
-                current_chunk = current_chunk[-self.chunk_overlap:]
-                current_length = sum(len(w) + 1 for w in current_chunk)
-            current_chunk.append(word)
-            current_length += len(word) + 1
+                # Keep overlap
+                current_chunk = current_chunk[-self.chunk_overlap//20:]
+                current_length = sum(len(s) + 1 for s in current_chunk)
+            
+            current_chunk.append(sent)
+            current_length += sent_length + 1
         
         if current_chunk:
             chunks.append(' '.join(current_chunk))
         return chunks
     
     async def process_file(self, input_path: str, output_path: str) -> None:
-        """Process input file and write formatted output."""
+        """Process the input file through the full pipeline"""
         try:
             with open(input_path, 'r') as f:
                 text = f.read()
@@ -73,14 +87,27 @@ class TextProcessingPipeline:
             formatted_paragraphs = []
             previous_tail = ""
             
-            for chunk in chunks:
-                formatted = await self.formatter.format_chunk(previous_tail + ' ' + chunk)
+            for i, chunk in enumerate(chunks):
+                self.logger.info(f"Processing chunk {i+1}/{len(chunks)}")
+                
+                # Combine with previous context
+                combined = f"{previous_tail} {chunk}".strip()
+                formatted = await self.formatter.format_with_llm(combined)
+                
+                # Extract new content
                 new_content = self.aligner.extract_new_content(formatted, previous_tail)
                 formatted_paragraphs.append(new_content)
-                previous_tail = self.aligner.get_tail_for_context(formatted)
+                
+                # Update context for next chunk
+                previous_tail = self.aligner.get_tail_for_context(
+                    formatted,
+                    target_length=self.chunk_overlap
+                )
             
+            # Merge and write final output
+            final_text = self.aligner.merge_paragraphs(formatted_paragraphs)
             with open(output_path, 'w') as f:
-                f.write('\n\n'.join(formatted_paragraphs))
+                f.write(final_text)
                 
         except Exception as e:
             self.logger.error(f"Processing failed: {str(e)}")

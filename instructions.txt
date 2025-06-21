@@ -21,12 +21,26 @@ Starting server...
                                                                                 
                          http://0.0.0.0:5000    
 
-Thy python files will have to be corrected to use the llm through the API
+The python files will have to be corrected to use the llm through the API
 
 transcript.txt is the audio transcript input to bbe formatted into complete sentences and paragraphs.
 
 README will describe how to use the project.
 
-This is a python project.  you are not supposed to process the code.  examine the python files and understand that this 
-is unfinished code which will format the file.
+This is a python project.  you are not supposed to process the code.  
 
+Examine the python files and understand that this is unfinished code which will format the file.
+
+Current status is the llm is not formatting the input into output which has complete sentences and paragraphs.
+
+We know tth ellm is not being used because multiple requests for multiple chunks should take a while and 
+output is almost instant.
+
+(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python run.py
+Traceback (most recent call last):
+  File "/home/kdog/Desktop/temp/process transcript/run.py", line 4, in <module>
+    from pipeline import TextProcessingPipeline
+  File "/home/kdog/Desktop/temp/process transcript/pipeline.py", line 4, in <module>
+    import aiohttp
+ModuleNotFoundError: No module named 'aiohttp'
+(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ 
