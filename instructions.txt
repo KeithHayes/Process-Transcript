@@ -1,13 +1,12 @@
 
-The python files will have to be corrected to use the llm through the API
+Current status:   
 
-transcript.txt is an audio transcript input to be formatted into complete sentences and paragraphs.
+While formatted_transcript is generated the content has not been corrected to be in coherent sentences that use periods, 
+commas, and capital letters.
 
-formatted.txt is the output which should be the input formatted into complete sentences and paragraphs.
+The purpose of the LLM is to translate a raw audio transcript into an essay format that has paragraphs and gramatically correct 
+sentences. Headings where appropriate.  Paragraphs and headings are seperated by a blank lines.  Do not use connecting dashes.  
+Connecting dashescan be replaced with a comma followed by a space or a period followed by two spaces and the capital letter of 
+a new sentence as appropriate where grammar cannot make the transition with the correct connecting word.
 
-Examine the python files and fix the code to format the input.
-
-Current status is the llm is not formatting the input into output which has complete sentences and paragraphs.
-
-
-
+Current output is not much different from the input.  That does not meet requirements.

@@ -7,88 +7,39 @@ from typing import List, Optional
 from alignment import AlignmentProcessor
 
 class LLMFormatter:
+    """Handles text formatting using the LLM API"""
+    
     def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
         self.api_url = api_url
         self.logger = logging.getLogger(__name__)
-
+    
     async def format_with_llm(self, text: str) -> str:
-        """Send text to LLM for formatting into paragraphs/sentences."""
+        """Send text to LLM for proper formatting"""
         prompt = f"""
 ### INSTRUCTIONS:
-Rephrase this transcript into **well-structured paragraphs** with **proper grammar**, while **preserving all original content**. Follow these rules:
-1. **Fix punctuation, capitalization, and sentence structure**.
-2. **Group related ideas into coherent paragraphs**.
-3. **Never omit, add, or alter factual content** (names, dates, terms).
-4. **Keep speaker labels (e.g., "Pepe Escobar:") intact**.
-5. **Remove filler words ("uh", "um") unless they convey meaning**.
+Rephrase this transcript into well-structured paragraphs with proper grammar, while preserving all original content. Follow these rules:
+1. Fix punctuation, capitalization, and sentence structure.
+2. Group related ideas into coherent paragraphs.
+3. Never omit, add, or alter factual content (names, dates, terms).
+4. Keep speaker labels (e.g., "Pepe Escobar:") intact.
+5. Remove filler words ("uh", "um") unless they convey meaning.
 
 ### INPUT TRANSCRIPT:
 {text}
 
 ### FORMATTED OUTPUT:
 """
+        
         payload = {
             "prompt": prompt,
             "max_tokens": 2000,
-            "temperature": 0.3,  # Lower = more deterministic
+            "temperature": 0.3,
             "stop": ["###", "\n\n\n"],
             "top_p": 0.9,
-            "frequency_penalty": 0.1,  # Reduce repetition
-            "presence_penalty": 0.1,   # Encourage diversity
+            "frequency_penalty": 0.1,
+            "presence_penalty": 0.1
         }
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    json=payload,
-                    timeout=aiohttp.ClientTimeout(total=120)
-                ) as response:
-                    if response.status != 200:
-                        error = await response.text()
-                        self.logger.error(f"API Error: {error}")
-                        return text
-
-                    result = await response.json()
-                    formatted = result["choices"][0]["text"].strip()
-                    return self._post_process(formatted)
-        except Exception as e:
-            self.logger.error(f"LLM Error: {str(e)}")
-            return text
-
-    def _post_process(self, text: str) -> str:
-        """Clean up LLM output (e.g., remove extra newlines)."""
-        text = re.sub(r"\n{3,}", "\n\n", text)  # Max 2 newlines
-        text = re.sub(r"(\w)\.(\w)", r"\1. \2", text)  # Fix missing spaces after periods
-        return text.strip()class LLMFormatter:
-    def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
-        self.api_url = api_url
-        self.logger = logging.getLogger(__name__)
-
-    async def format_with_llm(self, text: str) -> str:
-        """Send text to LLM for formatting into paragraphs/sentences."""
-        prompt = f"""
-### INSTRUCTIONS:
-Rephrase this transcript into **well-structured paragraphs** with **proper grammar**, while **preserving all original content**. Follow these rules:
-1. **Fix punctuation, capitalization, and sentence structure**.
-2. **Group related ideas into coherent paragraphs**.
-3. **Never omit, add, or alter factual content** (names, dates, terms).
-4. **Keep speaker labels (e.g., "Pepe Escobar:") intact**.
-5. **Remove filler words ("uh", "um") unless they convey meaning**.
-
-### INPUT TRANSCRIPT:
-{text}
-
-### FORMATTED OUTPUT:
-"""
-        payload = {
-            "prompt": prompt,
-            "max_tokens": 2000,
-            "temperature": 0.3,  # Lower = more deterministic
-            "stop": ["###", "\n\n\n"],
-            "top_p": 0.9,
-            "frequency_penalty": 0.1,  # Reduce repetition
-            "presence_penalty": 0.1,   # Encourage diversity
-        }
+        
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -113,33 +64,39 @@ Rephrase this transcript into **well-structured paragraphs** with **proper gramm
         text = re.sub(r"\n{3,}", "\n\n", text)  # Max 2 newlines
         text = re.sub(r"(\w)\.(\w)", r"\1. \2", text)  # Fix missing spaces after periods
         return text.strip()
-    
+
+
 class TextProcessingPipeline:
+    """Complete text processing pipeline with LLM integration"""
+    
     def __init__(self, chunk_size: int = 800, chunk_overlap: int = 150):
-        self.chunk_size = chunk_size  # Smaller chunks = better formatting
+        self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.aligner = AlignmentProcessor()
         self.formatter = LLMFormatter()
-
+        self.logger = logging.getLogger(__name__)
+    
     def _chunk_text(self, text: str) -> List[str]:
-        """Split text into chunks, respecting paragraph/sentence boundaries."""
-        paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
+        """More conservative chunking approach"""
+        paras = [p.strip() for p in text.split('\n\n') if p.strip()]
+        
         chunks = []
         current_chunk = []
-        current_len = 0
-
-        for para in paragraphs:
-            para_len = len(para)
-            if current_len + para_len > self.chunk_size and current_chunk:
-                chunks.append("\n\n".join(current_chunk))
-                # Keep overlap by retaining last 1-2 paras
-                current_chunk = current_chunk[-2:] if len(current_chunk) > 1 else current_chunk[-1:]
-                current_len = sum(len(p) for p in current_chunk)
+        current_length = 0
+        
+        for para in paras:
+            para_length = len(para)
+            if current_length + para_length > self.chunk_size and current_chunk:
+                chunks.append('\n\n'.join(current_chunk))
+                current_chunk = current_chunk[-min(2, len(current_chunk)):]
+                current_length = sum(len(p) for p in current_chunk)
+            
             current_chunk.append(para)
-            current_len += para_len
-
+            current_length += para_length
+        
         if current_chunk:
-            chunks.append("\n\n".join(current_chunk))
+            chunks.append('\n\n'.join(current_chunk))
+        
         return chunks
     
     async def process_file(self, input_path: str, output_path: str) -> None:
