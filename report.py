@@ -67,7 +67,7 @@ def create_report():
             for py_file in py_files:
                 if os.path.exists(py_file):
                     with open(py_file, 'r', encoding='utf-8') as f:
-                        report.write(f"=== PY assets/py/{os.path.basename(py_file)} ===\n")
+                        report.write(f"=== PY {os.path.basename(py_file)} ===\n")
                         report.write(f.read())
                         report.write("\n\n")
 
@@ -75,7 +75,7 @@ def create_report():
             for txt_file in txt_files:
                 if os.path.exists(txt_file):
                     with open(txt_file, 'r', encoding='utf-8') as f:
-                        report.write(f"=== PY assets/ragdocs/txt/{os.path.basename(txt_file)} ===\n")
+                        report.write(f"=== PY {os.path.basename(txt_file)} ===\n")
                         report.write(f.read())
                         report.write("\n\n")
 

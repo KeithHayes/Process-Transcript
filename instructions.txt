@@ -36,11 +36,3 @@ Current status is the llm is not formatting the input into output which has comp
 We know tth ellm is not being used because multiple requests for multiple chunks should take a while and 
 output is almost instant.
 
-(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python run.py
-Traceback (most recent call last):
-  File "/home/kdog/Desktop/temp/process transcript/run.py", line 4, in <module>
-    from pipeline import TextProcessingPipeline
-  File "/home/kdog/Desktop/temp/process transcript/pipeline.py", line 4, in <module>
-    import aiohttp
-ModuleNotFoundError: No module named 'aiohttp'
-(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ 
