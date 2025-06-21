@@ -27,3 +27,6 @@ transcript.txt is the audio transcript input to bbe formatted into complete sent
 
 README will describe how to use the project.
 
+This is a python project.  you are not supposed to process the code.  examine the python files and understand that this 
+is unfinished code which will format the file.
+

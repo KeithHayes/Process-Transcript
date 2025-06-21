@@ -1,0 +1,2 @@
+echo "pydantic==2.5.0" > requirements.txt
+echo "langchain-core==0.1.0" >> requirements.txt

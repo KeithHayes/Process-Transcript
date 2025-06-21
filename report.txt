@@ -30,6 +30,9 @@ transcript.txt is the audio transcript input to bbe formatted into complete sent
 
 README will describe how to use the project.
 
+This is a python project.  you are not supposed to process the code.  examine the python files and understand that this 
+is unfinished code which will format the file.
+
 
 
 === DOCS README ===
@@ -55,7 +58,9 @@ class AlignmentProcessor:
         self.default_target_length = 200
     
     def extract_new_content(self, combined: str, context: str) -> str:
-        """Extract only new content from combined text, preserving sentence structure."""
+        """Extract only new content from combined text,from difflib import SequenceMatcher
+import re  # Ensure this exists
+from typing import Optional, Tuple, List preserving sentence structure."""
         if not context or len(context) < self.min_context_length:
             return self._capitalize_first(combined)
         
@@ -171,259 +176,123 @@ class AlignmentProcessor:
         return '\n\n'.join(cleaned)
 
 === PY assets/py/pipeline.py ===
-# text_processing_pipeline.py
-import asyncio
-import logging
-from typing import List, Optional, Dict, Any
-from difflib import SequenceMatcher
 import re
-from langchain.chains import LLMChain
-from langchain.prompts import PromptTemplate
-from langchain.text_splitter import TextSplitter
+import logging
+import asyncio
+from typing import List, Optional
+from alignment import AlignmentProcessor
 
-class LineAwareTextSplitter(TextSplitter):
-    """Text splitter that maintains line integrity while creating chunks with overlap."""
+class TextFormatter:
+    """Handles text formatting with proper sentence and paragraph structure."""
     
-    def __init__(
-        self,
-        chunk_size: int = 1000,
-        chunk_overlap: int = 200,
-        separator: str = "\n",
-        keep_separator: bool = True,
-    ):
-        super().__init__(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            keep_separator=keep_separator,
-        )
-        self._separator = separator
+    def __init__(self):
+        self.paragraph_splitter = re.compile(r'\n\s*\n')
+        self.sentence_splitter = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s')
+        self.logger = logging.getLogger(__name__)
+    
+    async def format_chunk(self, chunk: str) -> str:
+        """Formats a text chunk into proper sentences and paragraphs."""
+        paragraphs = []
+        for para in self.paragraph_splitter.split(chunk):
+            if not para.strip():
+                continue
+                
+            sentences = self.sentence_splitter.split(para)
+            formatted_sentences = []
+            
+            for sent in sentences:
+                sent = sent.strip()
+                if not sent:
+                    continue
+                if sent and sent[-1] not in {'.', '?', '!'}:
+                    sent += '.'
+                formatted_sentences.append(sent[0].upper() + sent[1:])
+            
+            paragraphs.append(' '.join(formatted_sentences))
         
-    def split_text(self, text: str) -> List[str]:
-        """Split text into chunks while respecting line boundaries."""
-        lines = text.split(self._separator)
-        if self._keep_separator:
-            lines = [line + self._separator for line in lines[:-1]] + [lines[-1]]
-        
+        return '\n\n'.join(paragraphs)
+
+class TextProcessingPipeline:
+    """Complete text processing pipeline."""
+    
+    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200):
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        self.aligner = AlignmentProcessor()
+        self.formatter = TextFormatter()
+        self.logger = logging.getLogger(__name__)
+    
+    def _chunk_text(self, text: str) -> List[str]:
+        """Split text into chunks with overlap."""
+        words = text.split()
         chunks = []
         current_chunk = []
         current_length = 0
-        overlap_buffer = []
         
-        for i, line in enumerate(lines):
-            line_length = self._length_function(line)
-            
-            if current_length + line_length > self._chunk_size and current_chunk:
-                chunks.append(self._separator.join(current_chunk))
-                
-                # Prepare overlap for next chunk
-                overlap_length = 0
-                overlap_buffer = []
-                for line in reversed(current_chunk):
-                    line_len = self._length_function(line)
-                    if overlap_length + line_len <= self._chunk_overlap:
-                        overlap_buffer.insert(0, line)
-                        overlap_length += line_len
-                    else:
-                        break
-                
-                current_chunk = overlap_buffer
-                current_length = overlap_length
-            
-            current_chunk.append(line)
-            current_length += line_length
+        for word in words:
+            if current_length + len(word) > self.chunk_size and current_chunk:
+                chunks.append(' '.join(current_chunk))
+                current_chunk = current_chunk[-self.chunk_overlap:]
+                current_length = sum(len(w) + 1 for w in current_chunk)
+            current_chunk.append(word)
+            current_length += len(word) + 1
         
         if current_chunk:
-            chunks.append(self._separator.join(current_chunk))
-        
+            chunks.append(' '.join(current_chunk))
         return chunks
-
-class AlignmentProcessor:
-    """Handles alignment between original and formatted text."""
-    
-    def __init__(self, min_match_ratio: float = 0.7, min_context_length: int = 50):
-        self.paragraph_splitter = re.compile(r'\n\s*\n')
-        self.min_match_ratio = min_match_ratio
-        self.min_context_length = min_context_length
-    
-    def extract_new_content(self, combined: str, context: str) -> str:
-        """Extract only the new content from LLM output."""
-        if not context or len(context) < self.min_context_length:
-            return combined
-        
-        clean_context = ' '.join(context.split())
-        clean_combined = ' '.join(combined.split())
-        
-        matcher = SequenceMatcher(None, clean_context.lower(), clean_combined.lower())
-        match = matcher.find_longest_match(0, len(clean_context), 0, len(clean_combined))
-        
-        if match.size < len(clean_context) * self.min_match_ratio:
-            return combined
-            
-        original_pos = len(combined) - len(clean_combined) + match.b + match.size
-        return combined[original_pos:].lstrip()
-    
-    def drop_last_paragraph(self, text: str, min_paragraph_length: int = 20) -> str:
-        """Remove the last paragraph from the text if it exists."""
-        paragraphs = [p for p in self.paragraph_splitter.split(text) if p.strip()]
-        
-        if len(paragraphs) <= 1:
-            return text
-            
-        if len(paragraphs[-1]) < min_paragraph_length:
-            return text
-            
-        return '\n\n'.join(paragraphs[:-1])
-    
-    def get_tail_for_context(self, text: str, target_length: int = 200) -> str:
-        """Get the ending portion of text to use as context for next chunk."""
-        if len(text) <= target_length:
-            return text
-            
-        paragraphs = [p for p in self.paragraph_splitter.split(text) if p.strip()]
-        
-        if len(paragraphs) == 1:
-            return text[-target_length:]
-            
-        accumulated = []
-        current_length = 0
-        
-        for para in reversed(paragraphs):
-            if current_length + len(para) > target_length and accumulated:
-                break
-            accumulated.insert(0, para)
-            current_length += len(para) + 2
-            
-        return '\n\n'.join(accumulated)
-
-class ContextAwareFormatter:
-    """Handles the formatting process with context from previous chunks."""
-    
-    def __init__(self, llm, verbose: bool = False, max_retries: int = 3):
-        self.llm = llm
-        self.verbose = verbose
-        self.max_retries = max_retries
-        self.logger = logging.getLogger(__name__)
-        
-        self.format_prompt = PromptTemplate(
-            input_variables=["context", "new_content"],
-            template="""Format this new content to flow from the given context:
-            
-Previous Context:
-{context}
-
-New Content:
-{new_content}
-
-Rules:
-1. Maintain all factual information
-2. Ensure seamless transition
-3. Match the existing style
-4. Output ONLY the new formatted content
-
-Formatted Output:"""
-        )
-        
-        self.format_chain = LLMChain(
-            llm=self.llm,
-            prompt=self.format_prompt,
-            verbose=self.verbose
-        )
-    
-    async def format_with_context(self, context: str, new_content: str) -> str:
-        """Format new content with awareness of previous context."""
-        formatted = await self.format_chain.arun({
-            "context": context,
-            "new_content": new_content
-        })
-        return formatted.strip()
-
-class TextProcessingPipeline:
-    """Orchestrates the entire text processing workflow."""
-    
-    def __init__(self, llm, chunk_size: int = 1000, chunk_overlap: int = 200):
-        self.splitter = LineAwareTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            separator="\n"
-        )
-        self.formatter = ContextAwareFormatter(llm)
-        self.aligner = AlignmentProcessor()
-        self.progress_callback = None
-    
-    def set_progress_callback(self, callback):
-        """Set a callback for progress updates."""
-        self.progress_callback = callback
     
     async def process_file(self, input_path: str, output_path: str) -> None:
-        """Process an input file and save results to output file."""
-        with open(input_path, 'r') as f:
-            text = f.read()
-        
-        chunks = self.splitter.split_text(text)
-        total_chunks = len(chunks)
-        final_output = []
-        previous_tail = ""
-        
-        for i, chunk in enumerate(chunks):
-            # Format with context
-            formatted = await self.formatter.format_with_context(
-                context=previous_tail,
-                new_content=chunk
-            )
+        """Process input file and write formatted output."""
+        try:
+            with open(input_path, 'r') as f:
+                text = f.read()
             
-            # Process the formatted output
-            new_content = self.aligner.extract_new_content(formatted, previous_tail)
-            trimmed_content = self.aligner.drop_last_paragraph(new_content)
+            chunks = self._chunk_text(text)
+            formatted_paragraphs = []
+            previous_tail = ""
             
-            # Update progress
-            if self.progress_callback:
-                self.progress_callback(i+1, total_chunks)
+            for chunk in chunks:
+                formatted = await self.formatter.format_chunk(previous_tail + ' ' + chunk)
+                new_content = self.aligner.extract_new_content(formatted, previous_tail)
+                formatted_paragraphs.append(new_content)
+                previous_tail = self.aligner.get_tail_for_context(formatted)
             
-            # Prepare for next iteration
-            final_output.append(trimmed_content)
-            previous_tail = self.aligner.get_tail_for_context(
-                formatted,
-                length=self.splitter._chunk_overlap
-            )
-        
-        # Write final output
-        with open(output_path, 'w') as f:
-            f.write('\n'.join(final_output))
+            with open(output_path, 'w') as f:
+                f.write('\n\n'.join(formatted_paragraphs))
+                
+        except Exception as e:
+            self.logger.error(f"Processing failed: {str(e)}")
+            raise
+
+=== PY assets/py/run.py ===
+#!/usr/bin/env python3
+import logging
+import asyncio
+from pipeline import TextProcessingPipeline
+
+# Configure basic logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 
 async def main():
-    """Example usage with Ollama LLM."""
-    from langchain.llms import Ollama
-    
-    # Initialize LLM
-    llm = Ollama(model="mistral")
-    
-    # Create pipeline
     pipeline = TextProcessingPipeline(
-        llm=llm,
-        chunk_size=800,
-        chunk_overlap=150
+        chunk_size=1200,
+        chunk_overlap=200
     )
     
-    # Set up progress tracking
-    def progress_callback(current, total):
-        print(f"Processing chunk {current}/{total}")
-    
-    pipeline.set_progress_callback(progress_callback)
-    
-    # Process file
-    await pipeline.process_file(
-        input_path="input.txt",
-        output_path="output.txt"
-    )
-    print("Processing complete!")
+    try:
+        await pipeline.process_file(
+            input_path="transcript.txt",
+            output_path="formatted.txt"
+        )
+        print("Successfully created formatted.txt")
+    except Exception as e:
+        logging.error(f"Failed to process file: {e}")
 
 if __name__ == "__main__":
     asyncio.run(main())
-
-    
-
-=== PY assets/py/run.py ===
-
 
 === PY assets/ragdocs/txt/transcript.txt ===
 hi everybody Today is Saturday June 21st 2025 and our friend Pepe Scobar is back

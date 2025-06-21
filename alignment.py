@@ -14,7 +14,9 @@ class AlignmentProcessor:
         self.default_target_length = 200
     
     def extract_new_content(self, combined: str, context: str) -> str:
-        """Extract only new content from combined text, preserving sentence structure."""
+        """Extract only new content from combined text,from difflib import SequenceMatcher
+import re  # Ensure this exists
+from typing import Optional, Tuple, List preserving sentence structure."""
         if not context or len(context) < self.min_context_length:
             return self._capitalize_first(combined)
         
