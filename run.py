@@ -18,7 +18,7 @@ async def main():
     
     try:
         pipeline = TextProcessingPipeline(
-            chunk_size=1200,  # Optimal for most LLMs
+            chunk_size=1200,  # Optimal for conversational text
             chunk_overlap=200  # Maintains context between chunks
         )
         

@@ -1,9 +1,8 @@
 import re
 import logging
 import asyncio
+import aiohttp
 import json
-from urllib.request import Request, urlopen
-from urllib.error import URLError
 from typing import List, Optional
 from alignment import AlignmentProcessor
 
@@ -15,13 +14,19 @@ class LLMFormatter:
         self.logger = logging.getLogger(__name__)
     
     async def format_with_llm(self, text: str) -> str:
-        """Send text to LLM for formatting"""
-        prompt = f"""Please format this transcript into proper paragraphs and sentences. 
-Maintain all original content while fixing punctuation, capitalization and paragraph structure:
-
+        """Send text to LLM for proper formatting"""
+        prompt = f"""Please format this transcript into proper paragraphs and complete sentences:
+        
+Original Transcript:
 {text}
 
-Formatted version:"""
+Rules:
+1. Maintain all factual information
+2. Fix punctuation and capitalization
+3. Add proper paragraph breaks
+4. Keep the original meaning intact
+
+Formatted Transcript:"""
         
         payload = {
             "prompt": prompt,
@@ -38,15 +43,18 @@ Formatted version:"""
                     timeout=30
                 ) as response:
                     if response.status != 200:
-                        raise ValueError(f"LLM API error: {response.status}")
+                        error = await response.text()
+                        raise ValueError(f"LLM API error {response.status}: {error}")
+                    
                     result = await response.json()
                     return result['choices'][0]['text'].strip()
+                    
         except Exception as e:
             self.logger.error(f"LLM formatting failed: {str(e)}")
             return text  # Fallback to original text
 
 class TextProcessingPipeline:
-    """Complete processing pipeline with LLM integration"""
+    """Complete text processing pipeline with LLM integration"""
     
     def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200):
         self.chunk_size = chunk_size
@@ -56,7 +64,7 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Split text into chunks respecting sentence boundaries"""
+        """Split text into chunks while respecting sentence boundaries"""
         sentences = re.split(r'(?<=[.!?])\s+', text)
         chunks = []
         current_chunk = []
@@ -66,7 +74,7 @@ class TextProcessingPipeline:
             sent_length = len(sent)
             if current_length + sent_length > self.chunk_size and current_chunk:
                 chunks.append(' '.join(current_chunk))
-                # Keep overlap
+                # Keep overlap for context
                 current_chunk = current_chunk[-self.chunk_overlap//20:]
                 current_length = sum(len(s) + 1 for s in current_chunk)
             
@@ -78,7 +86,7 @@ class TextProcessingPipeline:
         return chunks
     
     async def process_file(self, input_path: str, output_path: str) -> None:
-        """Process the input file through the full pipeline"""
+        """Process input file through the full pipeline"""
         try:
             with open(input_path, 'r') as f:
                 text = f.read()
@@ -92,6 +100,8 @@ class TextProcessingPipeline:
                 
                 # Combine with previous context
                 combined = f"{previous_tail} {chunk}".strip()
+                
+                # Format with LLM
                 formatted = await self.formatter.format_with_llm(combined)
                 
                 # Extract new content
@@ -104,8 +114,9 @@ class TextProcessingPipeline:
                     target_length=self.chunk_overlap
                 )
             
-            # Merge and write final output
+            # Merge all paragraphs
             final_text = self.aligner.merge_paragraphs(formatted_paragraphs)
+            
             with open(output_path, 'w') as f:
                 f.write(final_text)
                 
