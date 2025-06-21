@@ -17,22 +17,22 @@ class LLMFormatter:
         """Send text to LLM for proper formatting"""
         prompt = f"""Rephrase this transcript into well-structured paragraphs with proper grammar:
         
-    {text}
+{text}
 
-    Guidelines:
-    - Keep all factual content
-    - Fix punctuation and capitalization
-    - Group related ideas together
-    - Output in clean paragraphs
-    - Never omit or add information
+Guidelines:
+- Keep all factual content
+- Fix punctuation and capitalization
+- Group related ideas together
+- Output in clean paragraphs
+- Never omit or add information
 
-    Formatted version:\n\n"""  # Added extra newlines to encourage response
+Formatted version:\n\n"""
         
         payload = {
             "prompt": prompt,
             "max_tokens": 2000,
-            "temperature": 0.5,  # Slightly higher for more creativity
-            "stop": ["\n\n\n"],  # Stop on triple newline
+            "temperature": 0.5,
+            "stop": ["\n\n\n"],
             "top_p": 0.9,
             "frequency_penalty": 0.2,
             "presence_penalty": 0.2,
@@ -44,17 +44,16 @@ class LLMFormatter:
                 async with session.post(
                     self.api_url,
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=120)  # Longer timeout
+                    timeout=aiohttp.ClientTimeout(total=120)
                 ) as response:
                     response_text = await response.text()
-                    self.logger.debug(f"Raw API response: {response_text}")  # Log raw response
+                    self.logger.debug(f"Raw API response: {response_text}")
                     
                     if response.status != 200:
                         raise ValueError(f"API error {response.status}: {response_text}")
                     
                     result = await response.json()
                     
-                    # More robust response handling
                     if not result.get('choices'):
                         self.logger.error("No 'choices' in response")
                         return text
@@ -86,7 +85,6 @@ class TextProcessingPipeline:
     
     def _chunk_text(self, text: str) -> List[str]:
         """More conservative chunking approach"""
-        # First split by double newlines (paragraphs)
         paras = [p.strip() for p in text.split('\n\n') if p.strip()]
         
         chunks = []
@@ -97,7 +95,6 @@ class TextProcessingPipeline:
             para_length = len(para)
             if current_length + para_length > self.chunk_size and current_chunk:
                 chunks.append('\n\n'.join(current_chunk))
-                # Keep last 1-2 paragraphs as overlap
                 current_chunk = current_chunk[-min(2, len(current_chunk)):]
                 current_length = sum(len(p) for p in current_chunk)
             
@@ -124,10 +121,10 @@ class TextProcessingPipeline:
                 self.logger.info(f"Processing chunk {i+1}/{len(chunks)} (length: {len(chunk)})")
                 
                 combined = f"{previous_tail}\n\n{chunk}".strip()
-                self.logger.debug(f"Combined text sent to LLM:\n{combined[:200]}...")  # Log first 200 chars
+                self.logger.debug(f"Combined text sent to LLM:\n{combined[:200]}...")
                 
                 formatted = await self.formatter.format_with_llm(combined)
-                self.logger.debug(f"Formatted response:\n{formatted[:200]}...")  # Log first 200 chars
+                self.logger.debug(f"Formatted response:\n{formatted[:200]}...")
                 
                 if not formatted.strip():
                     self.logger.warning(f"Empty LLM response for chunk {i+1}")
@@ -137,16 +134,7 @@ class TextProcessingPipeline:
                 formatted_paragraphs.append(new_content)
                 
                 previous_tail = self.aligner.get_tail_for_context(
-                    
-            
-            final_text = self.aligner.merge_paragraphs(formatted_paragraphs)
-            
-            with open(output_path, 'w') as f:
-                f.write(final_text)
-                
-        except Exception as e:
-            self.logger.error(f"Processing failed: {str(e)}")
-            raiseformatted,
+                    formatted,
                     target_length=self.chunk_overlap
                 )
             

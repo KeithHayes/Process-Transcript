@@ -1,38 +1,14 @@
 === process transcript ===
 
 === DOCS instructions.txt ===
-This provides the model which is preloaded.
-
-Activating virtual environment...
-Checking system requirements...
-Checking RAG extension...
-Initializing system...
-Starting server...
-14:56:43-894866 INFO     Starting Text generation web UI                        
-14:56:43-897671 WARNING  trust_remote_code is enabled. This is dangerous.       
-14:56:43-898355 WARNING                                                         
-                         You are potentially exposing the web UI to the entire  
-                         internet without any access password.                  
-                         You can create one with the "--gradio-auth" flag like  
-                         this:                                                  
-                                                                                
-                         --gradio-auth username:password                        
-                                                                                
-                         Make sure to replace username:password with your own.  
-14:56:44-151951 INFO     Loading the extension "openai"                         
-14:56:44-273369 INFO     OpenAI-compatible API URL:                             
-                                                                                
-                         http://0.0.0.0:5000    
 
 The python files will have to be corrected to use the llm through the API
 
-transcript.txt is the audio transcript input to bbe formatted into complete sentences and paragraphs.
+transcript.txt is an audio transcript input to be formatted into complete sentences and paragraphs.
 
-README will describe how to use the project.
+formatted.txt is the output which should be the input formatted into complete sentences and paragraphs.
 
-This is a python project.  you are not supposed to process the code.  
-
-Examine the python files and understand that this is unfinished code which will format the file.
+Examine the python files and fix the code to format the input.
 
 Current status is the llm is not formatting the input into output which has complete sentences and paragraphs.
 
@@ -41,6 +17,15 @@ Current status is the llm is not formatting the input into output which has comp
 
 
 === DOCS README ===
+Start server and load model to make api available
+This provides the model which is preloaded.
+                        
+OpenAI-compatible API URL: http://0.0.0.0:5000 
+
+Activate the venv and then use run.py
+
+
+
 This project reads a long audio transcript and renders it into complete sentences and paragraphs in an essay format thatt retains faithfullness to original transcript content.
 
 === PY __init__.py ===
@@ -200,22 +185,22 @@ class LLMFormatter:
         """Send text to LLM for proper formatting"""
         prompt = f"""Rephrase this transcript into well-structured paragraphs with proper grammar:
         
-    {text}
+{text}
 
-    Guidelines:
-    - Keep all factual content
-    - Fix punctuation and capitalization
-    - Group related ideas together
-    - Output in clean paragraphs
-    - Never omit or add information
+Guidelines:
+- Keep all factual content
+- Fix punctuation and capitalization
+- Group related ideas together
+- Output in clean paragraphs
+- Never omit or add information
 
-    Formatted version:\n\n"""  # Added extra newlines to encourage response
+Formatted version:\n\n"""
         
         payload = {
             "prompt": prompt,
             "max_tokens": 2000,
-            "temperature": 0.5,  # Slightly higher for more creativity
-            "stop": ["\n\n\n"],  # Stop on triple newline
+            "temperature": 0.5,
+            "stop": ["\n\n\n"],
             "top_p": 0.9,
             "frequency_penalty": 0.2,
             "presence_penalty": 0.2,
@@ -227,17 +212,16 @@ class LLMFormatter:
                 async with session.post(
                     self.api_url,
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=120)  # Longer timeout
+                    timeout=aiohttp.ClientTimeout(total=120)
                 ) as response:
                     response_text = await response.text()
-                    self.logger.debug(f"Raw API response: {response_text}")  # Log raw response
+                    self.logger.debug(f"Raw API response: {response_text}")
                     
                     if response.status != 200:
                         raise ValueError(f"API error {response.status}: {response_text}")
                     
                     result = await response.json()
                     
-                    # More robust response handling
                     if not result.get('choices'):
                         self.logger.error("No 'choices' in response")
                         return text
@@ -269,7 +253,6 @@ class TextProcessingPipeline:
     
     def _chunk_text(self, text: str) -> List[str]:
         """More conservative chunking approach"""
-        # First split by double newlines (paragraphs)
         paras = [p.strip() for p in text.split('\n\n') if p.strip()]
         
         chunks = []
@@ -280,7 +263,6 @@ class TextProcessingPipeline:
             para_length = len(para)
             if current_length + para_length > self.chunk_size and current_chunk:
                 chunks.append('\n\n'.join(current_chunk))
-                # Keep last 1-2 paragraphs as overlap
                 current_chunk = current_chunk[-min(2, len(current_chunk)):]
                 current_length = sum(len(p) for p in current_chunk)
             
@@ -307,10 +289,10 @@ class TextProcessingPipeline:
                 self.logger.info(f"Processing chunk {i+1}/{len(chunks)} (length: {len(chunk)})")
                 
                 combined = f"{previous_tail}\n\n{chunk}".strip()
-                self.logger.debug(f"Combined text sent to LLM:\n{combined[:200]}...")  # Log first 200 chars
+                self.logger.debug(f"Combined text sent to LLM:\n{combined[:200]}...")
                 
                 formatted = await self.formatter.format_with_llm(combined)
-                self.logger.debug(f"Formatted response:\n{formatted[:200]}...")  # Log first 200 chars
+                self.logger.debug(f"Formatted response:\n{formatted[:200]}...")
                 
                 if not formatted.strip():
                     self.logger.warning(f"Empty LLM response for chunk {i+1}")
@@ -320,16 +302,7 @@ class TextProcessingPipeline:
                 formatted_paragraphs.append(new_content)
                 
                 previous_tail = self.aligner.get_tail_for_context(
-                    
-            
-            final_text = self.aligner.merge_paragraphs(formatted_paragraphs)
-            
-            with open(output_path, 'w') as f:
-                f.write(final_text)
-                
-        except Exception as e:
-            self.logger.error(f"Processing failed: {str(e)}")
-            raiseformatted,
+                    formatted,
                     target_length=self.chunk_overlap
                 )
             

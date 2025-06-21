@@ -1,1 +1,10 @@
+Start server and load model to make api available
+This provides the model which is preloaded.
+                        
+OpenAI-compatible API URL: http://0.0.0.0:5000 
+
+Activate the venv and then use run.py
+
+
+
 This project reads a long audio transcript and renders it into complete sentences and paragraphs in an essay format thatt retains faithfullness to original transcript content.
