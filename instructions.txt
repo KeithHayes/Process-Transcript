@@ -1,5 +1,23 @@
-
 Current status:   
+
+The valid results of test.py provide the information to correct the rest of the project files.
+
+Current output of test.py:
+
+(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python test.py
+2025-06-22 08:02:11,514 - api_test - INFO - Starting API tests...
+2025-06-22 08:02:11,514 - api_test - INFO - Testing API connection to http://0.0.0.0:5000/v1/completions
+2025-06-22 08:02:11,976 - api_test - INFO - API Success! Response: {'id': 'conv-1750604531519444224', 'object': 'text_completion', 'created': 1750604531, 'model': 'TheBloke_Mistral-7B-Instruct-v0.2-AWQ', 'choices': [{'index': 0, 'finish_reason': 'length', 'text': '\n\n```\n', 'logprobs': {'top_logprobs': [{}]}}], 'usage': {'prompt_tokens': 16, 'completion_tokens': 7, 'total_tokens': 23}}
+2025-06-22 08:02:11,976 - api_test - INFO - Proceeding to chunk processing test...
+2025-06-22 08:02:11,976 - api_test - INFO - Testing chunk processing...
+2025-06-22 08:02:15,465 - api_test - INFO - Processed chunk successfully:
+This is a test chunk of transcribed audio content, approximating 400 characters, featuring overlapping speech for simulation purposes. The application programming interface (API) should convert this text into distinct paragraphs, each complete with suitable punctuation and capitalization.
+(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ 
+
+
+
+Design :
+
 
 While formatted_transcript is generated the content is corrected to be in coherent sentences that use periods, 
 commas, and capital letters as requirementts dictate.
@@ -15,44 +33,6 @@ marks or paragraphs.  They should all be there.  A file showing sample output is
 The document is split into multiple chunks with overlap making smooth transitions in the output. Each time a chunk is 
 processed a command line entry should show a new call has been made to the llm witth the chunk.  The sample transcript is several chunks 
 long but current output does not show that it is.
-
-Dignose the problem.
-
-Current output:
-
-(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python run.py 
-2025-06-21 20:40:39,107 - pipeline - INFO - Created 220 chunks
-2025-06-21 20:40:39,108 - pipeline - INFO - Processing chunk 1/220
-2025-06-21 20:40:39,108 - pipeline - INFO - LLM API call #1
-2025-06-21 20:41:09,999 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:41:09,999 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:41:10,000 - pipeline - INFO - Processing chunk 2/220
-2025-06-21 20:41:10,000 - pipeline - INFO - LLM API call #2
-2025-06-21 20:41:41,020 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:41:41,020 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:41:41,020 - pipeline - INFO - Processing chunk 3/220
-2025-06-21 20:41:41,020 - pipeline - INFO - LLM API call #3
-2025-06-21 20:42:12,020 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:42:12,020 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:42:12,020 - pipeline - INFO - Processing chunk 4/220
-2025-06-21 20:42:12,020 - pipeline - INFO - LLM API call #4
-2025-06-21 20:42:43,020 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:42:43,020 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:42:43,020 - pipeline - INFO - Processing chunk 5/220
-2025-06-21 20:42:43,020 - pipeline - INFO - LLM API call #5
-2025-06-21 20:43:14,020 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:43:14,020 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:43:14,020 - pipeline - INFO - Processing chunk 6/220
-2025-06-21 20:43:14,020 - pipeline - INFO - LLM API call #6
-2025-06-21 20:43:45,007 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:43:45,007 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:43:45,008 - pipeline - INFO - Processing chunk 7/220
-2025-06-21 20:43:45,008 - pipeline - INFO - LLM API call #7
-
-nothing is written to the output file as the listing below shows.
-
-
-Design :
 
 Transistions are smooth because the chumking connects already formatted sections as it builds output.  
 Overlap where fresh lines are added supplies a leading edge of formated overlap so the chunk being 
