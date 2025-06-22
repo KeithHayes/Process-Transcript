@@ -17,3 +17,35 @@ processed a command line entry should show a new call has been made to the llm w
 long but current output does not show that it is.
 
 Dignose the problem.
+
+Current output:
+
+at 1000 characters a chunk there would be 8 chunks in this transcrip as seen by the size, there is inconsistency.  
+Logic and logging is wrong,
+
+(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python run.py
+2025-06-21 17:49:08,146 - pipeline - INFO - Created 1 chunks from input
+2025-06-21 17:49:08,146 - pipeline - INFO - Processing chunk 1/1 (length: 7272)
+2025-06-21 17:49:08,146 - pipeline - INFO - Making LLM API call #1
+2025-06-21 17:52:08,649 - pipeline - ERROR - LLM Timeout after 180 seconds
+2025-06-21 17:52:08,649 - pipeline - ERROR - Processing failed: 
+2025-06-21 17:52:08,649 - root - WARNING - Attempt 1 failed, retrying in 1s...
+2025-06-21 17:52:09,651 - pipeline - INFO - Created 1 chunks from input
+2025-06-21 17:52:09,651 - pipeline - INFO - Processing chunk 1/1 (length: 7272)
+2025-06-21 17:52:09,651 - pipeline - INFO - Making LLM API call #2
+
+Design :
+
+Transistions are smooth because the chumking connects already formatted sections as it builds output.  
+Overlap where fresh lines are added supplies a leading edge of formated overlap so the chunk being 
+formatted can be made to ttransition correct so that the connection is later correct.
+
+example.  If a chunk is 1000 characters long the second chunnk would begin at 800 characters so the 
+first 200 characters are formattted with previous content.  This overlap allows the overlap to be 
+rewritten when the second chunk overwrites the tail of the first chunk.
+
+The end of the second chunk is at 1800 so the third chunk begins at 1600 to repeat the overlap 
+re-write process until a smooth translation of the entire file has been accomplished.
+
+This should be a common technique to process a translation in chunks and the web should be 
+consulted as needed to ensure logic is correct.

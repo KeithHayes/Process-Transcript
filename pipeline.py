@@ -12,36 +12,36 @@ class LLMFormatter:
     def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
         self.api_url = api_url
         self.logger = logging.getLogger(__name__)
-        self.call_count = 0  # Track API calls
-    
+        self.call_count = 0
+
     async def format_with_llm(self, text: str) -> str:
         """Send text to LLM for proper formatting"""
         self.call_count += 1
         self.logger.info(f"Making LLM API call #{self.call_count}")
         
         prompt = f"""
-### INSTRUCTIONS:
-Transform this raw transcript into a well-written essay with:
-1. Proper paragraphs separated by blank lines
-2. Correct grammar, punctuation and capitalization
-3. Meaningful section headings
-4. Speaker labels preserved
-5. No connecting dashes - use proper transitions
-
-### BAD EXAMPLE:
-hi everybody today is saturday welcome back pepe its 11 in moscow i just arrived from st petersburg
-
-### GOOD EXAMPLE:
-**Introduction**
-
-Today is Saturday. Welcome back, Pepe.
-
-It's 11 PM in Moscow. I just arrived from St. Petersburg to be here tonight.
-
-### INPUT TRANSCRIPT:
+### RAW TRANSCRIPT:
 {text}
 
-### PROPERLY FORMATTED OUTPUT:
+### FORMATTING RULES:
+1. Organize into paragraphs with blank lines between
+2. Use proper punctuation (.,!?)
+3. Capitalize sentences and proper nouns
+4. Add section headings where appropriate
+5. Format speaker turns like:
+   SpeakerName:
+   Actual words spoken
+
+### EXAMPLE OUTPUT:
+**Introduction**
+
+Participant1:
+Welcome everyone. Today we're discussing important matters.
+
+Participant2:
+Thank you for having me. I'll begin with the market analysis.
+
+### FORMATTED VERSION:
 """
         
         payload = {
@@ -65,24 +65,35 @@ It's 11 PM in Moscow. I just arrived from St. Petersburg to be here tonight.
                     
                     if response.status != 200:
                         error = await response.text()
-                        self.logger.error(f"API Error: {error}")
-                        return text
+                        self.logger.error(f"API Error {response.status}: {error[:200]}")
+                        raise ValueError(f"API Error {response.status}")
 
                     result = await response.json()
                     formatted = result["choices"][0]["text"].strip()
+                    
+                    if not self._validate_output(formatted):
+                        raise ValueError("LLM returned invalid formatting")
+                        
                     return self._post_process(formatted)
                     
+        except asyncio.TimeoutError:
+            self.logger.error("LLM Timeout after 180 seconds")
+            raise
         except Exception as e:
-            self.logger.error(f"LLM Error: {str(e)}")
-            return text
+            self.logger.error(f"LLM Communication Failed: {str(e)}")
+            raise
+
+    def _validate_output(self, text: str) -> bool:
+        """Check basic formatting requirements"""
+        has_paragraphs = '\n\n' in text
+        has_punctuation = any(c in text for c in '.!?')
+        has_capitals = any(w[0].isupper() for w in text.split() if w)
+        return has_paragraphs and has_punctuation and has_capitals
 
     def _post_process(self, text: str) -> str:
         """Final cleanup of formatted text"""
-        # Ensure proper spacing after punctuation
         text = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', text)
-        # Remove any remaining filler words
         text = re.sub(r'\b(uh|um)\b', '', text, flags=re.IGNORECASE)
-        # Ensure consistent paragraph spacing
         text = re.sub(r'\n{3,}', '\n\n', text)
         return text.strip()
 
@@ -98,29 +109,45 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Improved chunking that respects natural breaks"""
-        sentences = re.split(r'(?<=[.!?])\s+', text)
+        """Improved chunking that respects both paragraphs and hard limits"""
+        # First split into paragraphs
+        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
         
         chunks = []
         current_chunk = []
         current_length = 0
         
-        for sentence in sentences:
-            sent_length = len(sentence)
+        for para in paragraphs:
+            para_length = len(para)
             
-            if current_length + sent_length > self.chunk_size and current_chunk:
-                chunks.append(' '.join(current_chunk))
-                # Keep overlap for context
-                overlap_start = max(0, len(current_chunk) - 3)
-                current_chunk = current_chunk[overlap_start:]
-                current_length = sum(len(s) for s in current_chunk)
+            # If adding this paragraph would exceed chunk size (with some buffer)
+            if current_length + para_length > self.chunk_size * 1.2 and current_chunk:
+                # Join what we have so far
+                chunks.append('\n\n'.join(current_chunk))
+                # Keep last paragraph for overlap
+                current_chunk = current_chunk[-1:]
+                current_length = len(current_chunk[0]) if current_chunk else 0
             
-            current_chunk.append(sentence)
-            current_length += sent_length
+            # If current paragraph is too big for a single chunk
+            if para_length > self.chunk_size:
+                # Split into sentences
+                sentences = re.split(r'(?<=[.!?])\s+', para)
+                for sent in sentences:
+                    sent_length = len(sent)
+                    if current_length + sent_length > self.chunk_size and current_chunk:
+                        chunks.append(' '.join(current_chunk))
+                        current_chunk = current_chunk[-1:] if current_chunk else []
+                        current_length = len(current_chunk[0]) if current_chunk else 0
+                    current_chunk.append(sent)
+                    current_length += sent_length
+            else:
+                current_chunk.append(para)
+                current_length += para_length
         
         if current_chunk:
-            chunks.append(' '.join(current_chunk))
+            chunks.append('\n\n'.join(current_chunk))
         
+        self.logger.debug(f"Created {len(chunks)} chunks with sizes: {[len(c) for c in chunks]}")
         return chunks
     
     async def process_file(self, input_path: str, output_path: str) -> None:
@@ -128,9 +155,8 @@ class TextProcessingPipeline:
             with open(input_path, 'r') as f:
                 text = f.read()
             
-            # Pre-process to clean up raw transcript
-            text = re.sub(r'(\w)-(\w)', r'\1 \2', text)  # Remove connecting dashes
-            text = re.sub(r'\s+', ' ', text).strip()  # Normalize whitespace
+            text = re.sub(r'(\w)-(\w)', r'\1 \2', text)
+            text = re.sub(r'\s+', ' ', text).strip()
             
             chunks = self._chunk_text(text)
             self.logger.info(f"Created {len(chunks)} chunks from input")
@@ -143,10 +169,6 @@ class TextProcessingPipeline:
                 
                 combined = f"{previous_tail}\n\n{chunk}".strip()
                 formatted = await self.formatter.format_with_llm(combined)
-                
-                if not formatted.strip():
-                    self.logger.warning(f"Empty LLM response for chunk {i+1}")
-                    formatted = chunk
                 
                 new_content = self.aligner.extract_new_content(formatted, previous_tail)
                 formatted_paragraphs.append(new_content)

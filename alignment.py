@@ -14,9 +14,7 @@ class AlignmentProcessor:
         self.default_target_length = 200
     
     def extract_new_content(self, combined: str, context: str) -> str:
-        """Extract only new content from combined text,from difflib import SequenceMatcher
-import re  # Ensure this exists
-from typing import Optional, Tuple, List preserving sentence structure."""
+        """Extract only new content from combined text, preserving sentence structure."""
         if not context or len(context) < self.min_context_length:
             return self._capitalize_first(combined)
         
@@ -68,28 +66,21 @@ from typing import Optional, Tuple, List preserving sentence structure."""
             
         return '\n\n'.join(accumulated)
     
-    def find_optimal_cut(self, text: str, original_lines: int) -> Tuple[int, str]:
-        """Find best place to cut text based on original line count."""
-        lines = text.split('\n')
-        avg_lines_per_para = max(1, len(self.paragraph_splitter.split(text)) / len(lines))
-        estimated_lines = int(len(lines) * avg_lines_per_para)
-        
-        if estimated_lines >= original_lines:
-            return original_lines, '\n'.join(lines[:original_lines])
-        
-        # Find nearest paragraph break
-        paragraphs = self.paragraph_splitter.split(text)
-        line_count = 0
-        result = []
-        
+    def merge_paragraphs(self, paragraphs: List[str]) -> str:
+        """Enhanced merging with better punctuation handling"""
+        cleaned = []
         for para in paragraphs:
-            para_lines = para.count('\n') + 1
-            if line_count + para_lines > original_lines:
-                break
-            result.append(para)
-            line_count += para_lines
+            p = para.strip()
+            if not p:
+                continue
+                
+            if p[-1] not in {'.', '?', '!', '\n'}:
+                p += '.'
             
-        return line_count, '\n\n'.join(result)
+            p = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', p)
+            cleaned.append(p)
+            
+        return '\n\n'.join(cleaned)
     
     def _capitalize_first(self, text: str) -> str:
         """Ensure proper sentence capitalization."""
@@ -106,27 +97,10 @@ from typing import Optional, Tuple, List preserving sentence structure."""
         if len(sentences) <= 1:
             return text.lstrip()
             
-        # Reconstruct with proper spacing
         first_sent = sentences[0].strip()
         remaining = ' '.join(s.strip() for s in sentences[1:])
         
-        # Ensure first sentence ends with punctuation
         if first_sent and first_sent[-1] not in {'.', '?', '!'}:
             first_sent += '.'
             
         return f"{first_sent} {remaining}".lstrip()
-
-    def merge_paragraphs(self, paragraphs: List[str]) -> str:
-        """Merge processed paragraphs into final text with proper formatting."""
-        cleaned = []
-        for para in paragraphs:
-            p = para.strip()
-            if not p:
-                continue
-                
-            # Ensure paragraph ends with punctuation
-            if p[-1] not in {'.', '?', '!', '\n'}:
-                p += '.'
-            cleaned.append(p)
-            
-        return '\n\n'.join(cleaned)
