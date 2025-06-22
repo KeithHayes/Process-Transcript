@@ -3,19 +3,9 @@
 === DOCS instructions.txt ===
 Current status:   
 
-The valid results of test.py provide the information to correct the rest of the project files.
+Preliminary results show promise.
 
-Current output of test.py:
-
-(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python test.py
-2025-06-22 08:02:11,514 - api_test - INFO - Starting API tests...
-2025-06-22 08:02:11,514 - api_test - INFO - Testing API connection to http://0.0.0.0:5000/v1/completions
-2025-06-22 08:02:11,976 - api_test - INFO - API Success! Response: {'id': 'conv-1750604531519444224', 'object': 'text_completion', 'created': 1750604531, 'model': 'TheBloke_Mistral-7B-Instruct-v0.2-AWQ', 'choices': [{'index': 0, 'finish_reason': 'length', 'text': '\n\n```\n', 'logprobs': {'top_logprobs': [{}]}}], 'usage': {'prompt_tokens': 16, 'completion_tokens': 7, 'total_tokens': 23}}
-2025-06-22 08:02:11,976 - api_test - INFO - Proceeding to chunk processing test...
-2025-06-22 08:02:11,976 - api_test - INFO - Testing chunk processing...
-2025-06-22 08:02:15,465 - api_test - INFO - Processed chunk successfully:
-This is a test chunk of transcribed audio content, approximating 400 characters, featuring overlapping speech for simulation purposes. The application programming interface (API) should convert this text into distinct paragraphs, each complete with suitable punctuation and capitalization.
-(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ 
+Formatted_transcript.txt has content to be verified.
 
 
 
@@ -37,36 +27,105 @@ The document is split into multiple chunks with overlap making smooth transition
 processed a command line entry should show a new call has been made to the llm witth the chunk.  The sample transcript is several chunks 
 long but current output does not show that it is.
 
-Transistions are smooth because the chumking connects already formatted sections as it builds output.  
-Overlap where fresh lines are added supplies a leading edge of formated overlap so the chunk being 
-formatted can be made to ttransition correct so that the connection is later correct.
+Chunking will have to be along word boundaries because of the nature of the continuous transcript.   
 
-example.  If a chunk is 1000 characters long the second chunnk would begin at 800 characters so the 
-first 200 characters are formattted with previous content.  This overlap allows the overlap to be 
-rewritten when the second chunk overwrites the tail of the first chunk.
+Transistions are smooth because the chumking connects already formatted sections as it merges output 
+along word boundaries.
+
+Overlap at the beginning of fresh ubformatted lines from the previously formatted chunk allows the end of formatted 
+output to be rewritten as a new chunk is merged.  This makes proper formatting at chunk transitions.
+
+It also removes bad formatting near the end of a previous chunk.
+
+
+Example:  If a chunk is 1000 characters long the second chunnk would begin at 800 characters so the 
+first 200 characters are formatformatted with previous content providing formatting input.  This overlap allows the 
+overlap to be correctly rewritten so a smooth transition replaces the abrupt end.
 
 The end of the second chunk is at 1800 so the third chunk begins at 1600 to repeat the overlap 
 re-write process until a smooth translation of the entire file has been accomplished.
 
+As new chunks are added the overlap of thee previous chunk is removed.
+
 This should be a common technique to process a translation in chunks and the web should be 
 consulted as needed to ensure logic is correct.
 
-Chunking will have to be along word boundaries because of the nature of the continuous transcript.   
-
 The overlap is intended to fix problems with chunking in the middle of a sentence or paragraph.
 
-
-=== DOCS README ===
-Start server and load model to make api available
-This provides the model which is preloaded.
-                        
-OpenAI-compatible API URL: http://0.0.0.0:5000 
-
-Activate the venv and then use run.py
+Because the overlap is removed and replaced by the start of a new chunk, paragraphs and sentences and such 
+can be properly formatted.
 
 
+=== DOCS README.md ===
+# Transcript Formatter
 
-This project reads a long audio transcript and renders it into complete sentences and paragraphs in an essay format thatt retains faithfullness to original transcript content.
+## Overview
+This project processes long passages of unformatted text (such as audio transcripts) and converts them into properly formatted content with complete sentences and paragraphs, while maintaining faithfulness to the original content.
+
+## Key Features
+- Converts raw transcripts into readable, well-structured text
+- Maintains original meaning while improving formatting
+- Handles text of any length using chunked processing
+- Produces essay-style output with proper punctuation and paragraphs
+
+## Installation & Setup
+
+### Prerequisites
+- Python 3.8+
+- Virtual environment (recommended)
+
+### Server Setup
+
+1. Start the server (provides the loaded model):
+   ```bash
+   python server.py
+   ```
+
+2. The OpenAI-compatible API will be available at:
+   ```
+   http://0.0.0.0:5000
+   ```
+
+### Running the Formatter
+
+1. Activate your virtual environment:
+
+   **Linux/Mac:**
+   ```bash
+   source venv/bin/activate
+   ```
+
+   **Windows:**
+   ```cmd
+   venv\Scripts\activate
+   ```
+
+2. Run the formatter:
+   ```bash
+   python run.py
+   ```
+
+## How It Works
+
+### The system:
+- Processes text in chunks that fit within the LLM's context window  
+- Applies proper formatting to each chunk  
+- Intelligently combines results while maintaining smooth transitions  
+- Preserves the original content's meaning and intent  
+
+### Output Format:
+- Proper sentence structure with correct punctuation  
+- Logical paragraph breaks  
+- Speaker identification (when present in source)  
+- Removal of filler words (uh, um, etc.)  
+- Consistent capitalization  
+
+### Technical Approach:
+- Uses chunked processing to handle unlimited length input  
+- Maintains overlap between chunks for seamless transitions  
+- Applies post-processing for consistent formatting  
+- Includes fallback basic formatting if LLM processing fails  
+
 
 === PY alignment.py ===
 from difflib import SequenceMatcher
@@ -138,17 +197,27 @@ class AlignmentProcessor:
         return '\n\n'.join(accumulated)
     
     def merge_paragraphs(self, paragraphs: List[str]) -> str:
-        """Enhanced merging with better punctuation handling"""
+        """Enhanced merging with better punctuation and speaker handling"""
         cleaned = []
+        current_speaker = None
+        
         for para in paragraphs:
             p = para.strip()
             if not p:
                 continue
                 
+            # Detect speaker changes
+            if ':' in p.split()[0]:
+                new_speaker = p.split(':')[0]
+                if new_speaker != current_speaker:
+                    cleaned.append('')  # Add blank line between speakers
+                    current_speaker = new_speaker
+            
+            # Ensure proper punctuation
             if p[-1] not in {'.', '?', '!', '\n'}:
                 p += '.'
             
-            p = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', p)
+            p = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', p)  # Fix spacing
             cleaned.append(p)
             
         return '\n\n'.join(cleaned)
@@ -184,14 +253,10 @@ import asyncio
 import aiohttp
 from typing import List
 from alignment import AlignmentProcessor
+from config import (CHUNK_SIZE, CHUNK_OVERLAP, API_URL, API_TIMEOUT,
+                   MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY,
+                   TEMPERATURE, TOP_P)
 
-from config import CHUNK_SIZE, CHUNK_OVERLAP, API_URL, API_TIMEOUT
-
-class TextProcessingPipeline:
-    def __init__(self, chunk_size: int = CHUNK_SIZE, chunk_overlap: int = CHUNK_OVERLAP):
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        # Rest of initialization...
 class LLMFormatter:
     """Enhanced LLM formatter with robust error handling"""
     
@@ -205,38 +270,40 @@ class LLMFormatter:
         self.call_count += 1
         self.logger.info(f"LLM API call #{self.call_count}")
         
-        # Try standard completion API first
-        formatted = await self._try_completion_api(text)
-        if formatted:
-            return self._post_process(formatted)
-            
-        # Fallback to basic formatting if LLM fails
-        self.logger.warning("LLM failed, applying basic formatting")
-        return self._basic_formatting(text)
-
-    async def _try_completion_api(self, text: str) -> str:
-        """Attempt to get formatted text from completion API"""
-        try:
-            prompt = f"""Reformat this transcript with perfect punctuation and paragraphs:
+        prompt = f"""Reformat this transcript into a professional conversation format:
 {text}
 
 Rules:
-- Add proper punctuation (.,!?)
-- Use paragraph breaks
-- Capitalize sentences
-- Format speakers as "Name:"
-- Remove filler words (uh, um)
+1. Identify speakers and format as "Name:"
+2. Break into logical paragraphs
+3. Use proper punctuation (.,!?)
+4. Capitalize sentences correctly
+5. Remove filler words (uh, um)
+6. Maintain original meaning
+7. Separate different thoughts/speakers with blank lines
 
 Formatted version:"""
+
+        formatted = await self._try_completion_api(prompt)
+        if formatted:
+            return self._post_process(formatted)
             
+        self.logger.warning("LLM failed, applying basic formatting")
+        return self._basic_formatting(text)
+
+    async def _try_completion_api(self, prompt: str) -> str:
+        """Attempt to get formatted text from completion API"""
+        try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     self.api_url,
                     json={
                         "prompt": prompt,
-                        "max_tokens": 2000,
-                        "temperature": 0.3,
-                        "stop": ["\n\n\n"]
+                        "max_tokens": MAX_TOKENS,
+                        "temperature": TEMPERATURE,
+                        "stop": STOP_SEQUENCES,
+                        "repetition_penalty": REPETITION_PENALTY,
+                        "top_p": TOP_P
                     },
                     headers={"Content-Type": "application/json"},
                     timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
@@ -282,7 +349,7 @@ Formatted version:"""
 class TextProcessingPipeline:
     """Robust processing pipeline with guaranteed output"""
     
-    def __init__(self, chunk_size: int = 400, chunk_overlap: int = 150):
+    def __init__(self, chunk_size: int = CHUNK_SIZE, chunk_overlap: int = CHUNK_OVERLAP):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.aligner = AlignmentProcessor()
@@ -320,7 +387,7 @@ class TextProcessingPipeline:
         if current_chunk:
             chunks.append(' '.join(current_chunk))
         
-        self.logger.info(f"Created {len(chunks)} chunks")
+        self.logger.info(f"Created {len(chunks)} chunks (target size: {self.chunk_size}, overlap: {self.chunk_overlap})")
         return chunks
 
     async def process_file(self, input_path: str, output_path: str) -> None:
@@ -337,13 +404,16 @@ class TextProcessingPipeline:
             previous_tail = ""
             
             for i, chunk in enumerate(chunks, 1):
-                self.logger.info(f"Processing chunk {i}/{len(chunks)}")
+                self.logger.info(f"Processing chunk {i}/{len(chunks)} (size: {len(chunk)} chars)")
                 
                 combined = f"{previous_tail} {chunk}".strip() if previous_tail else chunk
+                self.logger.debug(f"Combined chunk (with overlap): {combined[:200]}...")
+                
                 formatted = await self.formatter.format_with_llm(combined)
+                self.logger.debug(f"LLM response: {formatted[:200]}...")
                 
                 new_content = self.aligner.extract_new_content(formatted, previous_tail)
-                if new_content:  # Only add if we got content
+                if new_content:
                     formatted_parts.append(new_content)
                     previous_tail = self.aligner.get_tail_for_context(
                         formatted,
@@ -356,11 +426,10 @@ class TextProcessingPipeline:
             
             final_text = self.aligner.merge_paragraphs(formatted_parts)
             with open(output_path, 'w') as f:
-                f.write(final_text or "No content generated")  # Ensure file isn't empty
+                f.write(final_text or "No content generated")
                 
         except Exception as e:
             self.logger.error(f"Processing failed: {str(e)}")
-            # Create empty file to indicate failure
             with open(output_path, 'w') as f:
                 f.write("Processing failed. See logs for details.")
             raise
@@ -373,13 +442,15 @@ from config import CHUNK_SIZE, CHUNK_OVERLAP
 
 def configure_logging():
     logging.basicConfig(
-        level=logging.DEBUG,  # More verbose logging
+        level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('transcript_processor.log'),
             logging.StreamHandler()
         ]
     )
+    # Set more verbose logging for pipeline
+    logging.getLogger('pipeline').setLevel(logging.DEBUG)
 
 async def main():
     configure_logging()
@@ -567,445 +638,188 @@ if __name__ == "__main__":
         test_chunk_processing()
 
 === PY formatted_transcript.txt ===
-Hi everybody Today is Saturday June 21st 2025 and our friend Pepe Escobar is back with us Welcome back Pepe Nema Always a pleasure I turned uh Russia upside down to be here with you tonight It's 11 in Moscow I just arrived from St Petersburg to be here on time so we could do this relaxed you know at least a little bit Let's let's get started Pepe with what's going on in the Middle East The.
+Hi everybody Today is Saturday June 21st 2025 and our friend Pepe Escobar is back with us Welcome back Pepe Nema Always a pleasure I turned uh Russia upside down to be here with you tonight It's 11 in Moscow I just arrived from St Petersburg to be here on time so we could do this relaxed you know at least a little bit Let's let's get started Pepe with what's going on in the Middle East The situation as time goes by is getting more dangerous more fragile And it seems that the United States is doing everything just moving these fighter jets bombers close to Iran They're preparing for an attack on Iran Even CNN reported that this sort of idea of two weeks and there's somehow there it's a game of deception Of course to keep Therron confused Your take on what's going on U can I make an introduction IA before I answer your question Go ahead Because we need to talk about St Petersburg Yeah Uh it was the most important forum in Russia this year and I heard from global south businessmen in St.
 
-to be here on time so we could do this relaxed you know at least a little bit Let's let's get started Pepe with what's going on in the Middle East The situation as time goes by is getting more dangerous more fragile And it seems that the United States is doing everything just moving these fighter jets bombers close to Iran They're preparing for an attack on Iran Even CNN reported that this sort.
 
-is doing everything just moving these fighter jets bombers close to Iran They're preparing for an attack on Iran Even CNN reported that this sort of idea of two weeks and there's somehow there it's a game of deception Of course to keep Therron confused Your take on what's going on U can I make an introduction IA before I answer your question Go ahead Because we need to talk about St Petersburg.
 
-Your take on what's going on U can I make an introduction IA before I answer your question Go ahead Because we need to talk about St Petersburg Yeah Uh it was the most important forum in Russia this year and I heard from global south businessmen in St Petersburg that for them is much more important than Davos Why Because they are doing business This morning uh the organizers in St Petersburg they.
+IA: Before I answer your question, let me first discuss St. Petersburg. It was the most significant Russian event this year according to global southern businessmen who attended. In comparison to Davos, why do you believe St. Petersburg holds greater importance?
 
-St Petersburg that for them is much more important than Davos Why Because they are doing business This morning uh the organizers in St Petersburg they announced that uh okay this is not the final count over $80 billion dollar of deals were signed in St Petersburg that's enormous by any standards and the great thing is these are global south deals this is not uh international banking system this.
+of honor Southeast Asia Everybody from Southeast Asia was there and of course scores of African nations So and obviously Central Asia Russia China There was so just to give you an idea there was uh in the middle of uh on Wednesday there was uh Russia China business panel packed totally packed people out of the room because they couldn't get into the room businessmen from both sides local governors in Russia different oblasts and everybody uh talking business and uh uh the local go Russian government saying look the Chinese are investing in this this this this project amazing stuff you know uh there was a wonderful panel which our friend Apollo Batista he he was the star of the panel online can imagine Paulo talked online for less than 10 minutes and told the show it was a panel uh about um a possible reform of the international financial system and the Russians there was a there was a Chinese there was one Chinese as they were too uh careful they you know ah we have to go little by.
 
-in St Petersburg that's enormous by any standards and the great thing is these are global south deals this is not uh international banking system this is not black rock you know the usual suspects these are African nations uh India and Pakistan were there uh the Pakistanis they sent ministers you know uh the Gulf cooperation council Bahin was one of the guests of honor Southeast Asia Everybody.
 
-there uh the Pakistanis they sent ministers you know uh the Gulf cooperation council Bahin was one of the guests of honor Southeast Asia Everybody from Southeast Asia was there and of course scores of African nations So and obviously Central Asia Russia China There was so just to give you an idea there was uh in the middle of uh on Wednesday there was uh Russia China business panel packed totally.
 
-China There was so just to give you an idea there was uh in the middle of uh on Wednesday there was uh Russia China business panel packed totally packed people out of the room because they couldn't get into the room businessmen from both sides local governors in Russia different oblasts and everybody uh talking business and uh uh the local go Russian government saying look the Chinese are.
+Paulo: The real thing is, we need to go for broke when it comes to reforming the international financial system. Our window of opportunity is quite small, and the crucial reforms must begin now. This is what the Russians advocated for during the BRICS Summit in Kazan last year. However, progress seems to have slowed down due to the Brazilian approach. But at least, we have individuals like yourself, who understand the necessity of a structural reform within the New Development Bank (NDB), which isn’t being discussed much, not even in Russia or China.
 
-local governors in Russia different oblasts and everybody uh talking business and uh uh the local go Russian government saying look the Chinese are investing in this this this this project amazing stuff you know uh there was a wonderful panel which our friend Apollo Batista he he was the star of the panel online can imagine Paulo talked online for less than 10 minutes and told the show it was a.
+this is something that is practically not discussed even in Russia and in China So you know these kinds of conversations only in a forum like this you you can have it We had our own panel I I was on a panel on fake news which went way uh beyond that because we were discussing um control of information artificial intelligence and the fact that now fake news is going to be digitally produced by big tech itself This is one of the key themes Uh there was for instance a very high ranking executive of a spare bank the number one Russian bank and he was giving figures about fake news not only Russia but absolutely astonishing and of course when you compare to the latest information about uh Palunteer in fact Palunteer now is inside embedded in the US federal government So we have a huge AI company okay let's say among the top high-tech companies in the west now dictating policy How serious is that These people already do uh AI models for the Israelis to kill Palestinians So you know it's.
 
-our friend Apollo Batista he he was the star of the panel online can imagine Paulo talked online for less than 10 minutes and told the show it was a panel uh about um a possible reform of the international financial system and the Russians there was a there was a Chinese there was one Chinese as they were too uh careful they you know ah we have to go little by little one step at a time and all.
+Person 1: Let's say amongst the top high-tech companies in the West now dictate policy. How serious is that? These people already create AI models for the Israelis to kill Palestinians. It's getting worse by the minute.
 
-was a there was a Chinese there was one Chinese as they were too uh careful they you know ah we have to go little by little one step at a time and all that and Paulo says the real thing no we have to go for broke and our window of opportunity is is you know it's quite small and the the real important reforms they have to start now which is what the Russians were saying and working for last year.
+in South Africa and then if you have this discussed by the bricks there's a strong possibility that we can have uh just an example uh the beginning of a bricks net or a bricks tube or a all around bricks alternative media sphere because we cannot simply be subjected to the big tech platforms because we know exactly where it's going with the former PayPal mafia with this very very dangerous characters Peter T and Alex Karp and the fact that they are now part of the US government it's even even more dangerous so the forum was this forum is changing Nema it's great because used to be too generalistic until next year This year there were lots of panels that were extremely practical and people discussing possible solutions Everything from geoeconomics to the IT sphere and of course the overarching theme the dark cloud over all of us is your question Iran Israel and US and what is US going to do Um the everybody was waiting for the plenary session which was yesterday right with President.
 
-you know it's quite small and the the real important reforms they have to start now which is what the Russians were saying and working for last year before the brick summit in Kazan last year because as we all know the summit is in Brazil this year everything is slowing down the Brazilian way but at least we have people like Paulo one of the founders of the MDB new development bank He knows that.
 
-everything is slowing down the Brazilian way but at least we have people like Paulo one of the founders of the MDB new development bank He knows that there's got to be a structural reform of the NDP and all that And this is something that is practically not discussed even in Russia and in China So you know these kinds of conversations only in a forum like this you you can have it We had our own.
 
-not discussed even in Russia and in China So you know these kinds of conversations only in a forum like this you you can have it We had our own panel I I was on a panel on fake news which went way uh beyond that because we were discussing um control of information artificial intelligence and the fact that now fake news is going to be digitally produced by big tech itself This is one of the key.
+Jessica: The looming issue casting a shadow over everyone here is the topic of Iran, Israel, and the United States, and what action the U. S. will take. We were all anticipating the plenary session yesterday featuring President Putin.
 
-of information artificial intelligence and the fact that now fake news is going to be digitally produced by big tech itself This is one of the key themes Uh there was for instance a very high ranking executive of a spare bank the number one Russian bank and he was giving figures about fake news not only Russia but absolutely astonishing and of course when you compare to the latest information.
+nuclear program which is what they have at the moment Number one Number two Putin said that he received personal assurances from Trump and from Netanyahu that they are not going to bomb Busher plant because there are over 200 ultra high tech Russian technicians working at Busher So obviously we we can imagine the conversation right putting on the phone say don't touch Busher and the other two like this because they know the consequences if that happens Number three extremely important There's a lot of criticism um partially in Russia from let's say the Russian Atlanticist gang but mostly AC across the global north that Russia is not doing enough to um help Iran Putin said explicitly these people who are pedling this notion they are provocators provocati literal translation from from Russian So this means we can infer that of course they are helping discreetly Iran in this is a a taboo subject here uh Nema we cannot discuss this publicly I asked people close to the government about it.
 
-bank and he was giving figures about fake news not only Russia but absolutely astonishing and of course when you compare to the latest information about uh Palunteer in fact Palunteer now is inside embedded in the US federal government So we have a huge AI company okay let's say among the top high-tech companies in the west now dictating policy How serious is that These people already do uh AI.
 
-a huge AI company okay let's say among the top high-tech companies in the west now dictating policy How serious is that These people already do uh AI models for the Israelis to kill Palestinians So you know it's getting worse by the minute And of course uh uh the uh these Russians uh these Russian friends they started um an organization that the merit of this organizations is enormous It's called.
 
-uh uh the uh these Russians uh these Russian friends they started um an organization that the merit of this organizations is enormous It's called Global Factchecking Network uh GFCN You can find them online They have their own website Uh lots of uh people have joined including myself and we are trying to maybe um set up a blueprint about uh controlling fake news checking fake news and get this.
+An: We can infer that Iran is being helped discreetly by both Russia and China on this taboo subject. I've asked people close to the government about it, but no answers were given. When I discussed this with experts from think tanks, they also confirmed the existence of secretive channels between Tehran, Moscow, and Beijing. The same question was posed to a member of the high political council in Yemen regarding their relationships with Russia and China. He answered diplomatically, acknowledging the presence of their own channels. However, neither the level nor the extent of collaboration or help from Russia to Iran, nor from China, will be disclosed openly. Professor Jingwei, who attended a China-Russia.
 
-uh people have joined including myself and we are trying to maybe um set up a blueprint about uh controlling fake news checking fake news and get this conversation going to the point that it would land on the bricks table Of course it's not going to be in Rio in a few days you know but the next brick summit next year in South Africa and then if you have this discussed by the bricks there's a.
+with my friend professor Jeang wei way he was in this uh China Russ audience as then he had he had to go to his own panel and he said of course there is but this is uh uh this is not in the open in cannot be in the open in China and it's not the Chinese way of doing the Chinese are extremely discreet especially when it comes to helping a partner that for them is a matter of national security as you know Very well Nema It's not only that deal which is not 10 years it's actually 20 years the $400 billion plus deal between Iran and China energy and infrastructure Uh so it's a matter of national security for China and whatever happens Iran will have China's back China will have Iran's back I'm sorry So so it was good to have even if we had let's say tur and tentative answers but basically you got answers to these questions you know and it was good that this came out in the plenary session especially apart from that ju just to close this introduction the atmosphere was was buzzing.
 
-to be in Rio in a few days you know but the next brick summit next year in South Africa and then if you have this discussed by the bricks there's a strong possibility that we can have uh just an example uh the beginning of a bricks net or a bricks tube or a all around bricks alternative media sphere because we cannot simply be subjected to the big tech platforms because we know exactly where it's.
 
-or a all around bricks alternative media sphere because we cannot simply be subjected to the big tech platforms because we know exactly where it's going with the former PayPal mafia with this very very dangerous characters Peter T and Alex Karp and the fact that they are now part of the US government it's even even more dangerous so the forum was this forum is changing Nema it's great because.
 
-and the fact that they are now part of the US government it's even even more dangerous so the forum was this forum is changing Nema it's great because used to be too generalistic until next year This year there were lots of panels that were extremely practical and people discussing possible solutions Everything from geoeconomics to the IT sphere and of course the overarching theme the dark cloud.
+Ally: You have answers to these questions, I assume, and it was beneficial that this topic was addressed during the plenary session. Apart from that, just to conclude the introduction, the atmosphere was electric; one could sense deals being made constantly. For instance, in my Telegram column, I conducted an interview with a powerful Chinese CEO who lives in Hong Kong-style. Next year, she plans to reside in Hong Kong herself. Currently, her firm intends to invest in Donetsk. Few in the West are aware of this development. My Donbas contacts even arranged an interview with the second-in-command of Donetsk. He's an excellent individual, and he mentioned, "Not only.
 
-practical and people discussing possible solutions Everything from geoeconomics to the IT sphere and of course the overarching theme the dark cloud over all of us is your question Iran Israel and US and what is US going to do Um the everybody was waiting for the plenary session which was yesterday right with President Putin But first great thing about the plenary session the global south was.
 
-waiting for the plenary session which was yesterday right with President Putin But first great thing about the plenary session the global south was represented on stage at the plenary session we had China Indonesia Bahrain and South Africa How cool is that This is a a sample of the global south uh with the the guest of honor the president of Indonesia prao Southeast Asia which puts Putin sees as.
 
-is that This is a a sample of the global south uh with the the guest of honor the president of Indonesia prao Southeast Asia which puts Putin sees as one of the two top areas of development in the near future Southeast Asia and Africa and of course Putin indirectly uh very diplomatically he answered these questions about Iran Uh it's very clear in the Russian position Iran has absolute inaliable.
+Narrator: In Donetsk, there are developments unfolding that few in the West are aware of. The contacts in Donbas have even secured an interview with the second-in-command of Donetsk. He is an exceptional person who commented on the interest of investors beyond just resources. Not only do they wish to explore investment opportunities, but Donbas also offers mineral wealth, particularly coal. Furthermore, Donbas boasts unique transportation infrastructure, both land and sea connections through Mariupol. Additionally, the potential for tourism due to its scenic beauty makes it a promising destination, especially for China. Mariupol could evolve into a significant economic zone, combining essential ports and tourist attractions.
 
-Putin indirectly uh very diplomatically he answered these questions about Iran Uh it's very clear in the Russian position Iran has absolute inaliable rights to have a civilian nuclear program which is what they have at the moment Number one Number two Putin said that he received personal assurances from Trump and from Netanyahu that they are not going to bomb Busher plant because there are over.
+analysts because they are of course you know it's impossible for them to talk to the west and they are doing absolutely amazing stuff uh in ter in terms of integration they talk about how the federal government is investing a lot in all these oblasts and these uh public private uh partnerships So this is just to give you and our audience a small glimpse of how important this forum was Even all of us hostages of this absolutely horrendous situation in West Asia You have over 10, 000 people over there for three days non-stop networking and doing business So this is the future and it's not it's no wonder that one of the most important quotes from Putin during his plenary session is that he said we uh not only uh we Russia we are betting on bricks as the future but we are betting on the constitution of a new growth model with everything that implicates new growth model something completely different to what we have since 1945 When it comes to you mentioned the situation in in the Middle.
 
-two Putin said that he received personal assurances from Trump and from Netanyahu that they are not going to bomb Busher plant because there are over 200 ultra high tech Russian technicians working at Busher So obviously we we can imagine the conversation right putting on the phone say don't touch Busher and the other two like this because they know the consequences if that happens Number three.
+of a new growth model with everything that implicates new growth model something completely different to what we have since 1945 When it comes to you mentioned the situation in in the Middle East in the West Asia between Iran and Israel was discussed How as as I mentioned in my first question h what is the latest development in the region How do you find in the west When you look at the mainstream media in the west they're saying Iran was defeated Iran was destroyed and unbelievable what's going on in the mainstream media It's totally they're totally changing their the reality of what's going on there You're because they're a machine of fake news Nema We know that uh in fact in my panel I described Brussels as a fake news machine In fact the whole collective fragmented decaying west is a fake news machine against anything It can be uh Iraq it can be Syria it can be Libya it can be Somalia and now it can be Gaza and especially Iran Not to mention everything concerning Russia Every.
 
-right putting on the phone say don't touch Busher and the other two like this because they know the consequences if that happens Number three extremely important There's a lot of criticism um partially in Russia from let's say the Russian Atlanticist gang but mostly AC across the global north that Russia is not doing enough to um help Iran Putin said explicitly these people who are pedling this.
+John Doe: The media is a fake news machine against anything - it can be Iraq, Syria, Libya, Somalia, and now Gaza and especially Iran. Not to mention everything concerning Russia.
+Mary Smith: Yes, the media portrays various conflicts and issues around the world negatively towards certain countries or regions.
+JD: That's correct. For example, Europe, although part of the larger Eurasian continent, considers itself a separate entity from the rest of Asia due to its small peninsular location. However, the United States, despite being located next to two oceans, is even more provincial in its perspective.
+MS: I agree. Europe tries to maintain relationships with other.
 
-gang but mostly AC across the global north that Russia is not doing enough to um help Iran Putin said explicitly these people who are pedling this notion they are provocators provocati literal translation from from Russian So this means we can infer that of course they are helping discreetly Iran in this is a a taboo subject here uh Nema we cannot discuss this publicly I asked people close to the.
+different story It always go back to manifest destiny exceptionalism shiny city on the hill all that crap you know regurgitated ad infinitum and the for instance the way they are incapable of understanding not only how the Iranian system works how do they make decisions what constitutes an existential threat to Iran how Iran h deals with his neighbors with the Arab world and with Eurasia at large and how Iran has been preparing for this war now for decades because they knew not because they are they are crystal ball readers but because they knew it would be inevitable It's a war of the turbo capitalist system against the Islamic revolution This is the key And now the people behind it they think that they have an opening For instance I have a lot of respect for Sai Hersh Uh when I was growing up when I was still in college Sai Hersh was one of my mo role models as an investigative uh journalist But Sai uh there's a problem with Sai because first of all he doesn't know West Asia very.
 
-that of course they are helping discreetly Iran in this is a a taboo subject here uh Nema we cannot discuss this publicly I asked people close to the government about it no answers So we discussed this with the people from think tanks for instance Uh and the answer that they they they give is very similar to the answer that I received in Yemen when I asked a member of the high political council.
+up when I was still in college Sai Hersh was one of my mo role models as an investigative uh journalist But Sai uh there's a problem with Sai because first of all he doesn't know West Asia very well which is an enormous problem if you are an investigative journalist Well he basically concentrates in in Washington and his gigantic role decks He can pick up the phone and talk to anybody he wants in Washington This is fantastic Nobody has that kind of of access Right But for instance he writes a piece that is absolutely terrifying this week on his Substack basically reproducing what his sources which are deep uh industrial military complex deeper industrial military complex and Zionist silos working around Washington Virginia and Maryland And what what is it about It's about the war that they always wanted since at least 1998 If some of them they want this war since 1979 as you know very well Regime change in Iran Uh elimination of the Iranian civilian nuclear program Elimination of.
 
-Uh and the answer that they they they give is very similar to the answer that I received in Yemen when I asked a member of the high political council What are your exactly your relations with Russia and China And basically he said very diplomatically yes we have our own channels So obviously Thran and Moscow they have their own channels and obviously nobody here is going to expose these channels.
+they always wanted since at least 1998 If some of them they want this war since 1979 as you know very well Regime change in Iran Uh elimination of the Iranian civilian nuclear program Elimination of Islamic ballistic missiles basically destroying Iran like they did like they destroyed Iraq without thinking obviously for one minute about uh Iranian capabilities geography you name it of course not these people don't first of all they don't understand they never learn anything from geography history and both so when you read Sihar's piece it is terrifying the level of stupidity and ignorance of these people is terrifying but the problem is some some of these people interviewed by Hirs they have access to decision making in Washington and that's what makes it even more dangerous and it's a quite a collection of of sources you know so if these people actually believe in what they are doing so we better get ready for some sort of apocalypse really apocalypse later not apocalypse now and.
 
-yes we have our own channels So obviously Thran and Moscow they have their own channels and obviously nobody here is going to expose these channels and what is the level of collaboration and help from Russia to Iran Same thing about China uh I discussed this for instance with my friend professor Jeang wei way he was in this uh China Russ audience as then he had he had to go to his own panel and.
+a quite a collection of of sources you know so if these people actually believe in what they are doing so we better get ready for some sort of apocalypse really apocalypse later not apocalypse now and proving once again that the system in the US is irredeemable It cannot be changed They will only change if they were destroyed completely which is not going to we know it's not going to happen They're still very very powerful Even if they were defeated by the Houthis and now they want to be defeated by the IRGC right It took one month for the Houthis to destro destroy now to completely defeat and humiliate the US Navy So now they want to repeat that with the IRGC That's a really bad move But that's where we're going apparently So it is in every respect Nema It's terrifying because these people they are not illiterate They are not completely dumb but they are fanatic They are extremely misinformed they have uh positions of power in the nomenclature So in a sense I her speech was uh uh it.
 
-this for instance with my friend professor Jeang wei way he was in this uh China Russ audience as then he had he had to go to his own panel and he said of course there is but this is uh uh this is not in the open in cannot be in the open in China and it's not the Chinese way of doing the Chinese are extremely discreet especially when it comes to helping a partner that for them is a matter of.
+they are not illiterate They are not completely dumb but they are fanatic They are extremely misinformed they have uh positions of power in the nomenclature So in a sense I her speech was uh uh it was a public service for him to public something like this I like his style because he's not judgmental Basically he's reproducing what people told him you know but wow it's one of the most terrifying things I have read in my long long long life around the world Really Pepe when it comes to the attack on Iran and the way that Iran has responded so far if the if Israel is winning what does Donald Trump need to interfere in the conflict Why do they need to go and bomb Iran Israel is winning So let them win the war What's going on that Nema They can't win this war You know that I know that Our most of our audience I'm sure knows that In fact they are losing already They lost the strategic initiative They lost the aura of invincibility for them I I would say that this is a psychological coup.
 
-and it's not the Chinese way of doing the Chinese are extremely discreet especially when it comes to helping a partner that for them is a matter of national security as you know Very well Nema It's not only that deal which is not 10 years it's actually 20 years the $400 billion plus deal between Iran and China energy and infrastructure Uh so it's a matter of national security for China and.
+most of our audience I'm sure knows that In fact they are losing already They lost the strategic initiative They lost the aura of invincibility for them I I would say that this is a psychological coup even worse than losing everything Nobody is afraid of the Israelis anymore Everybody knows that they are a killing machine But it's very very convenient to be a killing machine uh killing women children hospitals journalists humanitarian help etc from above with missiles try try to match yourself against a real regional power They are they are having their ass kicked little by little the Iranian way because Iran for the moment hasn't entered a war against Israel They are probing they it's a sort of a little by little escalation to achieve strategic deterrence which in some aspects they they already have There are some serious gaps in their uh anti-aircraft defenses and anti-missile defenses which might maybe they might get help from Russia to plug these holes if they wanted um quoting.
 
-actually 20 years the $400 billion plus deal between Iran and China energy and infrastructure Uh so it's a matter of national security for China and whatever happens Iran will have China's back China will have Iran's back I'm sorry So so it was good to have even if we had let's say tur and tentative answers but basically you got answers to these questions you know and it was good that this came.
+already have There are some serious gaps in their uh anti-aircraft defenses and anti-missile defenses which might maybe they might get help from Russia to plug these holes if they wanted um quoting Putin again Putin said we offered some stuff to Iran Iran said no we don't want it at least for now if they wanted Russia is willing to help them any way they can So even with the fact that they continue to be attacked by Israel several raids a day missiles targeted assassinations you name it But the destruction that they already inflicted in Tel Aviv and beyond is now unimaginable for everyone Nobody could ever imagine that missiles will be destroying neighborhoods in Israel landing near Dona destroying most of the port of Hifa The mayor of Hifa is desperate now is begging for peace because his sport sooner or later is going to disappear just like uh a lot was bankrupt Hifa will disappear It's not it's not in in the equation anymore oil the oil refinery in in Hifa Same thing So Israel now.
 
-to have even if we had let's say tur and tentative answers but basically you got answers to these questions you know and it was good that this came out in the plenary session especially apart from that ju just to close this introduction the atmosphere was was buzzing everywhere you could you you could feel that there were deals being struck all the time I gave an example in my telegram column I.
+sport sooner or later is going to disappear just like uh a lot was bankrupt Hifa will disappear It's not it's not in in the equation anymore oil the oil refinery in in Hifa Same thing So Israel now for has I would say of their three ports they have maybe 30% left in Ashdod which is near Gaza so it's not very well located the other two are well one of them is non-existence and the other one is slowly sinking so there is a different strategy that was re-elaborated it probably in the first 48 hours by the IRGC I say okay now it's different now it's not strategic patience anymore we going to go best by a thousand cuts and it's working it's working because the number one objective is very ambitious is to paralyze the Israeli economy and they are on the way to do that Nemo seriously with only two weeks Less than two weeks No with two weeks One week It was It started on Friday last week Yeah So exactly We We lose track Everything is so fast So a little over one week They already paralyzed We.
 
-was was buzzing everywhere you could you you could feel that there were deals being struck all the time I gave an example in my telegram column I interviewed a high power Chinese CEO dressed Hong Kong style She said she's going to move she's going to live in Hong Kong next year H currently she is in Beijing Her company wants to invest in Donetsk This is something that nobody in the west knows In.
+weeks Less than two weeks No with two weeks One week It was It started on Friday last week Yeah So exactly We We lose track Everything is so fast So a little over one week They already paralyzed We can say maybe half of the Israeli economy at least And these attacks on Raphael on the Wiseman Institute on unit 8, 200 this is pinpointed This is absolutely these are the key intel military nodes in Israel Both so you know the the Iranian strategy is calculally calculated We can say it is working They are paying a horrendous price No question because Iran continues to be bombed Uh they are they bombed the Iraq um reactor right Yeah Uh targeting assassinations in K near the shrine in K So there are no limits for these gangsters you but um we can say uh with a measure of certainty that H& RGC they see the big picture ahead Of course if the Americans get what Four B2s dropping four bombs exactly at the same time vertically on the spot over four Then it's a completely new ball game as we know.
 
-to live in Hong Kong next year H currently she is in Beijing Her company wants to invest in Donetsk This is something that nobody in the west knows In fact then my my Donbas friends they organized an interview with the number two of Donetsk Uh he great guy and he said "Look it's not only this lady that you just talked to I every day I receive inquiries from Chinese companies They want to come.
+Speaker 1:
+I see the big picture ahead. If the Americans manage to get what they want – four B2s dropping four bombs exactly at the same time vertically on the spot over four targets, then it's a completely new ball game as we know.
 
-great guy and he said "Look it's not only this lady that you just talked to I every day I receive inquiries from Chinese companies They want to come here and see the investment possibilities. " And he said minerals obviously coal for obvious reasons Now uh Donbas's Donbas is cool oblast or republic uh transportation which includes connectivity corridors overland and maritime via maropo and tourism.
+that major imbecile gurilla who is an anti-Iranian islamophobe whatever No wonder he's the guy in charge of the whole operation and he's the guy convincing he's the guy convincing Trump and the whole notion is so absurd that even Trump himself apparently is not convinced Of course I would say a 5-year-old would not be convinced but that's where we are and and it gets more serious by the minute And I'm sure Putin um already via their privileged channels already told Trump look you have no idea what awaits you if you go along with this But at the same time Nema we all know it's not Trump who's making this decision The decision has already been made by the usual suspects behind They are forcing him to of course give the green light It's a completely different story And there are um uh echoes and shades telling us that uh he's he's now afraid because he is totally trapped in his own rhetorical game and in the Zio Con's long running game that comes since the end of the 1990s He's he's in.
 
-Now uh Donbas's Donbas is cool oblast or republic uh transportation which includes connectivity corridors overland and maritime via maropo and tourism because they know the possibilities of of tourism including for China because uh it's a beautiful region Um Marupo could become uh quite something a mix of a spe um uh special economic zone uh important port and a tourism hub as well So um if you.
+and shades telling us that uh he's he's now afraid because he is totally trapped in his own rhetorical game and in the Zio Con's long running game that comes since the end of the 1990s He's he's in an untenable position and we can already say that he lost the midterms His base half of his base is gone already So bye-bye He's going to be a lame duck after the midterms Not to mention they they might advance to try to impeach him again So it's wow The accumulation of horrors and absurdities is never ending right And when you of course all of us who for professional reasons we have to at least uh get a glimpse of what mainstream media is saying they live in what kind of re now obviously these people don't live in reality but what kind of nether world they live and ping the notion that I know it's the president of the United States is Like God he can decide one day to do the or zeals He he can decide one day to throw a lightning bolt and the other day okay let's have a banquet He decides.
 
-region Um Marupo could become uh quite something a mix of a spe um uh special economic zone uh important port and a tourism hub as well So um if you don't go to a forum like this you are literally uh blinded by the western narrative And of course everybody I I talked to people people from Astrakan for instance which is part of the international north south transportation corp they love talking to.
+it's the president of the United States is Like God he can decide one day to do the or zeals He he can decide one day to throw a lightning bolt and the other day okay let's have a banquet He decides the future of the world No he doesn't decide anything There are people deciding for him He's basically a lowly messenger a cheap messenger a casino hustler you know a mobster a subm mobster So it's uh it was good to have a few um uh inside um info and commentary from from people in St Petersburg Well well positioned people in the Russian government especially they have no they have no illusions of course and once again they all come back to the same point We have a war here in our borders First we need to solve this and now they're fully concentrated uh what's going to happen in the next few months Uh the conditions are going to be much much tougher if uh not uh Kiev but Kiev's sponsors don't accept what's on the table put on the table by the Russians and meanwhile they keep organizing.
 
-I I talked to people people from Astrakan for instance which is part of the international north south transportation corp they love talking to foreign uh journalists and analysts because they are of course you know it's impossible for them to talk to the west and they are doing absolutely amazing stuff uh in ter in terms of integration they talk about how the federal government is investing a lot.
+months Uh the conditions are going to be much much tougher if uh not uh Kiev but Kiev's sponsors don't accept what's on the table put on the table by the Russians and meanwhile they keep organizing forums like this so the whole of the global south can get together and strike business deals So there there's always the other side of the coin IMA right The auspicious side of the the coin even in the middle of such darkness What was so important about the the point that Putin raised in St Petersburg said he said that Russia and Iran are fighting the same forces The same this was brilliant Wow Everybody knows what he means He doesn't need to get into detail and Putin doesn't he never needs to spell out okay he needs to spell out especially for Kab But when he's talking to a broad audience which in this case was a global audience everybody was waiting okay what is he going to say about Iran This is possibly the key quote because you can inter interpret this at several levels and at the same.
 
-the west and they are doing absolutely amazing stuff uh in ter in terms of integration they talk about how the federal government is investing a lot in all these oblasts and these uh public private uh partnerships So this is just to give you and our audience a small glimpse of how important this forum was Even all of us hostages of this absolutely horrendous situation in West Asia You have over.
+in this case was a global audience everybody was waiting okay what is he going to say about Iran This is possibly the key quote because you can inter interpret this at several levels and at the same time he said something very crucial which explains a lot of his um let's say circumspection when he deals with Israel He says look we have almost 1. 5 million former USSR and Russian citizens double passports living in Israel speaking Russian So Israel in many aspects is also a Russian land He has to take this into consideration of course So it's it's a his compared to Trump his position is uh of course it's solid but the nuances are extremely complex but because he's he has a legal mind He is a strategist and he weighs everything before making a big big big decision At least we have a rational mind calculating all the vectors right But at the same time he's not going to abandon his principles which is Iran is a very strong ally of the Russian Federation They have mutual interest They have.
 
-audience a small glimpse of how important this forum was Even all of us hostages of this absolutely horrendous situation in West Asia You have over 10, 000 people over there for three days non-stop networking and doing business So this is the future and it's not it's no wonder that one of the most important quotes from Putin during his plenary session is that he said we uh not only uh we Russia we.
+Speaker 1: Mind calculating all the vectors right.
+Speaker 2: But at the same time, he's not going to abandon his principles. Iran is a very strong ally of the Russian Federation. They have mutual interests. They have business deals. Russia is helping Iran in their civilian nuclear program. And they are not backing down from any of that.
 
-and it's not it's no wonder that one of the most important quotes from Putin during his plenary session is that he said we uh not only uh we Russia we are betting on bricks as the future but we are betting on the constitution of a new growth model with everything that implicates new growth model something completely different to what we have since 1945 When it comes to you mentioned the situation.
+I don't see anything in that sense is happening in Iran The main goal of these attacks assassination decapitation as they call it was to somehow bring so-called regime change in Iran That doesn't that didn't work so far Shano ima all of us who remember shock in 2003 uh in in Iraq it worked but Iraq was already dissolved as a nation Um I I went to in 2002 I spent one months in Iraq during Saddam It was around September September October So a few months before shock and all And I saw by myself how the country was impoverished after how many 20 years almost 20 years of sanctions destroyed Uh the only thing that more or less worked was the mukabarat the intel services and it would be very easy if the Americans launched and it was uh and even like that it took three three weeks for the whole thing to collapse and it only collapsed because they distributed a lot of money to Saddam's generals Iran now Iran is solid even of course there is oppos you know of course there is opposition uh to.
 
-everything that implicates new growth model something completely different to what we have since 1945 When it comes to you mentioned the situation in in the Middle East in the West Asia between Iran and Israel was discussed How as as I mentioned in my first question h what is the latest development in the region How do you find in the west When you look at the mainstream media in the west they're.
+thing to collapse and it only collapsed because they distributed a lot of money to Saddam's generals Iran now Iran is solid even of course there is oppos you know of course there is opposition uh to the government especially in north Iran the upper middle class the people who dream of Iran under the sha etc but it's a minority in Iran uh so and the fact that now the nation was attacked directly it unified the nation completely as you know very well Nema but try to explain this in Washington Nobody will understand First of all these idiots never been to Iran They don't know how it works They don't know anything The culture history how the system works You name it Uh different levels of popularity If you compare uh Kistan with Mashad with the Caspian with the Persian Gulf and they don't even they don't know anything They only have the obsession we need to get rid of Kam We have to kill him and then we're going to have the son of the sha to be our guy This the level of stupidity is.
 
-my first question h what is the latest development in the region How do you find in the west When you look at the mainstream media in the west they're saying Iran was defeated Iran was destroyed and unbelievable what's going on in the mainstream media It's totally they're totally changing their the reality of what's going on there You're because they're a machine of fake news Nema We know that uh.
+Pepe Dietrich: They don't know anything. All they have is an obsession with getting rid of Kam. We have to kill him, and then we'll have the Son of Sha as our guy.
 
-It's totally they're totally changing their the reality of what's going on there You're because they're a machine of fake news Nema We know that uh in fact in my panel I described Brussels as a fake news machine In fact the whole collective fragmented decaying west is a fake news machine against anything It can be uh Iraq it can be Syria it can be Libya it can be Somalia and now it can be Gaza.
+or among them etc You and medv can Yes This is very very very serious Absolutely Absolutely And and once again it looks like nobody in Washington in a position of power or in a position to control foreign policy is listening to their detriment If they get into this adventure which as it stands there is a strong possibility We no none of us know but all the signs are that something will happen and something nefarious will happen and something like a mother of all mistakes might occur So they're going to pay a heavy heavy price for it The the problem is in the west when they want to go to war they're so much somehow melted in their own rhetoric that they cannot hear anything from outside They feel that they're going to they're going to achieve what they want to achieve by this sort of war against other nations But after all we know that it doesn't work the way that they were talking about this Iran is not other countries like Iraq Afghanistan I'm sure today I talk with Professor Mirandi.
 
-decaying west is a fake news machine against anything It can be uh Iraq it can be Syria it can be Libya it can be Somalia and now it can be Gaza and especially Iran Not to mention everything concerning Russia Every scene that escapes that uh little tiny uh window which we call collective west which in terms of Europe basically is a very very small peninsula of the big Eurasian continent and of.
 
-tiny uh window which we call collective west which in terms of Europe basically is a very very small peninsula of the big Eurasian continent and of course the US which in the fabulous definition of bismar of course they are safe on both sides they are surrounded by fish It's a beautiful definition of course So uh no and obviously um the US is even more provincial than Europe Europe at least you.
 
-are surrounded by fish It's a beautiful definition of course So uh no and obviously um the US is even more provincial than Europe Europe at least you have nodes of you know looking around the world and trying to establish a a relationship with the world even if it's not mutual respect But the US is a completely different story It always go back to manifest destiny exceptionalism shiny city on the.
+Professor: After all, we know that it doesn't work the way they spoke about this. Iran is not like other countries such as Iraq and Afghanistan.
 
-even if it's not mutual respect But the US is a completely different story It always go back to manifest destiny exceptionalism shiny city on the hill all that crap you know regurgitated ad infinitum and the for instance the way they are incapable of understanding not only how the Iranian system works how do they make decisions what constitutes an existential threat to Iran how Iran h deals with.
+Professor:
+After all, we know that it doesn’t work the way they spoke about this. Iran is not like other countries, such as Iraq and Afghanistan.
+Victor:
+Exactly, what Victor is saying is very important, Nema, because this is essentially the position of the leadership in Beijing. It’s exactly the same position they express – of course very politely – in the briefings of the Minister of Foreign Affairs in Beijing and all that. But this is their position, and it’s implied that if that happens, they will help.
 
-of understanding not only how the Iranian system works how do they make decisions what constitutes an existential threat to Iran how Iran h deals with his neighbors with the Arab world and with Eurasia at large and how Iran has been preparing for this war now for decades because they knew not because they are they are crystal ball readers but because they knew it would be inevitable It's a war of.
+they express of course very politely uh in the briefings of the minister of foreign affairs in Beijing and all that but this is their position and it's implied that if that happens they will help Iran in ways that none of us can imagine what would be the Chinese way of course discreet made in the shape hate They don't talk about it We We've seen that in Ukraine We know how they act and they they don't talk about it Even with with the case of Russia Iran when Iran was somehow sending drones to Russia nobody was talking about it You remember that These countries are helping each other without talking about it Unlike what the United States and Europeans do Uh yes because they are masters of uh narrative twisting and blah blah blah And Russia Iran and China they have interlocked strategic partnerships It's on a completely different level There's no comparison Civilization states who have interlocking strategic partnerships and have the same interest and they are all on board on the main.
 
-war now for decades because they knew not because they are they are crystal ball readers but because they knew it would be inevitable It's a war of the turbo capitalist system against the Islamic revolution This is the key And now the people behind it they think that they have an opening For instance I have a lot of respect for Sai Hersh Uh when I was growing up when I was still in college Sai.
 
-it they think that they have an opening For instance I have a lot of respect for Sai Hersh Uh when I was growing up when I was still in college Sai Hersh was one of my mo role models as an investigative uh journalist But Sai uh there's a problem with Sai because first of all he doesn't know West Asia very well which is an enormous problem if you are an investigative journalist Well he basically.
 
-Sai because first of all he doesn't know West Asia very well which is an enormous problem if you are an investigative journalist Well he basically concentrates in in Washington and his gigantic role decks He can pick up the phone and talk to anybody he wants in Washington This is fantastic Nobody has that kind of of access Right But for instance he writes a piece that is absolutely terrifying.
+Partnerships:.
 
-he wants in Washington This is fantastic Nobody has that kind of of access Right But for instance he writes a piece that is absolutely terrifying this week on his Substack basically reproducing what his sources which are deep uh industrial military complex deeper industrial military complex and Zionist silos working around Washington Virginia and Maryland And what what is it about It's about the.
+Partnerships: They say do they really belong here you see and it's completely stupid because they depend on Russia they depend on Iran They are partners in the international north south transportation corridor which is a lifeline commercial lifeline for them But the relationship between New Delhi and Tel Aviv is wow this is quite something And of course don't forget the affinity the ideological affinities between Zionism and Hindutva uh supremacism That's not good at all You know Axis Pepe Axis reported that the United States tried to set up a meeting with Iran in Estanul but it didn't work Supreme leader Yeah refused to talk with the United States But we know that the Iranian foreign minister went to Europe He talked with foreign ministers of the United Kingdom and the United Kingdom together with Germany and France The outcome of that those talks they were they were just repeating the same sort of demands on the part of the United States No enrichment even they want to bring in the missile the.
 
-complex deeper industrial military complex and Zionist silos working around Washington Virginia and Maryland And what what is it about It's about the war that they always wanted since at least 1998 If some of them they want this war since 1979 as you know very well Regime change in Iran Uh elimination of the Iranian civilian nuclear program Elimination of Islamic ballistic missiles basically.
+Germany and France The outcome of that those talks they were they were just repeating the same sort of demands on the part of the United States No enrichment even they want to bring in the missile the the missile program of Iran Unbelievable I don't know if it seems as time goes by Iran sees no solution but fight in the United States Yes Uhhuh The Shihuawas uh you saw the Shihu were demanding zero enrichment Who the hell are the Shihu to demand anything from a sovereign nation Especially because these imbeciles were part of the original JCPOA Germany was an observer in JCPOA It was the P uh was P3 plus one that was called Yeah Uh yeah I think P3+ one Germany was part of uh Vienna I can't believe that Well okay let's say that they had slightly less imbecile leaderships at the time Okay which is true technically In fact it was B5 plus one if I'm not I'm sorry Nema Yes P5+1 the five of the UNC plus German And now they Okay zero enrichment Okay in fact zero zero everything Get rid of.
 
-as you know very well Regime change in Iran Uh elimination of the Iranian civilian nuclear program Elimination of Islamic ballistic missiles basically destroying Iran like they did like they destroyed Iraq without thinking obviously for one minute about uh Iranian capabilities geography you name it of course not these people don't first of all they don't understand they never learn anything from.
 
-about uh Iranian capabilities geography you name it of course not these people don't first of all they don't understand they never learn anything from geography history and both so when you read Sihar's piece it is terrifying the level of stupidity and ignorance of these people is terrifying but the problem is some some of these people interviewed by Hirs they have access to decision making in.
 
-and ignorance of these people is terrifying but the problem is some some of these people interviewed by Hirs they have access to decision making in Washington and that's what makes it even more dangerous and it's a quite a collection of of sources you know so if these people actually believe in what they are doing so we better get ready for some sort of apocalypse really apocalypse later not.
+Nema: In fact, it was P5+1 – the five members of the UN Security Council plus Germany. Now they're talking about zero enrichment.
 
-you know so if these people actually believe in what they are doing so we better get ready for some sort of apocalypse really apocalypse later not apocalypse now and proving once again that the system in the US is irredeemable It cannot be changed They will only change if they were destroyed completely which is not going to we know it's not going to happen They're still very very powerful Even if.
+that Since then they have received 14 weapon shipments from the United States and Germany to just sustain sustain certainly interceptors we are we we don't know what's inside of but okay if we want to bet interceptors because they are actually running from out of interceptor we can we can see that they are not only they are intercepting much less but they are very very careful with how many intercept chapters they're going to launch because they know that it's dwindling and it's part of the Iranian strategy once again And did the Iranians lose anything important so far On the contrary they got rid of all their older missiles And what were the older missiles doing Depleting the interceptor uh fleet Let's put it this way Brilliant Straight to the point Very simple Obviously nobody saw about it the Israelis and the Americans and both proves once again that it works Simple strategies do work So wait until Iran starts to sending uh fles of their latest editions you know the Hajikasam Fatu.
 
-will only change if they were destroyed completely which is not going to we know it's not going to happen They're still very very powerful Even if they were defeated by the Houthis and now they want to be defeated by the IRGC right It took one month for the Houthis to destro destroy now to completely defeat and humiliate the US Navy So now they want to repeat that with the IRGC That's a really.
+it the Israelis and the Americans and both proves once again that it works Simple strategies do work So wait until Iran starts to sending uh fles of their latest editions you know the Hajikasam Fatu you name it Wow But they are guarding this for the second stage which certainly is the calculations that they have that the United States sooner or later would enter the war Just like Russia in many aspects it's still saving the best that they have for the possibility later on of NATO and the United States having ideas about Russia So there are similarities and this is something that they can discuss at the highest level strategic level ministry of defense level and all that Look we're fighting more or less the same war Yes it is the same war It's the same forever war in two different theaters uh with the same backers on the other side and with the same objectives And the objective number one is to plunder the natural wealths of both Russia and Iran and to prevent by all means necessary.
 
-for the Houthis to destro destroy now to completely defeat and humiliate the US Navy So now they want to repeat that with the IRGC That's a really bad move But that's where we're going apparently So it is in every respect Nema It's terrifying because these people they are not illiterate They are not completely dumb but they are fanatic They are extremely misinformed they have uh positions of.
+uh with the same backers on the other side and with the same objectives And the objective number one is to plunder the natural wealths of both Russia and Iran and to prevent by all means necessary Eurasia integration with both of them with China especially and everybody in between and around them It's as simple as that and is as complex as that So nothing is um by accident in this progression If we look at the progression since uh Maidan to Ukraine uh to the SMO to the okay how the SMO is going to be resolved to the negotiations on the Russian front negotiations on the Iranian front the state that we are now we are on the brink of the US entering another forever war everything makes sense it's a progression absolutely our friend Sergey Glazia have uh he he gave the short version of we are discussing now and he said and level three was u Ukraine so it didn't work so they are on level four level four is go against Iran and level five will be against China we are on level we are entering.
 
-these people they are not illiterate They are not completely dumb but they are fanatic They are extremely misinformed they have uh positions of power in the nomenclature So in a sense I her speech was uh uh it was a public service for him to public something like this I like his style because he's not judgmental Basically he's reproducing what people told him you know but wow it's one of the most.
 
-something like this I like his style because he's not judgmental Basically he's reproducing what people told him you know but wow it's one of the most terrifying things I have read in my long long long life around the world Really Pepe when it comes to the attack on Iran and the way that Iran has responded so far if the if Israel is winning what does Donald Trump need to interfere in the conflict.
 
-to the attack on Iran and the way that Iran has responded so far if the if Israel is winning what does Donald Trump need to interfere in the conflict Why do they need to go and bomb Iran Israel is winning So let them win the war What's going on that Nema They can't win this war You know that I know that Our most of our audience I'm sure knows that In fact they are losing already They lost the.
+John: Discussing current events, he mentioned Level Three was Ukraine but it didn't succeed. Now, they've moved onto Level Four - targeting Iran. He also mentioned Level Five would be against China. We're currently at Level Four.
 
-that Nema They can't win this war You know that I know that Our most of our audience I'm sure knows that In fact they are losing already They lost the strategic initiative They lost the aura of invincibility for them I I would say that this is a psychological coup even worse than losing everything Nobody is afraid of the Israelis anymore Everybody knows that they are a killing machine But it's.
+they're going to do False flag in Taiwan So you know when you put this all when you follow the process you put this all together you see the level of desperation Nema of these people because usually when we have a situation like this in the world okay the solution is a war to reset the system is what happened from 39 to 45 Now if you launch a war you will reset the system but against you And that's what makes them even more abysmally desperate There's no other way that the war will work in their favor Ukraine proved that and something that is unimaginable for several generations Israel sold the miss to everybody that they were invincible Bye-bye Not anymore Your miss is shattered And they won't be able to live with that And uh in the mid to long term they will vote with their feet They will go back to Eastern Europe where they came from because none of these people are Semites But this is a long process It's starting now So it's fascinating how the angel of history to get one of my.
 
-psychological coup even worse than losing everything Nobody is afraid of the Israelis anymore Everybody knows that they are a killing machine But it's very very convenient to be a killing machine uh killing women children hospitals journalists humanitarian help etc from above with missiles try try to match yourself against a real regional power They are they are having their ass kicked little by.
+will go back to Eastern Europe where they came from because none of these people are Semites But this is a long process It's starting now So it's fascinating how the angel of history to get one of my favorite images of all time by Walter Benjamin uh the angel of history is looking back you know over his shoulder to the past but he cannot move into the future because he's encumbered by all the horrors of the past in front of him but sometimes you know let's say he looks into the he turns his head again he starts looking at the future again I said oh there is a glimmer of light over there so even if I am in shackles here I can maybe you know have one that uh we may be at this point now a a angel of history correction of all the horrors unleashed by that construct in West Asia So that of of course and this involves unimaginable suffering and horrors but you know always you have to pay history is not free for anybody You have to pay and even the winners or even the pe the the people's.
 
-help etc from above with missiles try try to match yourself against a real regional power They are they are having their ass kicked little by little the Iranian way because Iran for the moment hasn't entered a war against Israel They are probing they it's a sort of a little by little escalation to achieve strategic deterrence which in some aspects they they already have There are some serious.
 
-they it's a sort of a little by little escalation to achieve strategic deterrence which in some aspects they they already have There are some serious gaps in their uh anti-aircraft defenses and anti-missile defenses which might maybe they might get help from Russia to plug these holes if they wanted um quoting Putin again Putin said we offered some stuff to Iran Iran said no we don't want it at.
 
-help from Russia to plug these holes if they wanted um quoting Putin again Putin said we offered some stuff to Iran Iran said no we don't want it at least for now if they wanted Russia is willing to help them any way they can So even with the fact that they continue to be attacked by Israel several raids a day missiles targeted assassinations you name it But the destruction that they already.
+Buting:
+Of course, and this involvement of unimaginable suffering and horrors is something we cannot ignore. History is not free for anyone; even the winners or peoples who resurrect cultures and civilizations have to pay a terrible price for it. For instance, after the fall of the Soviet Union, Russia went through its "purge" and "valley of tears, " which began in the 1990s. However, Russia started to recover in the 2000s and is now one of the top four economies in the world by purchasing power parity. Moreover, despite being possibly the most sanctioned nation-state ever, there are always ways for phoenixes to rise again.
 
-that they continue to be attacked by Israel several raids a day missiles targeted assassinations you name it But the destruction that they already inflicted in Tel Aviv and beyond is now unimaginable for everyone Nobody could ever imagine that missiles will be destroying neighborhoods in Israel landing near Dona destroying most of the port of Hifa The mayor of Hifa is desperate now is begging for.
+convoluted way forgive me all of you that maybe this could be the beginning for a resurrection of Palestine later on because if Zion if Zionism machine is shattered they will naturally dissolve and that thing will dissolve and they will go back to Poland Ukraine even Russia Yeah Eastern Europe in general Well and that's it And the land will return to their rightful owners Here is Pepe Here is what Donald Trump said Yes Foreign Minister this afternoon said if the US is serious about negotiations that you would call up Israel and request that they stop their air strikes Will you make that request Well I think it's very hard to make that request right now If somebody's winning it's a little bit harder to do than if somebody's losing But we're ready willing and able And we've been speaking to Iran and we'll see what happens Yeah He feels that he's winning Pepe I Nema they are not they're not giving him the right information Simple as that It's obvious It's he doesn't know anything that's.
 
-will be destroying neighborhoods in Israel landing near Dona destroying most of the port of Hifa The mayor of Hifa is desperate now is begging for peace because his sport sooner or later is going to disappear just like uh a lot was bankrupt Hifa will disappear It's not it's not in in the equation anymore oil the oil refinery in in Hifa Same thing So Israel now for has I would say of their three.
+Speaker 1: Iran and we’ll see what happens.
+Speaker 2: Yes, he feels that he’s winning.
+Speaker 1: Pepe I Nema, they are not providing him with accurate information.
+Speaker 2: That’s simple as that. It’s obvious.
+Speaker 1: It’s he doesn’t know anything that’s happening over there. Obviously, and he doesn’t read.
+Speaker 2: A president who doesn’t read. . .
+Speaker 1: . . . and works by TV, talking points and sound bites…
+Speaker 2: …of course, he’s a hostage.
 
-disappear It's not it's not in in the equation anymore oil the oil refinery in in Hifa Same thing So Israel now for has I would say of their three ports they have maybe 30% left in Ashdod which is near Gaza so it's not very well located the other two are well one of them is non-existence and the other one is slowly sinking so there is a different strategy that was re-elaborated it probably in the.
+not going to be able to defeat Iran on of course not Yeah But there's nobody uh capable of telling him that uh around him in his circle of power and much less uh in the industrial military complex Uh of course our friends independent analysts with uh their experience inside the deep state They could explain this for him in five minutes Ray McGovern could meet uh Trump and tell him five minutes look the whole thing is absurd But would he listen Of course not Even if that happened The United States has brought the their fighter jet to Saudi Arabia Do you believe if they wanted to attack Iran they would use Saudi Arabia Because I would say that that would be the end of Saudi Arabia That would be the end of Saudi family Well NBS is losing sleep on all that Obviously he knows NBS is not a fool He may be a gangster but he's not a fool Um yeah we we we don't know how the let's say the background infrastructure to help an American attack on Iran what they would use anything that they use will.
 
-are well one of them is non-existence and the other one is slowly sinking so there is a different strategy that was re-elaborated it probably in the first 48 hours by the IRGC I say okay now it's different now it's not strategic patience anymore we going to go best by a thousand cuts and it's working it's working because the number one objective is very ambitious is to paralyze the Israeli.
+He may be a gangster but he's not a fool Um yeah we we we don't know how the let's say the background infrastructure to help an American attack on Iran what they would use anything that they use will be a legitimate target for Iran And this has been explicitly outlined by everybody that is in power in Tehran over and over again And obviously the GCC they know of course and they have of course and they have diplomatic uh dialogue all of them Iran is talking Saudi Arabia Iran is talking to Qatar with UAE Everybody knows that and obviously they are terrified because it will be a unilateral decision It will be not a Tel Aiv decision will be a Washington decision So it's the empire that will okay which vessels I'm going to use for this operation And the vessels caught in the net they cannot say bye-bye you know In the case of Iran I remember when the war in Ukraine started how cautious Russia was even is today considering the war in Ukraine I see the same sort of attitude Pepe in Iran I.
 
-we going to go best by a thousand cuts and it's working it's working because the number one objective is very ambitious is to paralyze the Israeli economy and they are on the way to do that Nemo seriously with only two weeks Less than two weeks No with two weeks One week It was It started on Friday last week Yeah So exactly We We lose track Everything is so fast So a little over one week They.
+say bye-bye you know In the case of Iran I remember when the war in Ukraine started how cautious Russia was even is today considering the war in Ukraine I see the same sort of attitude Pepe in Iran I talk with Iranians They're not going totally out against Israel because they know they're waiting for something bigger than Israel They wanted the United States to come and then show what they can do with with Israel or even with the Arab states And I don't know if in the United States these people the same people who were somehow cheering how how helping the case of Ukraine for more than three years in the conflict which literally destroyed Ukraine They're arguing that if we we go against Iran if we attack Iran that would change the game That would be devastating We're going to destroy Iranian nuclear facilities and all of that I we know these sort of rhetorics They're they they want to make the case for the administration to go after the plan to attack Iran They don't care about the.
 
-No with two weeks One week It was It started on Friday last week Yeah So exactly We We lose track Everything is so fast So a little over one week They already paralyzed We can say maybe half of the Israeli economy at least And these attacks on Raphael on the Wiseman Institute on unit 8, 200 this is pinpointed This is absolutely these are the key intel military nodes in Israel Both so you know the.
+nuclear facilities and all of that I we know these sort of rhetorics They're they they want to make the case for the administration to go after the plan to attack Iran They don't care about the outcome They don't care about what's going on in the aftermath of that attack But that would be the end of Donald Trump and his administration in my opinion because look at what's going on in the United States with MAGA Look at what's going on with Tucker Carlson It's not just about Taco Carson Matt Gates Somehow they tried to convince or somehow put pressure on Tulsi Gabbard She backed down in her recent tweet on X But after all you cannot change the base You cannot change the mindset of those people who voted for you who wanted some sort of change These are big things that are happening in the in my opinion in the mind of Donald Trump himself before going to Iran It's not just about Iran It's about the future of the United States Absolutely Um well once again he's caught in a net in a very.
 
-on the Wiseman Institute on unit 8, 200 this is pinpointed This is absolutely these are the key intel military nodes in Israel Both so you know the the Iranian strategy is calculally calculated We can say it is working They are paying a horrendous price No question because Iran continues to be bombed Uh they are they bombed the Iraq um reactor right Yeah Uh targeting assassinations in K near the.
+in my opinion in the mind of Donald Trump himself before going to Iran It's not just about Iran It's about the future of the United States Absolutely Um well once again he's caught in a net in a very elaborated trap set up by the Zionist axis and he's expendable Nema He's another expendable US president If his presidency implodes because of a out of control stupid adventure in Iran the Zionist axis will continue and they will find another one to implement what they always wanted from the beginning That's what is so terrifying and it's another conclusion out of the uh the Sih column It doesn't m you read the column from back to back and said these people live in a sort of delium tremens all of them Yes it was always like this and it's not going to change unless they are eliminated from the levels of power in the US government and you know this is not going to happen and if it was going to take maybe it could take decades or generations just like u those mega fanatic settlers in the.
 
-price No question because Iran continues to be bombed Uh they are they bombed the Iraq um reactor right Yeah Uh targeting assassinations in K near the shrine in K So there are no limits for these gangsters you but um we can say uh with a measure of certainty that H& RGC they see the big picture ahead Of course if the Americans get what Four B2s dropping four bombs exactly at the same time.
+the levels of power in the US government and you know this is not going to happen and if it was going to take maybe it could take decades or generations just like u those mega fanatic settlers in the West Bank There's no other way to get rid of them except I don't I don't need to spell out right otherwise they'll keep you know the virus will continue indefinitely So we are all hostages of this um I use it in the title of one of my columns a death cult and the death cult is not only Israel the death cult is impregnated in the tissue of the US government We all know Eisenhower alerted everybody about it We all know that JFK was fighting against it and we all know what happened afterwards No Pepe Europeans United Kingdom and Germany are helping the Israel and even even United Kingdom is preparing the fighter jets to go to the region to help the United States You look at this situation You've mentioned that before but they're literally the same people They're that fight in the Iran.
 
-of certainty that H& RGC they see the big picture ahead Of course if the Americans get what Four B2s dropping four bombs exactly at the same time vertically on the spot over four Then it's a completely new ball game as we know which by the way which is not that much possible I talk about it because when you hit the f when you first hit the target the explosion whatever is happening in the.
+is preparing the fighter jets to go to the region to help the United States You look at this situation You've mentioned that before but they're literally the same people They're that fight in the Iran They're talking about the United States But when it's not just the United States Germany is in the United Kingdom is in and they're talking and Iran has no problem with these countries and they're participating in the attack on Iran If they attack Iran they're going to be part of that attack I I literally think that China is looking at what's going on Russia is looking at what's going on and they say "So who are you to support Who are you to come to the to fight Iran You have no problem with Iran It's all about Iran and Israel The United States wants to back Israel They can come in fight Iran What is what it has to do with Germany and the United Kingdom Unless you think that the Israeli project is the is a British project they need to go Uh Germany and France are inconsequential So.
 
-which is not that much possible I talk about it because when you hit the f when you first hit the target the explosion whatever is happening in the aftermath of that impact they're not you're not going to be able to to to hit the target again at the same point At the same point Exactly Nema Not to mention uh smoke debris etc You need perfect visibility on top of it for your heads So c can you.
+Iran What is what it has to do with Germany and the United Kingdom Unless you think that the Israeli project is the is a British project they need to go Uh Germany and France are inconsequential So whatever they do nobody cares because they are inconsequential The Brits is different It's MI6 So it's regime change For the Brits is regime change It's the same Uh the way MI6 and the British ruling classes look at Iran is exactly the way the Zionist look at Iran Regime change We did a puppet over there and we need to make a lot of money out of re Iran's national natural resources and of course block exactly u this association between Russia Iran and China this is what really matters ana in the European theater France and Germany they don't even qualify as a consequences nobody can their army they cannot fight a a war in a basta inconsequential the outcome Pepe if the United States finally decides to attack Iran I would say they're not going to be able to do regime change so-called regime.
 
-the same point At the same point Exactly Nema Not to mention uh smoke debris etc You need perfect visibility on top of it for your heads So c can you imagine that there's absolutely no one at the Pentagon to tell the president of the United States how completely absurd this whole idea is Apparently not right And the guy who's in charge that major imbecile gurilla who is an anti-Iranian.
+they cannot fight a a war in a basta inconsequential the outcome Pepe if the United States finally decides to attack Iran I would say they're not going to be able to do regime change so-called regime change they're not going to be able to defeat Iran but the outcome would be devastating for the future and the way that don't that the United States wants to have some sort of leverage or some sort of strate strategic partnership in the Middle East That's going to be gone These Arab state would be destroyed I would say it before it happening I would confess that they're going to do this They're going to do this Is insanity This is unbelievable what Donald Trump is playing with This is We know how capable Iran is You can you can hit Iran so hard but they're going to fight back They're going to destroy whatever you have in that region in in the Middle East I don't know if there is anybody in the Trump administration or so that would be my question to you uh Nema Uh your conversations with.
 
-States how completely absurd this whole idea is Apparently not right And the guy who's in charge that major imbecile gurilla who is an anti-Iranian islamophobe whatever No wonder he's the guy in charge of the whole operation and he's the guy convincing he's the guy convincing Trump and the whole notion is so absurd that even Trump himself apparently is not convinced Of course I would say a.
 
-convincing he's the guy convincing Trump and the whole notion is so absurd that even Trump himself apparently is not convinced Of course I would say a 5-year-old would not be convinced but that's where we are and and it gets more serious by the minute And I'm sure Putin um already via their privileged channels already told Trump look you have no idea what awaits you if you go along with this But.
 
-And I'm sure Putin um already via their privileged channels already told Trump look you have no idea what awaits you if you go along with this But at the same time Nema we all know it's not Trump who's making this decision The decision has already been made by the usual suspects behind They are forcing him to of course give the green light It's a completely different story And there are um uh.
+Narrator: Your conversations with Iranians this past few days - do you know if there is anyone in the Trump administration who wants to destroy whatever exists in that region in the Middle East?
 
-been made by the usual suspects behind They are forcing him to of course give the green light It's a completely different story And there are um uh echoes and shades telling us that uh he's he's now afraid because he is totally trapped in his own rhetorical game and in the Zio Con's long running game that comes since the end of the 1990s He's he's in an untenable position and we can already say.
+He actually said that He said this Wow Wow These people are totally in bed with what's going on in they want to literally they want to divide Iran in oblast and they want to Kurds Turks Arabs Beluchis and all of this This is the main goal the endgame on their part in my opinion and and Iran knows this These are huge These these are smart people These are not some ordinary people talking about because they they want to hear the argument on the part of the west They know what they're doing and they were preparing for this They knew that this would come to them This reminds me uh Nema one of the things that struck me last It's incredible I was in Iran last months when I went to Sistan Baluchistan Finally the people that I talk Sistan is more to the N more to the north sorry of of the huge province as you know and the Baluchi we were interacting with Baluches all the time They saw they see themselves first and foremost as Iranians No they're not separatists at all Even though the province.
 
-rhetorical game and in the Zio Con's long running game that comes since the end of the 1990s He's he's in an untenable position and we can already say that he lost the midterms His base half of his base is gone already So bye-bye He's going to be a lame duck after the midterms Not to mention they they might advance to try to impeach him again So it's wow The accumulation of horrors and.
 
-to be a lame duck after the midterms Not to mention they they might advance to try to impeach him again So it's wow The accumulation of horrors and absurdities is never ending right And when you of course all of us who for professional reasons we have to at least uh get a glimpse of what mainstream media is saying they live in what kind of re now obviously these people don't live in reality but.
 
-have to at least uh get a glimpse of what mainstream media is saying they live in what kind of re now obviously these people don't live in reality but what kind of nether world they live and ping the notion that I know it's the president of the United States is Like God he can decide one day to do the or zeals He he can decide one day to throw a lightning bolt and the other day okay let's have a.
+Vince: As you know, our interactions with the Baluchis revealed that they see themselves primarily as Iranians. Contrary to popular belief, they aren't separatists at all. Despite the vast size and unique history of their province, which is quite distant from the center, they hold strong feelings of national unity. I've also observed similar sentiments among the Iranian population around the Caspian Sea.
 
-States is Like God he can decide one day to do the or zeals He he can decide one day to throw a lightning bolt and the other day okay let's have a banquet He decides the future of the world No he doesn't decide anything There are people deciding for him He's basically a lowly messenger a cheap messenger a casino hustler you know a mobster a subm mobster So it's uh it was good to have a few um uh.
+polit geopolitical analysis What's your feeling What's your feeling My feeling is what from what I'm hearing from inside from Iran as time goes by when these attacks are continuing on Iranian people there are the unity is growing stronger among Iranian you see the all people those liberals that you've mentioned in the northern part of Thran coming together with the southern part of Thran with those villages in Iran all united I I can confess that Py I live in Brazil you know that and I do see the feeling when it comes to Iran the feeling that come came out of this attack on Iran unprovoked attack on Iran is is bringing something to the society that the society wasn't experiencing it since the war against Saddam Hussein there is something new happening inside the society and nobody knows they're gonna fight these these people would fight the United States to the last one to they they going to fight back and I I hope there is somebody in the United States hearing what's going on you.
 
-him He's basically a lowly messenger a cheap messenger a casino hustler you know a mobster a subm mobster So it's uh it was good to have a few um uh inside um info and commentary from from people in St Petersburg Well well positioned people in the Russian government especially they have no they have no illusions of course and once again they all come back to the same point We have a war here in.
+they're gonna fight these these people would fight the United States to the last one to they they going to fight back and I I hope there is somebody in the United States hearing what's going on you know and seeing the reality of what's going on not through the propaganda these people who were who who were simply receiving money to manipulate the the analysis on their part from Iran These mostly Iranians who are living outside of Iran trying to give false pictures to the administration in the United States in Europe because they're receiving they're somehow they're puppets of many are being paid actually Yeah This is this is that's why I'm seeing this is totally dangerous This is dangerous I don't want to see any anything happening in that region We had a lot with Gaza with the Palestine with the case of and again they're trying to do it I don't see anything I don't see the United States winning I I see United States losing and losing big in the West Asia They're going to learn it if.
 
-Russian government especially they have no they have no illusions of course and once again they all come back to the same point We have a war here in our borders First we need to solve this and now they're fully concentrated uh what's going to happen in the next few months Uh the conditions are going to be much much tougher if uh not uh Kiev but Kiev's sponsors don't accept what's on the table.
 
-in the next few months Uh the conditions are going to be much much tougher if uh not uh Kiev but Kiev's sponsors don't accept what's on the table put on the table by the Russians and meanwhile they keep organizing forums like this so the whole of the global south can get together and strike business deals So there there's always the other side of the coin IMA right The auspicious side of the the.
 
-global south can get together and strike business deals So there there's always the other side of the coin IMA right The auspicious side of the the coin even in the middle of such darkness What was so important about the the point that Putin raised in St Petersburg said he said that Russia and Iran are fighting the same forces The same this was brilliant Wow Everybody knows what he means He.
+John:
+With the case of the U. S. attempting an attack on Iran, I don't foresee any victories for America. Instead, I predict significant losses in West Asia. They will discover something unprecedented if they proceed with such an attack - something huge. There must be preparation for this eventuality in my view.
 
-in St Petersburg said he said that Russia and Iran are fighting the same forces The same this was brilliant Wow Everybody knows what he means He doesn't need to get into detail and Putin doesn't he never needs to spell out okay he needs to spell out especially for Kab But when he's talking to a broad audience which in this case was a global audience everybody was waiting okay what is he going to.
+at we were talking about Cash Petal He who's unbelievable Unbelievable The worst thing with the Biden administration at least we know that they wouldn't let the Neta wanted to attack during the Biden administration They didn't let him They didn't let him to attack But Trump administration is somehow we we had a lot of hope in the in the administration Mhm It's just gone All gone Everything you said makes total sense compared to what what I'm hearing the echoes I'm getting from Iraq Absolutely Uh and it's very impressive that in only a matter of few days people understand the bigger picture not only the unprovoked attack by Israel per se but everything that that implies and it's a camouflaging it's the same old imperial story They could never digest the Islamic Revolution with all the problems of the Islamic Revolution but it's it's ingrained in them They need revenge for what they lost and now they think that they have the this small window of opportunity and as you said correctly.
 
-especially for Kab But when he's talking to a broad audience which in this case was a global audience everybody was waiting okay what is he going to say about Iran This is possibly the key quote because you can inter interpret this at several levels and at the same time he said something very crucial which explains a lot of his um let's say circumspection when he deals with Israel He says look we.
-
-and at the same time he said something very crucial which explains a lot of his um let's say circumspection when he deals with Israel He says look we have almost 1. 5 million former USSR and Russian citizens double passports living in Israel speaking Russian So Israel in many aspects is also a Russian land He has to take this into consideration of course So it's it's a his compared to Trump his.
-
-Russian So Israel in many aspects is also a Russian land He has to take this into consideration of course So it's it's a his compared to Trump his position is uh of course it's solid but the nuances are extremely complex but because he's he has a legal mind He is a strategist and he weighs everything before making a big big big decision At least we have a rational mind calculating all the vectors.
-
-mind He is a strategist and he weighs everything before making a big big big decision At least we have a rational mind calculating all the vectors right But at the same time he's not going to abandon his principles which is Iran is a very strong ally of the Russian Federation They have mutual interest They have business deals Russia is helping Iran in their civilian nuclear program and they are.
-
-of the Russian Federation They have mutual interest They have business deals Russia is helping Iran in their civilian nuclear program and they are not backing down from any of that So this is clear and the Americans who know how to read for them this is also clear obviously from the Zionist axis point of view this doesn't change anything because they're fanatics and now they think that they have.
-
-is also clear obviously from the Zionist axis point of view this doesn't change anything because they're fanatics and now they think that they have the holy grail in front of them regime change in Iran which once again Sai piece was about how we're going to achieve regime change in Iran this should have been the title in fact the headline What were the main points that he was mentioning Because.
-
-going to achieve regime change in Iran this should have been the title in fact the headline What were the main points that he was mentioning Because so far I don't see anything in that sense is happening in Iran The main goal of these attacks assassination decapitation as they call it was to somehow bring so-called regime change in Iran That doesn't that didn't work so far Shano ima all of us who.
-
-decapitation as they call it was to somehow bring so-called regime change in Iran That doesn't that didn't work so far Shano ima all of us who remember shock in 2003 uh in in Iraq it worked but Iraq was already dissolved as a nation Um I I went to in 2002 I spent one months in Iraq during Saddam It was around September September October So a few months before shock and all And I saw by myself how.
-
-2002 I spent one months in Iraq during Saddam It was around September September October So a few months before shock and all And I saw by myself how the country was impoverished after how many 20 years almost 20 years of sanctions destroyed Uh the only thing that more or less worked was the mukabarat the intel services and it would be very easy if the Americans launched and it was uh and even.
-
-only thing that more or less worked was the mukabarat the intel services and it would be very easy if the Americans launched and it was uh and even like that it took three three weeks for the whole thing to collapse and it only collapsed because they distributed a lot of money to Saddam's generals Iran now Iran is solid even of course there is oppos you know of course there is opposition uh to.
-
-they distributed a lot of money to Saddam's generals Iran now Iran is solid even of course there is oppos you know of course there is opposition uh to the government especially in north Iran the upper middle class the people who dream of Iran under the sha etc but it's a minority in Iran uh so and the fact that now the nation was attacked directly it unified the nation completely as you know very.
-
-the sha etc but it's a minority in Iran uh so and the fact that now the nation was attacked directly it unified the nation completely as you know very well Nema but try to explain this in Washington Nobody will understand First of all these idiots never been to Iran They don't know how it works They don't know anything The culture history how the system works You name it Uh different levels of.
-
-never been to Iran They don't know how it works They don't know anything The culture history how the system works You name it Uh different levels of popularity If you compare uh Kistan with Mashad with the Caspian with the Persian Gulf and they don't even they don't know anything They only have the obsession we need to get rid of Kam We have to kill him and then we're going to have the son of the.
-
-even they don't know anything They only have the obsession we need to get rid of Kam We have to kill him and then we're going to have the son of the sha to be our guy This the level of stupidity is exactly what I just told you Pepe Deitri Ditri Med said he tweeted on Twitter He said on X "If the West wants nuclear disarmament start with Israel Iran won't back down no matter the threats. " These.
-
-said he tweeted on Twitter He said on X "If the West wants nuclear disarmament start with Israel Iran won't back down no matter the threats. " These are one of the most I would say important word words that came out of the some someone like Madv who is very important when it comes to the foreign policy of Russia Is the number the number two Yeah Is that it is dima because medv can say what Putin.
-
-is very important when it comes to the foreign policy of Russia Is the number the number two Yeah Is that it is dima because medv can say what Putin cannot say explicitly So we should always pay attention to what he's saying This is what they discuss behind closed doors at the security council meetings or among them etc You and medv can Yes This is very very very serious Absolutely Absolutely And.
-
-behind closed doors at the security council meetings or among them etc You and medv can Yes This is very very very serious Absolutely Absolutely And and once again it looks like nobody in Washington in a position of power or in a position to control foreign policy is listening to their detriment If they get into this adventure which as it stands there is a strong possibility We no none of us know.
-
-foreign policy is listening to their detriment If they get into this adventure which as it stands there is a strong possibility We no none of us know but all the signs are that something will happen and something nefarious will happen and something like a mother of all mistakes might occur So they're going to pay a heavy heavy price for it The the problem is in the west when they want to go to.
-
-like a mother of all mistakes might occur So they're going to pay a heavy heavy price for it The the problem is in the west when they want to go to war they're so much somehow melted in their own rhetoric that they cannot hear anything from outside They feel that they're going to they're going to achieve what they want to achieve by this sort of war against other nations But after all we know.
-
-They feel that they're going to they're going to achieve what they want to achieve by this sort of war against other nations But after all we know that it doesn't work the way that they were talking about this Iran is not other countries like Iraq Afghanistan I'm sure today I talk with Professor Mirandi Okay Prepared to fight the United States Absolutely We are totally prepared to fight it and.
-
-Afghanistan I'm sure today I talk with Professor Mirandi Okay Prepared to fight the United States Absolutely We are totally prepared to fight it and come in and do it We We are prepared to respond to you I It's not just about Iran Yemen just announced that there if the United States dares to attack Iran they're going to attack the United States in the Red Sea bubble mand somehow and and on the.
-
-that there if the United States dares to attack Iran they're going to attack the United States in the Red Sea bubble mand somehow and and on the other hand I heard something from China the I don't know you the the political analyst Victor G from China here is what he said go is very good he's very here is what he said in terms of if the United States attacks Iran back against aggressors and if.
-
-China here is what he said go is very good he's very here is what he said in terms of if the United States attacks Iran back against aggressors and if the United States wants to join Israel to become an aggressor against Iran well history will eventually have its own verdict If other countries want to join the fight on the side of Israel I will urge them to stop that right away And if for example.
-
-have its own verdict If other countries want to join the fight on the side of Israel I will urge them to stop that right away And if for example other countries want to join the fight against Iran you never want to exclude the possibility that other major countries want to fight together with Iran because the war imposed on Iran is the unjustified war It's a war of aggression It's undeclared war.
-
-major countries want to fight together with Iran because the war imposed on Iran is the unjustified war It's a war of aggression It's undeclared war It's a surprise attack and any people any country any country under such surprise attack an attack of aggression has full legal justification to fight back Yeah What Victor is saying uh it's very important Nema because this is essentially the.
-
-attack of aggression has full legal justification to fight back Yeah What Victor is saying uh it's very important Nema because this is essentially the position of the leadership in Beijing It's exactly the same position which they express of course very politely uh in the briefings of the minister of foreign affairs in Beijing and all that but this is their position and it's implied that if that.
-
-very politely uh in the briefings of the minister of foreign affairs in Beijing and all that but this is their position and it's implied that if that happens they will help Iran in ways that none of us can imagine what would be the Chinese way of course discreet made in the shape hate They don't talk about it We We've seen that in Ukraine We know how they act and they they don't talk about it.
-
-course discreet made in the shape hate They don't talk about it We We've seen that in Ukraine We know how they act and they they don't talk about it Even with with the case of Russia Iran when Iran was somehow sending drones to Russia nobody was talking about it You remember that These countries are helping each other without talking about it Unlike what the United States and Europeans do Uh yes.
-
-about it You remember that These countries are helping each other without talking about it Unlike what the United States and Europeans do Uh yes because they are masters of uh narrative twisting and blah blah blah And Russia Iran and China they have interlocked strategic partnerships It's on a completely different level There's no comparison Civilization states who have interlocking strategic.
-
-have interlocked strategic partnerships It's on a completely different level There's no comparison Civilization states who have interlocking strategic partnerships and have the same interest and they are all on board on the main theme of the forum of St Petersburg until yesterday the construction of an integrated Eurasia and they are the three top actors We cannot say India is one of the top.
-
-of St Petersburg until yesterday the construction of an integrated Eurasia and they are the three top actors We cannot say India is one of the top actors Definitely not By the way there are not many in there there was um yes there was a sizable Indian delegation in St St Petersburg but they didn't say anything remotely consequential And their position is for instance I'm sure you noticed that the.
-
-delegation in St St Petersburg but they didn't say anything remotely consequential And their position is for instance I'm sure you noticed that the Shangai Corporation organization blatantly uh condemned Israel in an official communicate Guess who was not part of the condemnation India So the other SEO members are already looking at India They say do they really belong here you see and it's.
-
-who was not part of the condemnation India So the other SEO members are already looking at India They say do they really belong here you see and it's completely stupid because they depend on Russia they depend on Iran They are partners in the international north south transportation corridor which is a lifeline commercial lifeline for them But the relationship between New Delhi and Tel Aviv is.
-
-north south transportation corridor which is a lifeline commercial lifeline for them But the relationship between New Delhi and Tel Aviv is wow this is quite something And of course don't forget the affinity the ideological affinities between Zionism and Hindutva uh supremacism That's not good at all You know Axis Pepe Axis reported that the United States tried to set up a meeting with Iran in.
-
-and Hindutva uh supremacism That's not good at all You know Axis Pepe Axis reported that the United States tried to set up a meeting with Iran in Estanul but it didn't work Supreme leader Yeah refused to talk with the United States But we know that the Iranian foreign minister went to Europe He talked with foreign ministers of the United Kingdom and the United Kingdom together with Germany and.
-
-the Iranian foreign minister went to Europe He talked with foreign ministers of the United Kingdom and the United Kingdom together with Germany and France The outcome of that those talks they were they were just repeating the same sort of demands on the part of the United States No enrichment even they want to bring in the missile the the missile program of Iran Unbelievable I don't know if it.
-
-on the part of the United States No enrichment even they want to bring in the missile the the missile program of Iran Unbelievable I don't know if it seems as time goes by Iran sees no solution but fight in the United States Yes Uhhuh The Shihuawas uh you saw the Shihu were demanding zero enrichment Who the hell are the Shihu to demand anything from a sovereign nation Especially because these.
-
-uh you saw the Shihu were demanding zero enrichment Who the hell are the Shihu to demand anything from a sovereign nation Especially because these imbeciles were part of the original JCPOA Germany was an observer in JCPOA It was the P uh was P3 plus one that was called Yeah Uh yeah I think P3+ one Germany was part of uh Vienna I can't believe that Well okay let's say that they had slightly less.
-
-one that was called Yeah Uh yeah I think P3+ one Germany was part of uh Vienna I can't believe that Well okay let's say that they had slightly less imbecile leaderships at the time Okay which is true technically In fact it was B5 plus one if I'm not I'm sorry Nema Yes P5+1 the five of the UNC plus German And now they Okay zero enrichment Okay in fact zero zero everything Get rid of everything be.
-
-I'm sorry Nema Yes P5+1 the five of the UNC plus German And now they Okay zero enrichment Okay in fact zero zero everything Get rid of everything be invaded and we want regime change Basically this is what they're saying Gosh Pepe you you said that you've lost the the the the about the date of the the the when the the war between actually it wasn't the war it was the Israeli attack on Iran.
-
-that you've lost the the the the about the date of the the the when the the war between actually it wasn't the war it was the Israeli attack on Iran started on on June 13 on Friday They started this All right It started on a Friday Is that because my It was two days before Sunday that they were going to talk in Yeah In Oman if I'm not mistaken between the United States in Oman You're right Nema.
-
-my It was two days before Sunday that they were going to talk in Yeah In Oman if I'm not mistaken between the United States in Oman You're right Nema Exactly So but I lost track because No you go crazy in our case Yeah It's all I I totally understand that Since then they have received 14 weapon shipments from the United States and Germany to just sustain sustain certainly interceptors we are we.
-
-that Since then they have received 14 weapon shipments from the United States and Germany to just sustain sustain certainly interceptors we are we we don't know what's inside of but okay if we want to bet interceptors because they are actually running from out of interceptor we can we can see that they are not only they are intercepting much less but they are very very careful with how many.
-
-running from out of interceptor we can we can see that they are not only they are intercepting much less but they are very very careful with how many intercept chapters they're going to launch because they know that it's dwindling and it's part of the Iranian strategy once again And did the Iranians lose anything important so far On the contrary they got rid of all their older missiles And what.
-
-the Iranian strategy once again And did the Iranians lose anything important so far On the contrary they got rid of all their older missiles And what were the older missiles doing Depleting the interceptor uh fleet Let's put it this way Brilliant Straight to the point Very simple Obviously nobody saw about it the Israelis and the Americans and both proves once again that it works Simple.
-
-Straight to the point Very simple Obviously nobody saw about it the Israelis and the Americans and both proves once again that it works Simple strategies do work So wait until Iran starts to sending uh fles of their latest editions you know the Hajikasam Fatu you name it Wow But they are guarding this for the second stage which certainly is the calculations that they have that the United States.
-
-Fatu you name it Wow But they are guarding this for the second stage which certainly is the calculations that they have that the United States sooner or later would enter the war Just like Russia in many aspects it's still saving the best that they have for the possibility later on of NATO and the United States having ideas about Russia So there are similarities and this is something that they.
-
-have for the possibility later on of NATO and the United States having ideas about Russia So there are similarities and this is something that they can discuss at the highest level strategic level ministry of defense level and all that Look we're fighting more or less the same war Yes it is the same war It's the same forever war in two different theaters uh with the same backers on the other side.
-
-more or less the same war Yes it is the same war It's the same forever war in two different theaters uh with the same backers on the other side and with the same objectives And the objective number one is to plunder the natural wealths of both Russia and Iran and to prevent by all means necessary Eurasia integration with both of them with China especially and everybody in between and around them.
-
-and Iran and to prevent by all means necessary Eurasia integration with both of them with China especially and everybody in between and around them It's as simple as that and is as complex as that So nothing is um by accident in this progression If we look at the progression since uh Maidan to Ukraine uh to the SMO to the okay how the SMO is going to be resolved to the negotiations on the Russian.
-
-we look at the progression since uh Maidan to Ukraine uh to the SMO to the okay how the SMO is going to be resolved to the negotiations on the Russian front negotiations on the Iranian front the state that we are now we are on the brink of the US entering another forever war everything makes sense it's a progression absolutely our friend Sergey Glazia have uh he he gave the short version of we.
-
-entering another forever war everything makes sense it's a progression absolutely our friend Sergey Glazia have uh he he gave the short version of we are discussing now and he said and level three was u Ukraine so it didn't work so they are on level four level four is go against Iran and level five will be against China we are on level we are entering level four now absolutely and they are.
-
-level four level four is go against Iran and level five will be against China we are on level we are entering level four now absolutely and they are desperate because there's nothing they can do in terms of level three they're going to start a nuclear war against Russia they will lose Do they have what it takes to attack Russia No they don't in every aspect Are they going to accept that they are.
-
-war against Russia they will lose Do they have what it takes to attack Russia No they don't in every aspect Are they going to accept that they are have been strategically defeated by Russia No they won't Will that change anything No it won't So okay you change the subject which is exactly where we are now They changed the subject Okay regime change in Iran Let's see if it works No it won't work.
-
-you change the subject which is exactly where we are now They changed the subject Okay regime change in Iran Let's see if it works No it won't work So they'll be even more desperate after that What are what they're going to do False flag in Taiwan So you know when you put this all when you follow the process you put this all together you see the level of desperation Nema of these people because.
-
-So you know when you put this all when you follow the process you put this all together you see the level of desperation Nema of these people because usually when we have a situation like this in the world okay the solution is a war to reset the system is what happened from 39 to 45 Now if you launch a war you will reset the system but against you And that's what makes them even more abysmally.
-
-system is what happened from 39 to 45 Now if you launch a war you will reset the system but against you And that's what makes them even more abysmally desperate There's no other way that the war will work in their favor Ukraine proved that and something that is unimaginable for several generations Israel sold the miss to everybody that they were invincible Bye-bye Not anymore Your miss is.
-
-something that is unimaginable for several generations Israel sold the miss to everybody that they were invincible Bye-bye Not anymore Your miss is shattered And they won't be able to live with that And uh in the mid to long term they will vote with their feet They will go back to Eastern Europe where they came from because none of these people are Semites But this is a long process It's starting.
-
-their feet They will go back to Eastern Europe where they came from because none of these people are Semites But this is a long process It's starting now So it's fascinating how the angel of history to get one of my favorite images of all time by Walter Benjamin uh the angel of history is looking back you know over his shoulder to the past but he cannot move into the future because he's.
-
-time by Walter Benjamin uh the angel of history is looking back you know over his shoulder to the past but he cannot move into the future because he's encumbered by all the horrors of the past in front of him but sometimes you know let's say he looks into the he turns his head again he starts looking at the future again I said oh there is a glimmer of light over there so even if I am in shackles.
-
-into the he turns his head again he starts looking at the future again I said oh there is a glimmer of light over there so even if I am in shackles here I can maybe you know have one that uh we may be at this point now a a angel of history correction of all the horrors unleashed by that construct in West Asia So that of of course and this involves unimaginable suffering and horrors but you know.
-
-of all the horrors unleashed by that construct in West Asia So that of of course and this involves unimaginable suffering and horrors but you know always you have to pay history is not free for anybody You have to pay and even the winners or even the pe the the people's culture civilizations who resurrect they have to pay a horrible price for it Uh in the case of Russia they had to pay uh the.
-
-the pe the the people's culture civilizations who resurrect they have to pay a horrible price for it Uh in the case of Russia they had to pay uh the '90s their purge and their valley of tears for Russia was the ' 90s They started to resurrect in the 2000s and look where they are now The first part of Buting's speech in St Petersburg I'm sure many of you have seen was detailing the success of the.
-
-2000s and look where they are now The first part of Buting's speech in St Petersburg I'm sure many of you have seen was detailing the success of the Russian economy the fourth largest economy in the world by PPP now even being the most sanctioned nation state probably in history So there are always ways of uh you know Phoenix rising again So okay All that to say in a somewhat convoluted way.
-
-nation state probably in history So there are always ways of uh you know Phoenix rising again So okay All that to say in a somewhat convoluted way forgive me all of you that maybe this could be the beginning for a resurrection of Palestine later on because if Zion if Zionism machine is shattered they will naturally dissolve and that thing will dissolve and they will go back to Poland Ukraine even.
-
-because if Zion if Zionism machine is shattered they will naturally dissolve and that thing will dissolve and they will go back to Poland Ukraine even Russia Yeah Eastern Europe in general Well and that's it And the land will return to their rightful owners Here is Pepe Here is what Donald Trump said Yes Foreign Minister this afternoon said if the US is serious about negotiations that you would.
-
-owners Here is Pepe Here is what Donald Trump said Yes Foreign Minister this afternoon said if the US is serious about negotiations that you would call up Israel and request that they stop their air strikes Will you make that request Well I think it's very hard to make that request right now If somebody's winning it's a little bit harder to do than if somebody's losing But we're ready willing and.
-
-very hard to make that request right now If somebody's winning it's a little bit harder to do than if somebody's losing But we're ready willing and able And we've been speaking to Iran and we'll see what happens Yeah He feels that he's winning Pepe I Nema they are not they're not giving him the right information Simple as that It's obvious It's he doesn't know anything that's going on over there.
-
-I Nema they are not they're not giving him the right information Simple as that It's obvious It's he doesn't know anything that's going on over there obviously and he doesn't read Once again we we already discussed that many times A president that doesn't read and works by uh TV uh talking points and sound bites Of course he's a hostage It was a long time ago he said "We're going to go and.
-
-that doesn't read and works by uh TV uh talking points and sound bites Of course he's a hostage It was a long time ago he said "We're going to go and destroy Houthies destroy Yemenes. " And he capitulated and we're going to go We're not going to fight I don't know how he how in the world he's thinking that the situation with Iran would be different for the United States while they know they can if.
-
-I don't know how he how in the world he's thinking that the situation with Iran would be different for the United States while they know they can if to be honest they can destroy infrastructures all of these locations but after all they're not going to be able to defeat Iran on of course not Yeah But there's nobody uh capable of telling him that uh around him in his circle of power and much less.
-
-to be able to defeat Iran on of course not Yeah But there's nobody uh capable of telling him that uh around him in his circle of power and much less uh in the industrial military complex Uh of course our friends independent analysts with uh their experience inside the deep state They could explain this for him in five minutes Ray McGovern could meet uh Trump and tell him five minutes look the.
-
-experience inside the deep state They could explain this for him in five minutes Ray McGovern could meet uh Trump and tell him five minutes look the whole thing is absurd But would he listen Of course not Even if that happened The United States has brought the their fighter jet to Saudi Arabia Do you believe if they wanted to attack Iran they would use Saudi Arabia Because I would say that that.
-
-brought the their fighter jet to Saudi Arabia Do you believe if they wanted to attack Iran they would use Saudi Arabia Because I would say that that would be the end of Saudi Arabia That would be the end of Saudi family Well NBS is losing sleep on all that Obviously he knows NBS is not a fool He may be a gangster but he's not a fool Um yeah we we we don't know how the let's say the background.
-
-on all that Obviously he knows NBS is not a fool He may be a gangster but he's not a fool Um yeah we we we don't know how the let's say the background infrastructure to help an American attack on Iran what they would use anything that they use will be a legitimate target for Iran And this has been explicitly outlined by everybody that is in power in Tehran over and over again And obviously the.
-
-be a legitimate target for Iran And this has been explicitly outlined by everybody that is in power in Tehran over and over again And obviously the GCC they know of course and they have of course and they have diplomatic uh dialogue all of them Iran is talking Saudi Arabia Iran is talking to Qatar with UAE Everybody knows that and obviously they are terrified because it will be a unilateral.
-
-Iran is talking Saudi Arabia Iran is talking to Qatar with UAE Everybody knows that and obviously they are terrified because it will be a unilateral decision It will be not a Tel Aiv decision will be a Washington decision So it's the empire that will okay which vessels I'm going to use for this operation And the vessels caught in the net they cannot say bye-bye you know In the case of Iran I.
-
-will okay which vessels I'm going to use for this operation And the vessels caught in the net they cannot say bye-bye you know In the case of Iran I remember when the war in Ukraine started how cautious Russia was even is today considering the war in Ukraine I see the same sort of attitude Pepe in Iran I talk with Iranians They're not going totally out against Israel because they know they're.
-
-in Ukraine I see the same sort of attitude Pepe in Iran I talk with Iranians They're not going totally out against Israel because they know they're waiting for something bigger than Israel They wanted the United States to come and then show what they can do with with Israel or even with the Arab states And I don't know if in the United States these people the same people who were somehow cheering.
-
-can do with with Israel or even with the Arab states And I don't know if in the United States these people the same people who were somehow cheering how how helping the case of Ukraine for more than three years in the conflict which literally destroyed Ukraine They're arguing that if we we go against Iran if we attack Iran that would change the game That would be devastating We're going to.
-
-destroyed Ukraine They're arguing that if we we go against Iran if we attack Iran that would change the game That would be devastating We're going to destroy Iranian nuclear facilities and all of that I we know these sort of rhetorics They're they they want to make the case for the administration to go after the plan to attack Iran They don't care about the outcome They don't care about what's.
-
-they want to make the case for the administration to go after the plan to attack Iran They don't care about the outcome They don't care about what's going on in the aftermath of that attack But that would be the end of Donald Trump and his administration in my opinion because look at what's going on in the United States with MAGA Look at what's going on with Tucker Carlson It's not just about.
-
-in my opinion because look at what's going on in the United States with MAGA Look at what's going on with Tucker Carlson It's not just about Taco Carson Matt Gates Somehow they tried to convince or somehow put pressure on Tulsi Gabbard She backed down in her recent tweet on X But after all you cannot change the base You cannot change the mindset of those people who voted for you who wanted some.
-
-down in her recent tweet on X But after all you cannot change the base You cannot change the mindset of those people who voted for you who wanted some sort of change These are big things that are happening in the in my opinion in the mind of Donald Trump himself before going to Iran It's not just about Iran It's about the future of the United States Absolutely Um well once again he's caught in a.
-
-Trump himself before going to Iran It's not just about Iran It's about the future of the United States Absolutely Um well once again he's caught in a net in a very elaborated trap set up by the Zionist axis and he's expendable Nema He's another expendable US president If his presidency implodes because of a out of control stupid adventure in Iran the Zionist axis will continue and they will find.
-
-US president If his presidency implodes because of a out of control stupid adventure in Iran the Zionist axis will continue and they will find another one to implement what they always wanted from the beginning That's what is so terrifying and it's another conclusion out of the uh the Sih column It doesn't m you read the column from back to back and said these people live in a sort of delium.
-
-it's another conclusion out of the uh the Sih column It doesn't m you read the column from back to back and said these people live in a sort of delium tremens all of them Yes it was always like this and it's not going to change unless they are eliminated from the levels of power in the US government and you know this is not going to happen and if it was going to take maybe it could take decades.
-
-from the levels of power in the US government and you know this is not going to happen and if it was going to take maybe it could take decades or generations just like u those mega fanatic settlers in the West Bank There's no other way to get rid of them except I don't I don't need to spell out right otherwise they'll keep you know the virus will continue indefinitely So we are all hostages of.
-
-of them except I don't I don't need to spell out right otherwise they'll keep you know the virus will continue indefinitely So we are all hostages of this um I use it in the title of one of my columns a death cult and the death cult is not only Israel the death cult is impregnated in the tissue of the US government We all know Eisenhower alerted everybody about it We all know that JFK was.
-
-Israel the death cult is impregnated in the tissue of the US government We all know Eisenhower alerted everybody about it We all know that JFK was fighting against it and we all know what happened afterwards No Pepe Europeans United Kingdom and Germany are helping the Israel and even even United Kingdom is preparing the fighter jets to go to the region to help the United States You look at this.
-
-are helping the Israel and even even United Kingdom is preparing the fighter jets to go to the region to help the United States You look at this situation You've mentioned that before but they're literally the same people They're that fight in the Iran They're talking about the United States But when it's not just the United States Germany is in the United Kingdom is in and they're talking and.
-
-Iran They're talking about the United States But when it's not just the United States Germany is in the United Kingdom is in and they're talking and Iran has no problem with these countries and they're participating in the attack on Iran If they attack Iran they're going to be part of that attack I I literally think that China is looking at what's going on Russia is looking at what's going on and.
-
-Iran they're going to be part of that attack I I literally think that China is looking at what's going on Russia is looking at what's going on and they say "So who are you to support Who are you to come to the to fight Iran You have no problem with Iran It's all about Iran and Israel The United States wants to back Israel They can come in fight Iran What is what it has to do with Germany and the.
-
-Iran It's all about Iran and Israel The United States wants to back Israel They can come in fight Iran What is what it has to do with Germany and the United Kingdom Unless you think that the Israeli project is the is a British project they need to go Uh Germany and France are inconsequential So whatever they do nobody cares because they are inconsequential The Brits is different It's MI6 So it's.
-
-go Uh Germany and France are inconsequential So whatever they do nobody cares because they are inconsequential The Brits is different It's MI6 So it's regime change For the Brits is regime change It's the same Uh the way MI6 and the British ruling classes look at Iran is exactly the way the Zionist look at Iran Regime change We did a puppet over there and we need to make a lot of money out of re.
-
-classes look at Iran is exactly the way the Zionist look at Iran Regime change We did a puppet over there and we need to make a lot of money out of re Iran's national natural resources and of course block exactly u this association between Russia Iran and China this is what really matters ana in the European theater France and Germany they don't even qualify as a consequences nobody can their.
-
-Iran and China this is what really matters ana in the European theater France and Germany they don't even qualify as a consequences nobody can their army they cannot fight a a war in a basta inconsequential the outcome Pepe if the United States finally decides to attack Iran I would say they're not going to be able to do regime change so-called regime change they're not going to be able to defeat.
-
-decides to attack Iran I would say they're not going to be able to do regime change so-called regime change they're not going to be able to defeat Iran but the outcome would be devastating for the future and the way that don't that the United States wants to have some sort of leverage or some sort of strate strategic partnership in the Middle East That's going to be gone These Arab state would be.
-
-wants to have some sort of leverage or some sort of strate strategic partnership in the Middle East That's going to be gone These Arab state would be destroyed I would say it before it happening I would confess that they're going to do this They're going to do this Is insanity This is unbelievable what Donald Trump is playing with This is We know how capable Iran is You can you can hit Iran so.
-
-going to do this Is insanity This is unbelievable what Donald Trump is playing with This is We know how capable Iran is You can you can hit Iran so hard but they're going to fight back They're going to destroy whatever you have in that region in in the Middle East I don't know if there is anybody in the Trump administration or so that would be my question to you uh Nema Uh your conversations with.
-
-the Middle East I don't know if there is anybody in the Trump administration or so that would be my question to you uh Nema Uh your conversations with Iranians this past few days this is a national consensus If the US enters the war we will fight with everything that we end It's the end It's the end of oppositions It It's the end of anything that the West was somehow investing in in investing in.
-
-everything that we end It's the end It's the end of oppositions It It's the end of anything that the West was somehow investing in in investing in in for many years For many years these people you you see the crown the the son of Sha of Iran coming out and coordinating with Israelis and the and and Americans in terms of fighting He was asked "Do you care about the British media was asking him do.
-
-out and coordinating with Israelis and the and and Americans in terms of fighting He was asked "Do you care about the British media was asking him do you care about that Israelis are attacking civilians in Iran? " They don't want to attack civilians He actually said that He said this Wow Wow These people are totally in bed with what's going on in they want to literally they want to divide Iran in.
-
-He actually said that He said this Wow Wow These people are totally in bed with what's going on in they want to literally they want to divide Iran in oblast and they want to Kurds Turks Arabs Beluchis and all of this This is the main goal the endgame on their part in my opinion and and Iran knows this These are huge These these are smart people These are not some ordinary people talking about.
-
-on their part in my opinion and and Iran knows this These are huge These these are smart people These are not some ordinary people talking about because they they want to hear the argument on the part of the west They know what they're doing and they were preparing for this They knew that this would come to them This reminds me uh Nema one of the things that struck me last It's incredible I was.
-
-were preparing for this They knew that this would come to them This reminds me uh Nema one of the things that struck me last It's incredible I was in Iran last months when I went to Sistan Baluchistan Finally the people that I talk Sistan is more to the N more to the north sorry of of the huge province as you know and the Baluchi we were interacting with Baluches all the time They saw they see.
-
-to the N more to the north sorry of of the huge province as you know and the Baluchi we were interacting with Baluches all the time They saw they see themselves first and foremost as Iranians No they're not separatists at all Even though the province is enormous has a very peculiar history is very far away from the center No but they see themselves as Iranians and the development of Chabahar port.
-
-is enormous has a very peculiar history is very far away from the center No but they see themselves as Iranians and the development of Chabahar port it's for the good of Iran So it is this feeling of national unity you see it every in the Caspian I saw that in the Caspian as well Same thing So what you're saying is absolutely correct It's it's all over You cannot analyze Iran based on the.
-
-I saw that in the Caspian as well Same thing So what you're saying is absolutely correct It's it's all over You cannot analyze Iran based on the differences between North Iran wealthy and South Iran proletarian No it's much more complex than that Exactly Let's see what would happen But I don't see anything What's what's what's your feeling Mima Ser without polit geopolitical analysis What's your.
-
-Let's see what would happen But I don't see anything What's what's what's your feeling Mima Ser without polit geopolitical analysis What's your feeling What's your feeling My feeling is what from what I'm hearing from inside from Iran as time goes by when these attacks are continuing on Iranian people there are the unity is growing stronger among Iranian you see the all people those liberals that.
-
-when these attacks are continuing on Iranian people there are the unity is growing stronger among Iranian you see the all people those liberals that you've mentioned in the northern part of Thran coming together with the southern part of Thran with those villages in Iran all united I I can confess that Py I live in Brazil you know that and I do see the feeling when it comes to Iran the feeling.
-
-those villages in Iran all united I I can confess that Py I live in Brazil you know that and I do see the feeling when it comes to Iran the feeling that come came out of this attack on Iran unprovoked attack on Iran is is bringing something to the society that the society wasn't experiencing it since the war against Saddam Hussein there is something new happening inside the society and nobody.
-
-society that the society wasn't experiencing it since the war against Saddam Hussein there is something new happening inside the society and nobody knows they're gonna fight these these people would fight the United States to the last one to they they going to fight back and I I hope there is somebody in the United States hearing what's going on you know and seeing the reality of what's going on.
-
-going to fight back and I I hope there is somebody in the United States hearing what's going on you know and seeing the reality of what's going on not through the propaganda these people who were who who were simply receiving money to manipulate the the analysis on their part from Iran These mostly Iranians who are living outside of Iran trying to give false pictures to the administration in the.
-
-the analysis on their part from Iran These mostly Iranians who are living outside of Iran trying to give false pictures to the administration in the United States in Europe because they're receiving they're somehow they're puppets of many are being paid actually Yeah This is this is that's why I'm seeing this is totally dangerous This is dangerous I don't want to see any anything happening in.
-
-paid actually Yeah This is this is that's why I'm seeing this is totally dangerous This is dangerous I don't want to see any anything happening in that region We had a lot with Gaza with the Palestine with the case of and again they're trying to do it I don't see anything I don't see the United States winning I I see United States losing and losing big in the West Asia They're going to learn it.
-
-it I don't see anything I don't see the United States winning I I see United States losing and losing big in the West Asia They're going to learn it if they go with the attack on Iran They're going to learn it They're going to find something that has never happened before to the United States It's something big It's something big there there must be there shall be prepared they shall prepare for.
-
-never happened before to the United States It's something big It's something big there there must be there shall be prepared they shall prepare for that in in my opinion it's yeah the only thing that I can say and but I don't see the sanity in the administration I was somehow hope I I was hoping that these people like like the vice president of the United States JD Vance would be the the voice of.
-
-I was somehow hope I I was hoping that these people like like the vice president of the United States JD Vance would be the the voice of sanity he's not he's not he's is trying to he he's not doing anything Look at Tulsi Gabbard Look at we were talking about Cash Petal He who's unbelievable Unbelievable The worst thing with the Biden administration at least we know that they wouldn't let the Neta.
-
-about Cash Petal He who's unbelievable Unbelievable The worst thing with the Biden administration at least we know that they wouldn't let the Neta wanted to attack during the Biden administration They didn't let him They didn't let him to attack But Trump administration is somehow we we had a lot of hope in the in the administration Mhm It's just gone All gone Everything you said makes total.
-
-But Trump administration is somehow we we had a lot of hope in the in the administration Mhm It's just gone All gone Everything you said makes total sense compared to what what I'm hearing the echoes I'm getting from Iraq Absolutely Uh and it's very impressive that in only a matter of few days people understand the bigger picture not only the unprovoked attack by Israel per se but everything that.
-
-impressive that in only a matter of few days people understand the bigger picture not only the unprovoked attack by Israel per se but everything that that implies and it's a camouflaging it's the same old imperial story They could never digest the Islamic Revolution with all the problems of the Islamic Revolution but it's it's ingrained in them They need revenge for what they lost and now they.
-
-Islamic Revolution with all the problems of the Islamic Revolution but it's it's ingrained in them They need revenge for what they lost and now they think that they have the this small window of opportunity and as you said correctly they will regret it Yeah Thank you so much Papy for being I wish we had more apicious things to talk about but that's it that this is this is our reality Yes Yeah.
-
-it Yeah Thank you so much Papy for being I wish we had more apicious things to talk about but that's it that this is this is our reality Yes Yeah Yeah It's hitting us See you in in Brazil See you see you soon in Brazil Okay Chowo chiao Cha Byebye.
+problems of the Islamic Revolution but it's it's ingrained in them They need revenge for what they lost and now they think that they have the this small window of opportunity and as you said correctly they will regret it Yeah Thank you so much Papy for being I wish we had more apicious things to talk about but that's it that this is this is our reality Yes Yeah Yeah It's hitting us See you in in Brazil See you see you soon in Brazil Okay Chowo chiao Cha Byebye.
 
 === PY desired_output.txt ===
 Hi everybody. Today is Saturday, June 21st, 2025, and our friend Pepe Escobar is back with us. Welcome back, Pepe.

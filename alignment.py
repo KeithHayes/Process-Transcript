@@ -67,17 +67,27 @@ class AlignmentProcessor:
         return '\n\n'.join(accumulated)
     
     def merge_paragraphs(self, paragraphs: List[str]) -> str:
-        """Enhanced merging with better punctuation handling"""
+        """Enhanced merging with better punctuation and speaker handling"""
         cleaned = []
+        current_speaker = None
+        
         for para in paragraphs:
             p = para.strip()
             if not p:
                 continue
                 
+            # Detect speaker changes
+            if ':' in p.split()[0]:
+                new_speaker = p.split(':')[0]
+                if new_speaker != current_speaker:
+                    cleaned.append('')  # Add blank line between speakers
+                    current_speaker = new_speaker
+            
+            # Ensure proper punctuation
             if p[-1] not in {'.', '?', '!', '\n'}:
                 p += '.'
             
-            p = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', p)
+            p = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', p)  # Fix spacing
             cleaned.append(p)
             
         return '\n\n'.join(cleaned)

@@ -1,18 +1,8 @@
 Current status:   
 
-The valid results of test.py provide the information to correct the rest of the project files.
+Preliminary results show promise.
 
-Current output of test.py:
-
-(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python test.py
-2025-06-22 08:02:11,514 - api_test - INFO - Starting API tests...
-2025-06-22 08:02:11,514 - api_test - INFO - Testing API connection to http://0.0.0.0:5000/v1/completions
-2025-06-22 08:02:11,976 - api_test - INFO - API Success! Response: {'id': 'conv-1750604531519444224', 'object': 'text_completion', 'created': 1750604531, 'model': 'TheBloke_Mistral-7B-Instruct-v0.2-AWQ', 'choices': [{'index': 0, 'finish_reason': 'length', 'text': '\n\n```\n', 'logprobs': {'top_logprobs': [{}]}}], 'usage': {'prompt_tokens': 16, 'completion_tokens': 7, 'total_tokens': 23}}
-2025-06-22 08:02:11,976 - api_test - INFO - Proceeding to chunk processing test...
-2025-06-22 08:02:11,976 - api_test - INFO - Testing chunk processing...
-2025-06-22 08:02:15,465 - api_test - INFO - Processed chunk successfully:
-This is a test chunk of transcribed audio content, approximating 400 characters, featuring overlapping speech for simulation purposes. The application programming interface (API) should convert this text into distinct paragraphs, each complete with suitable punctuation and capitalization.
-(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ 
+Formatted_transcript.txt has content to be verified.
 
 
 
@@ -34,20 +24,30 @@ The document is split into multiple chunks with overlap making smooth transition
 processed a command line entry should show a new call has been made to the llm witth the chunk.  The sample transcript is several chunks 
 long but current output does not show that it is.
 
-Transistions are smooth because the chumking connects already formatted sections as it builds output.  
-Overlap where fresh lines are added supplies a leading edge of formated overlap so the chunk being 
-formatted can be made to ttransition correct so that the connection is later correct.
+Chunking will have to be along word boundaries because of the nature of the continuous transcript.   
 
-example.  If a chunk is 1000 characters long the second chunnk would begin at 800 characters so the 
-first 200 characters are formattted with previous content.  This overlap allows the overlap to be 
-rewritten when the second chunk overwrites the tail of the first chunk.
+Transistions are smooth because the chumking connects already formatted sections as it merges output 
+along word boundaries.
+
+Overlap at the beginning of fresh ubformatted lines from the previously formatted chunk allows the end of formatted 
+output to be rewritten as a new chunk is merged.  This makes proper formatting at chunk transitions.
+
+It also removes bad formatting near the end of a previous chunk.
+
+
+Example:  If a chunk is 1000 characters long the second chunnk would begin at 800 characters so the 
+first 200 characters are formatformatted with previous content providing formatting input.  This overlap allows the 
+overlap to be correctly rewritten so a smooth transition replaces the abrupt end.
 
 The end of the second chunk is at 1800 so the third chunk begins at 1600 to repeat the overlap 
 re-write process until a smooth translation of the entire file has been accomplished.
 
+As new chunks are added the overlap of thee previous chunk is removed.
+
 This should be a common technique to process a translation in chunks and the web should be 
 consulted as needed to ensure logic is correct.
 
-Chunking will have to be along word boundaries because of the nature of the continuous transcript.   
-
 The overlap is intended to fix problems with chunking in the middle of a sentence or paragraph.
+
+Because the overlap is removed and replaced by the start of a new chunk, paragraphs and sentences and such 
+can be properly formatted.

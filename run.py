@@ -5,13 +5,15 @@ from config import CHUNK_SIZE, CHUNK_OVERLAP
 
 def configure_logging():
     logging.basicConfig(
-        level=logging.DEBUG,  # More verbose logging
+        level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler('transcript_processor.log'),
             logging.StreamHandler()
         ]
     )
+    # Set more verbose logging for pipeline
+    logging.getLogger('pipeline').setLevel(logging.DEBUG)
 
 async def main():
     configure_logging()
