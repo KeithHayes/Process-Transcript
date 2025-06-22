@@ -20,36 +20,36 @@ Dignose the problem.
 
 Current output:
 
-(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python run.py
-2025-06-21 20:30:54,329 - pipeline - INFO - Created 220 chunks
-2025-06-21 20:30:54,329 - pipeline - INFO - Processing chunk 1/220
-2025-06-21 20:30:54,329 - pipeline - INFO - LLM API call #1
-2025-06-21 20:31:24,204 - pipeline - INFO - Processing chunk 2/220
-2025-06-21 20:31:24,204 - pipeline - INFO - LLM API call #2
-2025-06-21 20:31:45,133 - pipeline - INFO - Processing chunk 3/220
-2025-06-21 20:31:45,133 - pipeline - INFO - LLM API call #3
-2025-06-21 20:32:15,616 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:32:15,616 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:32:15,617 - pipeline - INFO - Processing chunk 4/220
-2025-06-21 20:32:15,617 - pipeline - INFO - LLM API call #4
-2025-06-21 20:32:46,617 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:32:46,617 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:32:46,618 - pipeline - INFO - Processing chunk 5/220
-2025-06-21 20:32:46,618 - pipeline - INFO - LLM API call #5
-^CTraceback (most recent call last):
-  File "/home/kdog/Desktop/temp/process transcript/run.py", line 33, in <module>
-    asyncio.run(main())
-  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
-    return loop.run_until_complete(main)
-  File "/usr/lib/python3.10/asyncio/base_events.py", line 636, in run_until_complete
-    self.run_forever()
-  File "/usr/lib/python3.10/asyncio/base_events.py", line 603, in run_forever
-    self._run_once()
-  File "/usr/lib/python3.10/asyncio/base_events.py", line 1871, in _run_once
-    event_list = self._selector.select(timeout)
-  File "/usr/lib/python3.10/selectors.py", line 469, in select
-    fd_event_list = self._selector.poll(timeout, max_ev)
-KeyboardInterrupt
+(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python run.py 
+2025-06-21 20:40:39,107 - pipeline - INFO - Created 220 chunks
+2025-06-21 20:40:39,108 - pipeline - INFO - Processing chunk 1/220
+2025-06-21 20:40:39,108 - pipeline - INFO - LLM API call #1
+2025-06-21 20:41:09,999 - pipeline - ERROR - Completion API failed: 
+2025-06-21 20:41:09,999 - pipeline - WARNING - LLM failed, applying basic formatting
+2025-06-21 20:41:10,000 - pipeline - INFO - Processing chunk 2/220
+2025-06-21 20:41:10,000 - pipeline - INFO - LLM API call #2
+2025-06-21 20:41:41,020 - pipeline - ERROR - Completion API failed: 
+2025-06-21 20:41:41,020 - pipeline - WARNING - LLM failed, applying basic formatting
+2025-06-21 20:41:41,020 - pipeline - INFO - Processing chunk 3/220
+2025-06-21 20:41:41,020 - pipeline - INFO - LLM API call #3
+2025-06-21 20:42:12,020 - pipeline - ERROR - Completion API failed: 
+2025-06-21 20:42:12,020 - pipeline - WARNING - LLM failed, applying basic formatting
+2025-06-21 20:42:12,020 - pipeline - INFO - Processing chunk 4/220
+2025-06-21 20:42:12,020 - pipeline - INFO - LLM API call #4
+2025-06-21 20:42:43,020 - pipeline - ERROR - Completion API failed: 
+2025-06-21 20:42:43,020 - pipeline - WARNING - LLM failed, applying basic formatting
+2025-06-21 20:42:43,020 - pipeline - INFO - Processing chunk 5/220
+2025-06-21 20:42:43,020 - pipeline - INFO - LLM API call #5
+2025-06-21 20:43:14,020 - pipeline - ERROR - Completion API failed: 
+2025-06-21 20:43:14,020 - pipeline - WARNING - LLM failed, applying basic formatting
+2025-06-21 20:43:14,020 - pipeline - INFO - Processing chunk 6/220
+2025-06-21 20:43:14,020 - pipeline - INFO - LLM API call #6
+2025-06-21 20:43:45,007 - pipeline - ERROR - Completion API failed: 
+2025-06-21 20:43:45,007 - pipeline - WARNING - LLM failed, applying basic formatting
+2025-06-21 20:43:45,008 - pipeline - INFO - Processing chunk 7/220
+2025-06-21 20:43:45,008 - pipeline - INFO - LLM API call #7
+
+nothing is written to the output file as the listing below shows.
 
 
 Design :
