@@ -5,8 +5,13 @@ While formatted_transcript is generated the content has not been corrected to be
 commas, and capital letters.
 
 The purpose of the LLM is to translate a raw audio transcript into an essay format that has paragraphs and gramatically correct 
-sentences. Headings where appropriate.  Paragraphs and headings are seperated by a blank lines.  Do not use connecting dashes.  
-Connecting dashescan be replaced with a comma followed by a space or a period followed by two spaces and the capital letter of 
-a new sentence as appropriate where grammar cannot make the transition with the correct connecting word.
+sentences. Headings where appropriate.  Paragraphs and headings are seperated by a blank line.  Do not use connecting dashes.  
+Connecting dashes can be replaced with a comma followed by a space or a period followed by two spaces and the capital letter of 
+a new sentence as appropriate if grammar cannot make the transition with an appropriate connecting word.
 
-Current output is not much different from the input.  That does not meet requirements.
+Current output is not much different from the input.  This does not meet requirements.  I seen no capital letters or punctation 
+marks or paragraphs.  They should all be there.
+
+Also the way this works is the document is split into multiple chunks with overlap making smooth transitions. each time a chunk is 
+processed a command line entry should show a new call has been made to the llm.  and I know my document is longer than one chunk 
+so the display 1/1 can no way be correct.

@@ -44,13 +44,13 @@ It's 11 PM in Moscow. I just arrived from St. Petersburg to be here tonight.
         
         payload = {
             "prompt": prompt,
-            "max_tokens": 2500,  # Increased for longer outputs
-            "temperature": 0.2,   # Lower for more consistent formatting
+            "max_tokens": 2500,
+            "temperature": 0.2,
             "stop": ["###", "\n\n\n"],
             "top_p": 0.9,
             "frequency_penalty": 0.2,
             "presence_penalty": 0.2,
-            "best_of": 3          # Get better quality samples
+            "best_of": 3
         }
         
         try:
@@ -69,7 +69,10 @@ It's 11 PM in Moscow. I just arrived from St. Petersburg to be here tonight.
                     result = await response.json()
                     formatted = result["choices"][0]["text"].strip()
                     return self._post_process(formatted)
-                
+        except Exception as e:
+            self.logger.error(f"LLM Error: {str(e)}")
+            return text
+
     def _post_process(self, text: str) -> str:
         """Clean up LLM output with strict formatting rules"""
         # Ensure proper heading formatting
