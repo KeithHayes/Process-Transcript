@@ -49,3 +49,7 @@ re-write process until a smooth translation of the entire file has been accompli
 
 This should be a common technique to process a translation in chunks and the web should be 
 consulted as needed to ensure logic is correct.
+
+Chunking will have to be along word boundaries because of the nature of the continuous transcript.   
+
+The overlap is intended to fix problems with chunking in the middle of a sentence or paragraph.

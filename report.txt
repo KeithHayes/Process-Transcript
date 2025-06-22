@@ -53,6 +53,11 @@ re-write process until a smooth translation of the entire file has been accompli
 This should be a common technique to process a translation in chunks and the web should be 
 consulted as needed to ensure logic is correct.
 
+Chunking will have to be along word boundaries because of the nature of the continuous transcript.   
+
+The overlap is intended to fix problems with chunking in the middle of a sentence or paragraph.
+
+
 === DOCS README ===
 Start server and load model to make api available
 This provides the model which is preloaded.
@@ -177,194 +182,142 @@ class AlignmentProcessor:
         return f"{first_sent} {remaining}".lstrip()
 
 === PY pipeline.py ===
-import re
-import logging
+# pipeline.py
 import asyncio
-import aiohttp
-import json
-from typing import List, Optional
-from alignment import AlignmentProcessor
+import logging
+import time
+from typing import List, Optional, Tuple
+from difflib import SequenceMatcher
+import re
 
-class LLMFormatter:
-    """Handles text formatting using the LLM API"""
-    
-    def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
-        self.api_url = api_url
-        self.logger = logging.getLogger(__name__)
-        self.call_count = 0
-
-    async def format_with_llm(self, text: str) -> str:
-        """Send text to LLM for proper formatting"""
-        self.call_count += 1
-        self.logger.info(f"Making LLM API call #{self.call_count}")
-        
-        prompt = f"""
-### RAW TRANSCRIPT:
-{text}
-
-### FORMATTING RULES:
-1. Organize into paragraphs with blank lines between
-2. Use proper punctuation (.,!?)
-3. Capitalize sentences and proper nouns
-4. Add section headings where appropriate
-5. Format speaker turns like:
-   SpeakerName:
-   Actual words spoken
-
-### EXAMPLE OUTPUT:
-**Introduction**
-
-Participant1:
-Welcome everyone. Today we're discussing important matters.
-
-Participant2:
-Thank you for having me. I'll begin with the market analysis.
-
-### FORMATTED VERSION:
-"""
-        
-        payload = {
-            "prompt": prompt,
-            "max_tokens": 2500,
-            "temperature": 0.2,
-            "stop": ["###", "\n\n\n"],
-            "top_p": 0.9,
-            "frequency_penalty": 0.2,
-            "presence_penalty": 0.2
-        }
-        
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    json=payload,
-                    headers={"Content-Type": "application/json"},
-                    timeout=aiohttp.ClientTimeout(total=180)
-                ) as response:
-                    
-                    if response.status != 200:
-                        error = await response.text()
-                        self.logger.error(f"API Error {response.status}: {error[:200]}")
-                        raise ValueError(f"API Error {response.status}")
-
-                    result = await response.json()
-                    formatted = result["choices"][0]["text"].strip()
-                    
-                    if not self._validate_output(formatted):
-                        raise ValueError("LLM returned invalid formatting")
-                        
-                    return self._post_process(formatted)
-                    
-        except asyncio.TimeoutError:
-            self.logger.error("LLM Timeout after 180 seconds")
-            raise
-        except Exception as e:
-            self.logger.error(f"LLM Communication Failed: {str(e)}")
-            raise
-
-    def _validate_output(self, text: str) -> bool:
-        """Check basic formatting requirements"""
-        has_paragraphs = '\n\n' in text
-        has_punctuation = any(c in text for c in '.!?')
-        has_capitals = any(w[0].isupper() for w in text.split() if w)
-        return has_paragraphs and has_punctuation and has_capitals
-
-    def _post_process(self, text: str) -> str:
-        """Final cleanup of formatted text"""
-        text = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', text)
-        text = re.sub(r'\b(uh|um)\b', '', text, flags=re.IGNORECASE)
-        text = re.sub(r'\n{3,}', '\n\n', text)
-        return text.strip()
-
+logger = logging.getLogger(__name__)
 
 class TextProcessingPipeline:
-    """Complete text processing pipeline with LLM integration"""
-    
-    def __init__(self, chunk_size: int = 1000, chunk_overlap: int = 200):
-        self.chunk_size = chunk_size
-        self.chunk_overlap = chunk_overlap
-        self.aligner = AlignmentProcessor()
-        self.formatter = LLMFormatter()
-        self.logger = logging.getLogger(__name__)
-    
-    def _chunk_text(self, text: str) -> List[str]:
-        """Improved chunking that respects both paragraphs and hard limits"""
-        # First split into paragraphs
-        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
-        
-        chunks = []
-        current_chunk = []
-        current_length = 0
-        
-        for para in paragraphs:
-            para_length = len(para)
-            
-            # If adding this paragraph would exceed chunk size (with some buffer)
-            if current_length + para_length > self.chunk_size * 1.2 and current_chunk:
-                # Join what we have so far
-                chunks.append('\n\n'.join(current_chunk))
-                # Keep last paragraph for overlap
-                current_chunk = current_chunk[-1:]
-                current_length = len(current_chunk[0]) if current_chunk else 0
-            
-            # If current paragraph is too big for a single chunk
-            if para_length > self.chunk_size:
-                # Split into sentences
-                sentences = re.split(r'(?<=[.!?])\s+', para)
-                for sent in sentences:
-                    sent_length = len(sent)
-                    if current_length + sent_length > self.chunk_size and current_chunk:
-                        chunks.append(' '.join(current_chunk))
-                        current_chunk = current_chunk[-1:] if current_chunk else []
-                        current_length = len(current_chunk[0]) if current_chunk else 0
-                    current_chunk.append(sent)
-                    current_length += sent_length
-            else:
-                current_chunk.append(para)
-                current_length += para_length
-        
-        if current_chunk:
-            chunks.append('\n\n'.join(current_chunk))
-        
-        self.logger.debug(f"Created {len(chunks)} chunks with sizes: {[len(c) for c in chunks]}")
-        return chunks
-    
+    """Enhanced pipeline with better error handling and validation."""
+
+    def __init__(self, llm, max_retries: int = 3, retry_delay: float = 1.0):
+        self.llm = llm
+        self.max_retries = max_retries
+        self.retry_delay = retry_delay
+        self.retry_backoff = 1.5  # Exponential backoff factor
+
     async def process_file(self, input_path: str, output_path: str) -> None:
+        """Process file with enhanced error handling."""
         try:
-            with open(input_path, 'r') as f:
-                text = f.read()
-            
-            text = re.sub(r'(\w)-(\w)', r'\1 \2', text)
-            text = re.sub(r'\s+', ' ', text).strip()
-            
-            chunks = self._chunk_text(text)
-            self.logger.info(f"Created {len(chunks)} chunks from input")
-            
-            formatted_paragraphs = []
-            previous_tail = ""
-            
-            for i, chunk in enumerate(chunks):
-                self.logger.info(f"Processing chunk {i+1}/{len(chunks)} (length: {len(chunk)})")
-                
-                combined = f"{previous_tail}\n\n{chunk}".strip()
-                formatted = await self.formatter.format_with_llm(combined)
-                
-                new_content = self.aligner.extract_new_content(formatted, previous_tail)
-                formatted_paragraphs.append(new_content)
-                
-                previous_tail = self.aligner.get_tail_for_context(
-                    formatted,
-                    target_length=self.chunk_overlap
-                )
-            
-            final_text = self.aligner.merge_paragraphs(formatted_paragraphs)
-            
-            with open(output_path, 'w') as f:
-                f.write(final_text)
-                
+            for attempt in range(self.max_retries + 1):
+                try:
+                    await self._process_with_retry(input_path, output_path, attempt)
+                    return
+                except ValueError as e:
+                    if "invalid formatting" in str(e) and attempt < self.max_retries:
+                        delay = self.retry_delay * (self.retry_backoff ** attempt)
+                        logger.warning(f"Attempt {attempt + 1} failed, retrying in {delay:.1f}s...")
+                        await asyncio.sleep(delay)
+                        continue
+                    raise
         except Exception as e:
-            self.logger.error(f"Processing failed: {str(e)}")
+            logger.error(f"Fatal error: {str(e)}")
             raise
+
+    async def _process_with_retry(self, input_path: str, output_path: str, attempt: int) -> None:
+        """Process file with validation checks."""
+        logger.info(f"Processing attempt {attempt + 1}")
+        
+        text = self._read_file(input_path)
+        chunks = self._create_chunks(text)
+        logger.info(f"Created {len(chunks)} chunks from input")
+        
+        results = []
+        previous_tail = ""
+        
+        for i, chunk in enumerate(chunks):
+            chunk_info = f"Processing chunk {i+1}/{len(chunks)} (length: {len(chunk)})"
+            logger.info(chunk_info)
+            
+            combined = previous_tail + chunk
+            logger.info(f"Making LLM API call #{i+1}")
+            
+            formatted = await self._safe_format_with_llm(combined)
+            
+            # Validate LLM output
+            if not self._validate_llm_output(formatted, combined):
+                logger.error("LLM returned invalid formatting")
+                raise ValueError("LLM returned invalid formatting")
+                
+            new_content = self._extract_new_content(formatted, previous_tail)
+            trimmed = self._trim_last_paragraph(new_content)
+            
+            results.append(trimmed)
+            previous_tail = self._get_context_tail(formatted)
+            
+        self._write_output(output_path, results)
+
+    async def _safe_format_with_llm(self, text: str) -> str:
+        """Format text with LLM including timeout handling."""
+        try:
+            # Add timeout to prevent hanging
+            return await asyncio.wait_for(
+                self.llm.format(text),
+                timeout=30.0  # 30 second timeout
+            )
+        except asyncio.TimeoutError:
+            logger.error("LLM call timed out")
+            raise ValueError("LLM call timed out")
+
+    def _validate_llm_output(self, output: str, input_text: str) -> bool:
+        """Validate LLM output meets requirements."""
+        if not output:
+            return False
+            
+        # Check if output contains key elements from input
+        input_keywords = set(re.findall(r'\w{5,}', input_text[:100]))  # First 100 chars
+        output_keywords = set(re.findall(r'\w{5,}', output[:200]))  # First 200 chars
+        
+        if not input_keywords.intersection(output_keywords):
+            return False
+            
+        # Check for minimum reasonable length
+        if len(output) < len(input_text) * 0.5:  # At least 50% of input length
+            return False
+            
+        return True
+
+    def _extract_new_content(self, formatted: str, context: str) -> str:
+        """Extract only new content from formatted output."""
+        if not context:
+            return formatted
+            
+        # Find where new content begins
+        matcher = SequenceMatcher(None, context.lower(), formatted.lower())
+        match = matcher.find_longest_match(0, len(context), 0, len(formatted))
+        
+        if match.size < len(context) * 0.7:  # 70% match threshold
+            return formatted
+            
+        return formatted[match.b + match.size:].lstrip()
+
+    # ... (keep your existing helper methods for file I/O, chunking, etc.)
+
+# Example usage in run.py:
+async def main():
+    from llm_integration import MyLLMClient  # Your LLM integration
+    
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    try:
+        llm = MyLLMClient()
+        pipeline = TextProcessingPipeline(llm, max_retries=3)
+        await pipeline.process_file("input.txt", "output.txt")
+    except Exception as e:
+        logger.error(f"Processing failed: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
 === PY run.py ===
 #!/usr/bin/env python3
