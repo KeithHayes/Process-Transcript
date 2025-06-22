@@ -2,36 +2,40 @@
 import asyncio
 import logging
 from pipeline import TextProcessingPipeline
-from llm_integration import MyLLMClient  # Your LLM wrapper
+from llm_integration import MyLLMClient
 
 def configure_logging():
     logging.basicConfig(
         level=logging.INFO,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
-            logging.FileHandler('processing.log'),
+            logging.FileHandler('transcript_processor.log'),
             logging.StreamHandler()
         ]
     )
 
 async def main():
     configure_logging()
-    llm = MyLLMClient()
-    
-    pipeline = TextProcessingPipeline(
-        llm=llm,
-        chunk_size=800,  # Optimal for most LLMs
-        chunk_overlap=150,
-        max_retries=3
-    )
     
     try:
+        llm = MyLLMClient(api_url="http://0.0.0.0:5000/v1/completions")
+        
+        pipeline = TextProcessingPipeline(
+            llm=llm,
+            chunk_size=800,  # Optimal size for most LLMs
+            chunk_overlap=200,  # Enough for context
+            max_retries=3
+        )
+        
         await pipeline.process_file(
             input_path="transcript.txt",
             output_path="formatted_transcript.txt"
         )
+        
+        print("Successfully processed transcript with proper formatting!")
+        
     except Exception as e:
-        logging.error(f"Failed to process file: {str(e)}")
+        logging.error(f"Fatal error: {str(e)}")
         return 1
     
     return 0

@@ -6,27 +6,22 @@ from typing import Optional
 logger = logging.getLogger(__name__)
 
 class MyLLMClient:
-    """Client for interacting with your local LLM API."""
+    """Enhanced LLM client with better error handling."""
     
     def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
         self.api_url = api_url
-        self.timeout = aiohttp.ClientTimeout(total=60)
+        self.timeout = aiohttp.ClientTimeout(total=120)  # Increased timeout
     
     async def generate(self, prompt: str) -> str:
-        """
-        Send prompt to LLM and return generated text.
-        
-        Args:
-            prompt: Text prompt to send to LLM
-            
-        Returns:
-            Generated text from LLM
-        """
+        """Generate formatted text from prompt with validation."""
         payload = {
             "prompt": prompt,
             "max_tokens": 2000,
             "temperature": 0.7,
-            "stop": ["\n\n"]
+            "stop": ["\n\n"],
+            "top_p": 0.9,
+            "frequency_penalty": 0.5,
+            "presence_penalty": 0.5
         }
         
         async with aiohttp.ClientSession(timeout=self.timeout) as session:
@@ -40,11 +35,16 @@ class MyLLMClient:
                     if response.status != 200:
                         error = await response.text()
                         logger.error(f"LLM API error: {error}")
-                        raise ValueError(f"LLM API returned {response.status}")
+                        raise ValueError(f"API returned {response.status}")
                         
                     data = await response.json()
-                    return data.get("choices", [{}])[0].get("text", "").strip()
+                    result = data.get("choices", [{}])[0].get("text", "").strip()
+                    
+                    if not result:
+                        raise ValueError("Empty response from LLM")
+                        
+                    return result
                     
             except Exception as e:
                 logger.error(f"LLM communication failed: {str(e)}")
-                raise ValueError(f"LLM communication failed: {str(e)}")
+                raise ValueError(f"LLM error: {str(e)}")

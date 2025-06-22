@@ -2,16 +2,16 @@
 import asyncio
 import logging
 import re
+from pathlib import Path
 from typing import List, Optional
 from difflib import SequenceMatcher
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 class TextProcessingPipeline:
-    """Complete text processing pipeline with formatting, chunking, and validation."""
+    """Complete text processing pipeline with proper chunking, overlap, and formatting."""
     
-    def __init__(self, llm, max_retries: int = 3, chunk_size: int = 1000, chunk_overlap: int = 200):
+    def __init__(self, llm, max_retries: int = 3, chunk_size: int = 800, chunk_overlap: int = 200):
         """
         Initialize the text processing pipeline.
         
@@ -25,43 +25,40 @@ class TextProcessingPipeline:
         self.max_retries = max_retries
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
-        self.sentence_endings = re.compile(r'(?<=[.!?])\s+')
-        self.paragraph_splitter = re.compile(r'\n\s*\n')
-        self.min_paragraph_length = 3  # sentences
-        self.context_tail_length = 200  # characters
+        self.sentence_end = re.compile(r'(?<=[.!?])\s+')
+        self.paragraph_split = re.compile(r'\n\s*\n')
+        self.min_paragraph_len = 3  # Minimum sentences per paragraph
+        self.context_tail_length = 200  # Length of context to keep between chunks
 
     async def process_file(self, input_path: str, output_path: str) -> None:
-        """
-        Process input file and write formatted output.
-        
-        Args:
-            input_path: Path to input text file
-            output_path: Path to save formatted output
-        """
+        """Process input file and write formatted output with proper overlap handling."""
         try:
             text = self._read_file(input_path)
             chunks = self._create_chunks(text)
             logger.info(f"Created {len(chunks)} chunks from input")
             
             results = []
-            previous_tail = ""
+            previous_tail = ""  # Stores the overlapping context between chunks
             
             for i, chunk in enumerate(chunks):
-                chunk_info = f"Processing chunk {i+1}/{len(chunks)} (length: {len(chunk)})"
-                logger.info(chunk_info)
+                logger.info(f"Processing chunk {i+1}/{len(chunks)} (length: {len(chunk)})")
                 
+                # Combine previous context with current chunk
                 combined = previous_tail + chunk
                 formatted = await self._format_with_llm(combined)
                 
                 if not self._validate_formatting(formatted):
                     raise ValueError("LLM returned improperly formatted text")
                 
+                # Extract only the new content (excluding the overlap)
                 new_content = self._extract_new_content(formatted, previous_tail)
                 processed = self._post_process(new_content)
                 
                 results.append(processed)
+                # Get the tail of this chunk to use as context for next chunk
                 previous_tail = self._get_context_tail(formatted)
             
+            # Combine all processed chunks into final output
             final_output = self._merge_results(results)
             self._write_output(output_path, final_output)
             logger.info(f"Successfully processed and saved to {output_path}")
@@ -84,46 +81,51 @@ class TextProcessingPipeline:
         path.write_text(content, encoding='utf-8')
 
     def _create_chunks(self, text: str) -> List[str]:
-        """Create chunks while respecting sentence boundaries."""
-        sentences = self.sentence_endings.split(text)
+        """Create chunks while respecting sentence boundaries with proper overlap."""
+        sentences = self.sentence_end.split(text)
         chunks = []
         current_chunk = []
         current_length = 0
+        overlap_buffer = []
         
         for sentence in sentences:
             sentence = sentence.strip()
             if not sentence:
                 continue
                 
-            # Capitalize first letter if needed
+            # Ensure proper capitalization
             if sentence and not sentence[0].isupper():
                 sentence = sentence[0].upper() + sentence[1:]
                 
+            # If adding this sentence would exceed chunk size (and we have content)
             if current_length + len(sentence) > self.chunk_size and current_chunk:
                 chunks.append(' '.join(current_chunk))
                 
-                # Maintain overlap for context
-                overlap = []
+                # Prepare overlap for next chunk
+                overlap_buffer = []
                 overlap_length = 0
+                # Add sentences from end until we reach overlap size
                 for s in reversed(current_chunk):
                     if overlap_length + len(s) > self.chunk_overlap:
                         break
-                    overlap.insert(0, s)
+                    overlap_buffer.insert(0, s)
                     overlap_length += len(s)
                 
-                current_chunk = overlap
+                # Start next chunk with the overlap
+                current_chunk = overlap_buffer
                 current_length = overlap_length
             
             current_chunk.append(sentence)
             current_length += len(sentence)
         
+        # Add any remaining text as the final chunk
         if current_chunk:
             chunks.append(' '.join(current_chunk))
             
         return chunks
 
     async def _format_with_llm(self, text: str) -> str:
-        """Format text with proper instructions."""
+        """Format text with strict requirements including overlap handling."""
         prompt = f"""Convert this raw transcript into properly formatted text:
         
 Requirements:
@@ -134,8 +136,9 @@ Requirements:
 5. Maintain original meaning and factual content
 6. Use double newlines between paragraphs
 7. Fix any grammatical errors
+8. Ensure smooth transitions between sections
 
-Raw Input:
+Raw Input (includes some overlap from previous section):
 {text}
 
 Formatted Output:"""
@@ -160,14 +163,14 @@ Formatted Output:"""
             return False
             
         # Check sentence structure
-        sentences = self.sentence_endings.split(text)
+        sentences = self.sentence_end.split(text)
         if not all(s and s[0].isupper() for s in sentences):
             logger.warning("Validation failed: Sentence capitalization")
             return False
             
         # Check paragraph breaks
-        paragraphs = self.paragraph_splitter.split(text)
-        if len(paragraphs) < 2 and len(sentences) > self.min_paragraph_length:
+        paragraphs = self.paragraph_split.split(text)
+        if len(paragraphs) < 2 and len(sentences) > self.min_paragraph_len:
             logger.warning("Validation failed: Missing paragraph breaks")
             return False
             
@@ -179,7 +182,7 @@ Formatted Output:"""
         return True
 
     def _extract_new_content(self, formatted: str, context: str) -> str:
-        """Extract only new content from formatted output."""
+        """Extract only new content from formatted output, excluding overlap."""
         if not context:
             return formatted
             
@@ -198,7 +201,7 @@ Formatted Output:"""
             return text
             
         # Try to find a paragraph break near the target length
-        paragraphs = self.paragraph_splitter.split(text)
+        paragraphs = self.paragraph_split.split(text)
         tail = []
         current_length = 0
         
@@ -221,7 +224,7 @@ Formatted Output:"""
         return text.strip()
 
     def _merge_results(self, chunks: List[str]) -> str:
-        """Combine processed chunks into final output."""
+        """Combine processed chunks into final output with smooth transitions."""
         merged = []
         for i, chunk in enumerate(chunks):
             if i > 0:
@@ -233,7 +236,7 @@ Formatted Output:"""
         final_text = ''.join(merged)
         
         # Final validation
-        paragraphs = self.paragraph_splitter.split(final_text)
+        paragraphs = self.paragraph_split.split(final_text)
         if len(paragraphs) < 2:
             logger.warning("Final output contains insufficient paragraphs")
         
