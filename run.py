@@ -2,6 +2,7 @@
 import logging
 import asyncio
 from pipeline import TextProcessingPipeline
+from config import CHUNK_SIZE, CHUNK_OVERLAP
 
 def configure_logging():
     logging.basicConfig(
@@ -17,8 +18,8 @@ async def main():
     configure_logging()
     try:
         pipeline = TextProcessingPipeline(
-            chunk_size=400,
-            chunk_overlap=150
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP
         )
         await pipeline.process_file(
             input_path="transcript.txt",

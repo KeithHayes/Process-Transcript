@@ -90,7 +90,13 @@ Activate the venv and then use run.py
 This project reads a long audio transcript and renders it into complete sentences and paragraphs in an essay format thatt retains faithfullness to original transcript content.
 
 === PY __init__.py ===
+# __init__.py
+CHUNK_SIZE = 400  # Optimal for most transcripts
+CHUNK_OVERLAP = 150  # Enough for smooth transitions
+API_URL = "http://0.0.0.0:5000/v1/completions"
+API_TIMEOUT = 30  # seconds
 
+__all__ = ['CHUNK_SIZE', 'CHUNK_OVERLAP', 'API_URL', 'API_TIMEOUT']
 
 === PY alignment.py ===
 from difflib import SequenceMatcher
@@ -387,6 +393,7 @@ class TextProcessingPipeline:
 import logging
 import asyncio
 from pipeline import TextProcessingPipeline
+from config import CHUNK_SIZE, CHUNK_OVERLAP
 
 def configure_logging():
     logging.basicConfig(
@@ -402,8 +409,8 @@ async def main():
     configure_logging()
     try:
         pipeline = TextProcessingPipeline(
-            chunk_size=400,
-            chunk_overlap=150
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP
         )
         await pipeline.process_file(
             input_path="transcript.txt",
