@@ -1,8 +1,7 @@
-# run.py
-import asyncio
+#!/usr/bin/env python3
 import logging
+import asyncio
 from pipeline import TextProcessingPipeline
-from llm_integration import MyLLMClient
 
 def configure_logging():
     logging.basicConfig(
@@ -18,27 +17,32 @@ async def main():
     configure_logging()
     
     try:
-        llm = MyLLMClient(api_url="http://0.0.0.0:5000/v1/completions")
-        
+        # Initialize pipeline with recommended settings
         pipeline = TextProcessingPipeline(
-            llm=llm,
-            chunk_size=800,  # Optimal size for most LLMs
-            chunk_overlap=200,  # Enough for context
-            max_retries=3
+            chunk_size=800,    # Reduced from original 1000
+            chunk_overlap=200  # Kept same ratio but for smaller chunks
         )
         
-        await pipeline.process_file(
-            input_path="transcript.txt",
-            output_path="formatted_transcript.txt"
-        )
-        
-        print("Successfully processed transcript with proper formatting!")
-        
+        max_attempts = 3
+        for attempt in range(max_attempts):
+            try:
+                await pipeline.process_file(
+                    input_path="transcript.txt",
+                    output_path="formatted_transcript.txt"
+                )
+                print("Successfully created formatted_transcript.txt")
+                break
+            except Exception as e:
+                if attempt == max_attempts - 1:
+                    logging.error(f"Failed after {max_attempts} attempts: {str(e)}")
+                    raise
+                wait_time = 2 ** attempt
+                logging.warning(f"Attempt {attempt + 1} failed, retrying in {wait_time}s...")
+                await asyncio.sleep(wait_time)
+                
     except Exception as e:
         logging.error(f"Fatal error: {str(e)}")
-        return 1
-    
-    return 0
+        raise
 
 if __name__ == "__main__":
     asyncio.run(main())

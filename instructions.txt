@@ -21,18 +21,59 @@ Dignose the problem.
 Current output:
 
 python run.py
-2025-06-21 18:51:01,831 - pipeline - INFO - Created 1 chunks from input
-2025-06-21 18:51:01,831 - pipeline - INFO - Processing chunk 1/1 (length: 7272)
-2025-06-21 18:51:01,995 - llm_integration - ERROR - LLM communication failed: Empty response from LLM
-2025-06-21 18:51:01,995 - pipeline - WARNING - Retry 1 for LLM call, waiting 1s...
-2025-06-21 18:51:03,175 - llm_integration - ERROR - LLM communication failed: Empty response from LLM
-2025-06-21 18:51:03,176 - pipeline - WARNING - Retry 2 for LLM call, waiting 2s...
-2025-06-21 18:51:05,360 - llm_integration - ERROR - LLM communication failed: Empty response from LLM
-2025-06-21 18:51:05,361 - pipeline - ERROR - LLM formatting failed after 3 attempts
-2025-06-21 18:51:05,361 - pipeline - ERROR - Processing failed: LLM error: Empty response from LLM
-2025-06-21 18:51:05,361 - root - ERROR - Fatal error: LLM error: Empty response from LLM
+2025-06-21 19:00:38,197 - pipeline - WARNING - Potential discontinuity between chunks 0 and 1
+2025-06-21 19:00:38,197 - pipeline - WARNING - Potential discontinuity between chunks 1 and 2
+2025-06-21 19:00:38,197 - pipeline - WARNING - Potential discontinuity between chunks 2 and 3
+2025-06-21 19:00:38,197 - pipeline - WARNING - Potential discontinuity between chunks 3 and 4
+2025-06-21 19:00:38,198 - pipeline - WARNING - Potential discontinuity between chunks 4 and 5
+2025-06-21 19:00:38,198 - pipeline - WARNING - Potential discontinuity between chunks 5 and 6
+2025-06-21 19:00:38,198 - pipeline - WARNING - Potential discontinuity between chunks 6 and 7
+2025-06-21 19:00:38,198 - pipeline - WARNING - Potential discontinuity between chunks 7 and 8
+2025-06-21 19:00:38,198 - pipeline - WARNING - Potential discontinuity between chunks 8 and 9
+2025-06-21 19:00:38,198 - pipeline - WARNING - Potential discontinuity between chunks 9 and 10
+2025-06-21 19:00:38,198 - pipeline - WARNING - Potential discontinuity between chunks 10 and 11
+2025-06-21 19:00:38,198 - pipeline - INFO - Created 12 chunks from input
+2025-06-21 19:00:38,198 - pipeline - INFO - Processing chunk 1/12 (length: 791)
+2025-06-21 19:00:38,198 - pipeline - INFO - Making LLM API call #1
+2025-06-21 19:00:38,359 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:38,359 - pipeline - INFO - Processing chunk 2/12 (length: 796)
+2025-06-21 19:00:38,359 - pipeline - INFO - Making LLM API call #2
+2025-06-21 19:00:38,509 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:38,509 - pipeline - INFO - Processing chunk 3/12 (length: 798)
+2025-06-21 19:00:38,509 - pipeline - INFO - Making LLM API call #3
+2025-06-21 19:00:38,660 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:38,660 - pipeline - INFO - Processing chunk 4/12 (length: 798)
+2025-06-21 19:00:38,660 - pipeline - INFO - Making LLM API call #4
+2025-06-21 19:00:38,811 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:38,812 - pipeline - INFO - Processing chunk 5/12 (length: 795)
+2025-06-21 19:00:38,812 - pipeline - INFO - Making LLM API call #5
+2025-06-21 19:00:38,962 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:38,962 - pipeline - INFO - Processing chunk 6/12 (length: 797)
+2025-06-21 19:00:38,962 - pipeline - INFO - Making LLM API call #6
+2025-06-21 19:00:39,111 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:39,111 - pipeline - INFO - Processing chunk 7/12 (length: 797)
+2025-06-21 19:00:39,111 - pipeline - INFO - Making LLM API call #7
+2025-06-21 19:00:39,261 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:39,261 - pipeline - INFO - Processing chunk 8/12 (length: 797)
+2025-06-21 19:00:39,261 - pipeline - INFO - Making LLM API call #8
+2025-06-21 19:00:39,411 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:39,411 - pipeline - INFO - Processing chunk 9/12 (length: 797)
+2025-06-21 19:00:39,411 - pipeline - INFO - Making LLM API call #9
+2025-06-21 19:00:39,563 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:39,563 - pipeline - INFO - Processing chunk 10/12 (length: 793)
+2025-06-21 19:00:39,563 - pipeline - INFO - Making LLM API call #10
+2025-06-21 19:00:39,712 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:39,713 - pipeline - INFO - Processing chunk 11/12 (length: 797)
+2025-06-21 19:00:39,713 - pipeline - INFO - Making LLM API call #11
+2025-06-21 19:00:39,862 - pipeline - WARNING - LLM returned potentially invalid formatting
+2025-06-21 19:00:39,863 - pipeline - INFO - Processing chunk 12/12 (length: 685)
+2025-06-21 19:00:39,863 - pipeline - INFO - Making LLM API call #12
+2025-06-21 19:00:40,015 - pipeline - WARNING - LLM returned potentially invalid formatting
+Successfully created formatted_transcript.txt
 (venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ 
 
+
+Currently the output file is blank.
 
 
 Design :
