@@ -1,17 +1,19 @@
 
 Current status:   
 
-While formatted_transcript is generated the content has not been corrected to be in coherent sentences that use periods, 
-commas, and capital letters.
+While formatted_transcript is generated the content is corrected to be in coherent sentences that use periods, 
+commas, and capital letters as requirementts dictate.
 
 The purpose of the LLM is to translate a raw audio transcript into an essay format that has paragraphs and gramatically correct 
-sentences. Headings where appropriate.  Paragraphs and headings are seperated by a blank line.  Do not use connecting dashes.  
+sentences. Headings where appropriate.  Paragraphs and headings are separated by a blank line.  Do not use connecting dashes.  
 Connecting dashes can be replaced with a comma followed by a space or a period followed by two spaces and the capital letter of 
 a new sentence as appropriate if grammar cannot make the transition with an appropriate connecting word.
 
-Current output is not much different from the input.  This does not meet requirements.  I seen no capital letters or punctation 
-marks or paragraphs.  They should all be there.
+Current output is not formattted.  This does not meet requirements.  I seen no capital letters or punctation 
+marks or paragraphs.  They should all be there.  A file showing sample output is 'desired_output.txt'
 
-Also the way this works is the document is split into multiple chunks with overlap making smooth transitions. each time a chunk is 
-processed a command line entry should show a new call has been made to the llm.  and I know my document is longer than one chunk 
-so the display 1/1 can no way be correct.
+The document is split into multiple chunks with overlap making smooth transitions in the output. Each time a chunk is 
+processed a command line entry should show a new call has been made to the llm witth the chunk.  The sample transcript is several chunks 
+long but current output does not show that it is.
+
+Dignose the problem.
