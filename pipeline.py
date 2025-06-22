@@ -7,7 +7,7 @@ from typing import List
 from alignment import AlignmentProcessor
 
 class LLMFormatter:
-    """Optimized formatter for Phi-3-mini's behavior"""
+    """Enhanced LLM formatter with robust error handling"""
     
     def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
         self.api_url = api_url
@@ -15,25 +15,34 @@ class LLMFormatter:
         self.call_count = 0
 
     async def format_with_llm(self, text: str) -> str:
-        """Get formatted text from Phi-3-mini with proper prompting"""
+        """Get properly formatted text with fallback processing"""
         self.call_count += 1
         self.logger.info(f"LLM API call #{self.call_count}")
         
-        # Phi-3-mini specific prompt structure
-        prompt = f"""<|user|>
-Please reformat this transcript with:
-1. Proper punctuation
-2. Paragraph breaks
-3. Correct capitalization
-4. Speaker formatting like "Name:"
-5. No filler words (uh, um)
+        # Try standard completion API first
+        formatted = await self._try_completion_api(text)
+        if formatted:
+            return self._post_process(formatted)
+            
+        # Fallback to basic formatting if LLM fails
+        self.logger.warning("LLM failed, applying basic formatting")
+        return self._basic_formatting(text)
 
-Transcript:
+    async def _try_completion_api(self, text: str) -> str:
+        """Attempt to get formatted text from completion API"""
+        try:
+            prompt = f"""Reformat this transcript with perfect punctuation and paragraphs:
 {text}
 
-Formatted version:<|assistant|>"""
-        
-        try:
+Rules:
+- Add proper punctuation (.,!?)
+- Use paragraph breaks
+- Capitalize sentences
+- Format speakers as "Name:"
+- Remove filler words (uh, um)
+
+Formatted version:"""
+            
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     self.api_url,
@@ -41,7 +50,7 @@ Formatted version:<|assistant|>"""
                         "prompt": prompt,
                         "max_tokens": 2000,
                         "temperature": 0.3,
-                        "stop": ["<|end|>"]
+                        "stop": ["\n\n\n"]
                     },
                     headers={"Content-Type": "application/json"},
                     timeout=aiohttp.ClientTimeout(total=30)
@@ -49,31 +58,45 @@ Formatted version:<|assistant|>"""
                     
                     if response.status != 200:
                         error = await response.text()
-                        raise ValueError(f"API Error {response.status}")
+                        self.logger.error(f"API Error {response.status}: {error[:200]}")
+                        return ""
                     
                     result = await response.json()
-                    formatted = result.get("choices", [{}])[0].get("text", "").strip()
-                    
-                    if not formatted:
-                        raise ValueError("Empty LLM response")
-                        
-                    return self._post_process(formatted)
+                    return result.get("choices", [{}])[0].get("text", "").strip()
                     
         except Exception as e:
-            self.logger.error(f"LLM Error: {str(e)}")
-            raise
+            self.logger.error(f"Completion API failed: {str(e)}")
+            return ""
+
+    def _basic_formatting(self, text: str) -> str:
+        """Apply minimum required formatting"""
+        if not text:
+            return ""
+        
+        # Capitalize first letter
+        text = text[0].upper() + text[1:] if text else text
+        
+        # Add period if missing
+        if text and text[-1] not in {'.','!','?'}:
+            text += '.'
+            
+        # Basic speaker formatting
+        text = re.sub(r'(\w+)\s*(?=:)', r'\1', text)  # "Name :" -> "Name:"
+        
+        return text
 
     def _post_process(self, text: str) -> str:
         """Final cleanup"""
         text = re.sub(r'\b(uh|um)\b', '', text, flags=re.IGNORECASE)
         text = re.sub(r'\n{3,}', '\n\n', text)
+        text = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', text)  # Fix spacing
         return text.strip()
 
 
 class TextProcessingPipeline:
-    """Reliable pipeline for Phi-3-mini"""
+    """Robust processing pipeline with guaranteed output"""
     
-    def __init__(self, chunk_size: int = 800, chunk_overlap: int = 200):
+    def __init__(self, chunk_size: int = 400, chunk_overlap: int = 150):
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
         self.aligner = AlignmentProcessor()
@@ -81,22 +104,32 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Precise word-boundary chunking"""
+        """Precise word-boundary chunking with overlap"""
         words = text.split()
         chunks = []
         current_chunk = []
         current_length = 0
         
         for word in words:
-            if current_length + len(word) + 1 > self.chunk_size and current_chunk:
+            word_length = len(word) + (1 if current_chunk else 0)  # +1 for space
+            
+            if current_length + word_length > self.chunk_size and current_chunk:
                 chunks.append(' '.join(current_chunk))
-                # Maintain overlap
-                overlap_words = int(self.chunk_overlap / 10)  # ~10 chars/word
-                current_chunk = current_chunk[-overlap_words:]
-                current_length = sum(len(w) for w in current_chunk) + len(current_chunk)
+                
+                # Calculate overlap in words
+                overlap_words = []
+                overlap_length = 0
+                for w in reversed(current_chunk):
+                    if overlap_length + len(w) > self.chunk_overlap:
+                        break
+                    overlap_words.insert(0, w)
+                    overlap_length += len(w) + 1
+                
+                current_chunk = overlap_words
+                current_length = overlap_length
             
             current_chunk.append(word)
-            current_length += len(word) + 1
+            current_length += word_length
         
         if current_chunk:
             chunks.append(' '.join(current_chunk))
@@ -110,6 +143,7 @@ class TextProcessingPipeline:
             with open(input_path) as f:
                 text = f.read()
             
+            # Basic cleaning
             text = re.sub(r'\s+', ' ', text).strip()
             chunks = self._chunk_text(text)
             
@@ -119,20 +153,28 @@ class TextProcessingPipeline:
             for i, chunk in enumerate(chunks, 1):
                 self.logger.info(f"Processing chunk {i}/{len(chunks)}")
                 
-                combined = f"{previous_tail} {chunk}" if previous_tail else chunk
+                combined = f"{previous_tail} {chunk}".strip() if previous_tail else chunk
                 formatted = await self.formatter.format_with_llm(combined)
                 
                 new_content = self.aligner.extract_new_content(formatted, previous_tail)
-                formatted_parts.append(new_content)
-                previous_tail = self.aligner.get_tail_for_context(
-                    formatted,
-                    target_length=self.chunk_overlap
-                )
+                if new_content:  # Only add if we got content
+                    formatted_parts.append(new_content)
+                    previous_tail = self.aligner.get_tail_for_context(
+                        formatted,
+                        target_length=self.chunk_overlap
+                    )
+                else:
+                    self.logger.warning(f"Chunk {i} had no new content, using original")
+                    formatted_parts.append(chunk)
+                    previous_tail = chunk[-self.chunk_overlap:] if len(chunk) > self.chunk_overlap else chunk
             
             final_text = self.aligner.merge_paragraphs(formatted_parts)
             with open(output_path, 'w') as f:
-                f.write(final_text)
+                f.write(final_text or "No content generated")  # Ensure file isn't empty
                 
         except Exception as e:
             self.logger.error(f"Processing failed: {str(e)}")
+            # Create empty file to indicate failure
+            with open(output_path, 'w') as f:
+                f.write("Processing failed. See logs for details.")
             raise

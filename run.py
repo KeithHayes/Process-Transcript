@@ -17,8 +17,8 @@ async def main():
     configure_logging()
     try:
         pipeline = TextProcessingPipeline(
-            chunk_size=800,
-            chunk_overlap=200
+            chunk_size=400,
+            chunk_overlap=150
         )
         await pipeline.process_file(
             input_path="transcript.txt",
