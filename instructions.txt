@@ -20,19 +20,20 @@ Dignose the problem.
 
 Current output:
 
-at 1000 characters a chunk there would be 8 chunks in this transcrip as seen by the size, there is inconsistency.  
-Logic and logging is wrong,
+python run.py
+2025-06-21 18:51:01,831 - pipeline - INFO - Created 1 chunks from input
+2025-06-21 18:51:01,831 - pipeline - INFO - Processing chunk 1/1 (length: 7272)
+2025-06-21 18:51:01,995 - llm_integration - ERROR - LLM communication failed: Empty response from LLM
+2025-06-21 18:51:01,995 - pipeline - WARNING - Retry 1 for LLM call, waiting 1s...
+2025-06-21 18:51:03,175 - llm_integration - ERROR - LLM communication failed: Empty response from LLM
+2025-06-21 18:51:03,176 - pipeline - WARNING - Retry 2 for LLM call, waiting 2s...
+2025-06-21 18:51:05,360 - llm_integration - ERROR - LLM communication failed: Empty response from LLM
+2025-06-21 18:51:05,361 - pipeline - ERROR - LLM formatting failed after 3 attempts
+2025-06-21 18:51:05,361 - pipeline - ERROR - Processing failed: LLM error: Empty response from LLM
+2025-06-21 18:51:05,361 - root - ERROR - Fatal error: LLM error: Empty response from LLM
+(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ 
 
-(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python run.py
-2025-06-21 17:49:08,146 - pipeline - INFO - Created 1 chunks from input
-2025-06-21 17:49:08,146 - pipeline - INFO - Processing chunk 1/1 (length: 7272)
-2025-06-21 17:49:08,146 - pipeline - INFO - Making LLM API call #1
-2025-06-21 17:52:08,649 - pipeline - ERROR - LLM Timeout after 180 seconds
-2025-06-21 17:52:08,649 - pipeline - ERROR - Processing failed: 
-2025-06-21 17:52:08,649 - root - WARNING - Attempt 1 failed, retrying in 1s...
-2025-06-21 17:52:09,651 - pipeline - INFO - Created 1 chunks from input
-2025-06-21 17:52:09,651 - pipeline - INFO - Processing chunk 1/1 (length: 7272)
-2025-06-21 17:52:09,651 - pipeline - INFO - Making LLM API call #2
+
 
 Design :
 
