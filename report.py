@@ -43,6 +43,7 @@ def create_report():
         os.path.join(base_path, 'splitters.py'),
         os.path.join(base_path, 'run.py'),
         os.path.join(base_path, 'llm_integration.py'),
+        os.path.join(base_path, 'test.py'),
     ]
 
     txt_files = [
