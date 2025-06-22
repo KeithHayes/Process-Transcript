@@ -183,27 +183,40 @@ class LLMFormatter:
         """Send text to LLM for proper formatting"""
         prompt = f"""
 ### INSTRUCTIONS:
-Rephrase this transcript into well-structured paragraphs with proper grammar, while preserving all original content. Follow these rules:
-1. Fix punctuation, capitalization, and sentence structure.
-2. Group related ideas into coherent paragraphs.
-3. Never omit, add, or alter factual content (names, dates, terms).
-4. Keep speaker labels (e.g., "Pepe Escobar:") intact.
-5. Remove filler words ("uh", "um") unless they convey meaning.
+Transform this raw transcript into a well-written essay format with these specific improvements:
+1. Break into logical paragraphs with blank lines between them
+2. Fix all grammar, punctuation and capitalization
+3. Remove filler words (uh, um) unless meaningful
+4. Keep all factual content intact
+5. Add section headings where appropriate
+6. Ensure proper sentence structure throughout
+7. Maintain original speaker labels like "Pepe Escobar:"
+
+### BAD EXAMPLE:
+hi everybody today is saturday welcome back pepe its 11 in moscow i just arrived from st petersburg
+
+### GOOD EXAMPLE:
+**Introduction**
+
+Today is Saturday. Welcome back, Pepe. 
+
+It's 11 PM in Moscow. I just arrived from St. Petersburg to be here tonight.
 
 ### INPUT TRANSCRIPT:
 {text}
 
-### FORMATTED OUTPUT:
+### PROPERLY FORMATTED OUTPUT:
 """
         
         payload = {
             "prompt": prompt,
-            "max_tokens": 2000,
-            "temperature": 0.3,
+            "max_tokens": 2500,  # Increased for longer outputs
+            "temperature": 0.2,   # Lower for more consistent formatting
             "stop": ["###", "\n\n\n"],
             "top_p": 0.9,
-            "frequency_penalty": 0.1,
-            "presence_penalty": 0.1
+            "frequency_penalty": 0.2,
+            "presence_penalty": 0.2,
+            "best_of": 3          # Get better quality samples
         }
         
         try:
@@ -211,7 +224,8 @@ Rephrase this transcript into well-structured paragraphs with proper grammar, wh
                 async with session.post(
                     self.api_url,
                     json=payload,
-                    timeout=aiohttp.ClientTimeout(total=120)
+                    headers={"Content-Type": "application/json"},
+                    timeout=aiohttp.ClientTimeout(total=180)
                 ) as response:
                     if response.status != 200:
                         error = await response.text()
@@ -221,14 +235,27 @@ Rephrase this transcript into well-structured paragraphs with proper grammar, wh
                     result = await response.json()
                     formatted = result["choices"][0]["text"].strip()
                     return self._post_process(formatted)
-        except Exception as e:
-            self.logger.error(f"LLM Error: {str(e)}")
-            return text
-
+                
     def _post_process(self, text: str) -> str:
-        """Clean up LLM output (e.g., remove extra newlines)."""
-        text = re.sub(r"\n{3,}", "\n\n", text)  # Max 2 newlines
-        text = re.sub(r"(\w)\.(\w)", r"\1. \2", text)  # Fix missing spaces after periods
+        """Clean up LLM output with strict formatting rules"""
+        # Ensure proper heading formatting
+        text = re.sub(r'(?<=\n)([A-Z][a-z]+.*?:)', r'\n**\1**', text)  # Bold speaker labels
+        
+        # Fix common punctuation issues
+        text = re.sub(r'([a-z])\.([A-Z])', r'\1. \2', text)  # Space after periods
+        text = re.sub(r'([a-z])\,([A-Z])', r'\1, \2', text)  # Space after commas
+        
+        # Remove residual filler words
+        text = re.sub(r'\b(uh|um)\b[,.]?\s*', '', text, flags=re.IGNORECASE)
+        
+        # Ensure exactly one blank line between paragraphs
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
+        # Capitalize first word after headings
+        text = re.sub(r'(^\*\*.*?\*\*)\n([a-z])', 
+                     lambda m: f"{m.group(1)}\n{m.group(2).upper()}", 
+                     text, flags=re.MULTILINE)
+        
         return text.strip()
 
 
@@ -243,18 +270,22 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """More conservative chunking approach"""
-        paras = [p.strip() for p in text.split('\n\n') if p.strip()]
+        """More intelligent chunking that respects paragraphs"""
+        paragraphs = [p.strip() for p in text.split('\n\n') if p.strip()]
         
         chunks = []
         current_chunk = []
         current_length = 0
         
-        for para in paras:
+        for para in paragraphs:
             para_length = len(para)
+            
+            # Start new chunk if this paragraph would push us over
             if current_length + para_length > self.chunk_size and current_chunk:
                 chunks.append('\n\n'.join(current_chunk))
-                current_chunk = current_chunk[-min(2, len(current_chunk)):]
+                
+                # Carry over last 2 paragraphs for context
+                current_chunk = current_chunk[-2:] if len(current_chunk) > 2 else current_chunk.copy()
                 current_length = sum(len(p) for p in current_chunk)
             
             current_chunk.append(para)
