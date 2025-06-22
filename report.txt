@@ -465,6 +465,58 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 
+=== PY llm_integration.py ===
+# llm_integration.py
+import aiohttp
+import logging
+from typing import Optional
+
+logger = logging.getLogger(__name__)
+
+class MyLLMClient:
+    """Client for interacting with your local LLM API."""
+    
+    def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
+        self.api_url = api_url
+        self.timeout = aiohttp.ClientTimeout(total=60)
+    
+    async def generate(self, prompt: str) -> str:
+        """
+        Send prompt to LLM and return generated text.
+        
+        Args:
+            prompt: Text prompt to send to LLM
+            
+        Returns:
+            Generated text from LLM
+        """
+        payload = {
+            "prompt": prompt,
+            "max_tokens": 2000,
+            "temperature": 0.7,
+            "stop": ["\n\n"]
+        }
+        
+        async with aiohttp.ClientSession(timeout=self.timeout) as session:
+            try:
+                async with session.post(
+                    self.api_url,
+                    json=payload,
+                    headers={"Content-Type": "application/json"}
+                ) as response:
+                    
+                    if response.status != 200:
+                        error = await response.text()
+                        logger.error(f"LLM API error: {error}")
+                        raise ValueError(f"LLM API returned {response.status}")
+                        
+                    data = await response.json()
+                    return data.get("choices", [{}])[0].get("text", "").strip()
+                    
+            except Exception as e:
+                logger.error(f"LLM communication failed: {str(e)}")
+                raise ValueError(f"LLM communication failed: {str(e)}")
+
 === PY formatted_transcript.txt ===
 Hi everybody Today is Saturday June 21st 2025 and our friend Pepe Escobar is back with us Welcome back Pepe Nema Always a pleasure I turned uh Russia upside down to be here with you tonight It's 11 in Moscow I just arrived from St Petersburg to be here on time so we could do this relaxed you know at least a little bit Let's let's get started Pepe with what's going on in the Middle East The situation as time goes by is getting more dangerous more fragile And it seems that the United States is doing everything just moving these fighter jets bombers close to Iran They're preparing for an attack on Iran Even CNN reported that this sort of idea of two weeks and there's somehow there it's a game of deception Of course to keep Therron confused Your take on what's going on U can I make an introduction IA before I answer your question Go ahead Because we need to talk about St Petersburg Yeah Uh it was the most important forum in Russia this year and I heard from global south businessmen in St Petersburg that for them is much more important than Davos Why Because they are doing business This morning uh the organizers in St Petersburg they announced that uh okay this is not the final count over $80 billion dollar of deals were signed in St Petersburg that's enormous by any standards and the great thing is these are global south deals this is not uh international banking system this is not black rock you know the usual suspects these are African nations uh India and Pakistan were there uh the Pakistanis they sent ministers you know uh the Gulf cooperation council Bahin was one of the guests of honor Southeast Asia Everybody from Southeast Asia was there and of course scores of African nations So and obviously Central Asia Russia China There was so just to give you an idea there was uh in the middle of uh on Wednesday there was uh Russia China business panel packed totally packed people out of the room because they couldn't get into the room businessmen from both sides local governors in Russia different oblasts and everybody uh talking business and uh uh the local go Russian government saying look the Chinese are investing in this this this this project amazing stuff you know uh there was a wonderful panel which our friend Apollo Batista he he was the star of the panel online can imagine Paulo talked online for less than 10 minutes and told the show it was a panel uh about um a possible reform of the international financial system and the Russians there was a there was a Chinese there was one Chinese as they were too uh careful they you know ah we have to go little by little one step at a time and all that and Paulo says the real thing no we have to go for broke and our window of opportunity is is you know it's quite small and the the real important reforms they have to start now which is what the Russians were saying and working for last year before the brick summit in Kazan last year because as we all know the summit is in Brazil this year everything is slowing down the Brazilian way but at least we have people like Paulo one of the founders of the MDB new development bank He knows that there's got to be a structural reform of the NDP and all that And this is something that is practically not discussed even in Russia and in China So you know these kinds of conversations only in a forum like this you you can have it We had our own panel I I was on a panel on fake news which went way uh beyond that because we were discussing um control of information artificial intelligence and the fact that now fake news is going to be digitally produced by big tech itself This is one of the key themes Uh there was for instance a very high ranking executive of a spare bank the number one Russian bank and he was giving figures about fake news not only Russia but absolutely astonishing and of course when you compare to the latest information about uh Palunteer in fact Palunteer now is inside embedded in the US federal government So we have a huge AI company okay let's say among the top high tech companies in the west now dictating policy How serious is that These people already do uh AI models for the Israelis to kill Palestinians So you know it's getting worse by the minute And of course uh uh the uh these Russians uh these Russian friends they started um an organization that the merit of this organizations is enormous It's called Global Factchecking Network uh GFCN You can find them online They have their own website Uh lots of uh people have joined including myself and we are trying to maybe um set up a blueprint about uh controlling fake news checking fake news and get this conversation going to the point that it would land on the bricks table Of course it's not going to be in Rio in a few days you know but the next brick summit next year in South Africa and then if you have this discussed by the bricks there's a strong possibility that we can have uh just an example uh the beginning of a bricks net or a bricks tube or a all around bricks alternative media sphere because we cannot simply be subjected to the big tech platforms because we know exactly where it's going with the former PayPal mafia with this very very dangerous characters Peter T and Alex Karp and the fact that they are now part of the US government it's even even more dangerous so the forum was this forum is changing Nema it's great because used to be too generalistic until next year This year there were lots of panels that were extremely practical and people discussing possible solutions Everything from geoeconomics to the IT sphere and of course the overarching theme the dark cloud over all of us is your question Iran Israel and US and what is US going to do Um the everybody was waiting for the plenary session which was yesterday right with President Putin But first great thing about the plenary session the global south was represented on stage at the plenary session we had China Indonesia Bahrain and South Africa How cool is that This is a a sample of the global south uh with the the guest of honor the president of Indonesia prao Southeast Asia which puts Putin sees as one of the two top areas of development in the near future Southeast Asia and Africa and of course Putin indirectly uh very diplomatically he answered these questions about Iran Uh it's very clear in the Russian position Iran has absolute inaliable rights to have a civilian nuclear program which is what they have at the moment Number one Number two Putin said that he received personal assurances from Trump and from Netanyahu that they are not going to bomb Busher plant because there are over 200 ultra high tech Russian technicians working at Busher So obviously we we can imagine the conversation right putting on the phone say don't touch Busher and the other two like this because they know the consequences if that happens Number three extremely important There's a lot of criticism um partially in Russia from let's say the Russian Atlanticist gang but mostly AC across the global north that Russia is not doing enough to um help Iran Putin said explicitly these people who are pedling this notion they are provocators provocati literal translation from from Russian So this means we can infer that of course they are helping discreetly.
 
