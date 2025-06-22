@@ -24,31 +24,15 @@ Dignose the problem.
 Current output:
 
 (venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ python run.py
-2025-06-21 20:04:11,837 - pipeline - INFO - Created 220 chunks
-2025-06-21 20:04:11,837 - pipeline - INFO - Processing chunk 1/220
-2025-06-21 20:04:11,837 - pipeline - INFO - LLM API call #1
-2025-06-21 20:04:42,616 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:04:42,616 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:04:42,617 - pipeline - INFO - Processing chunk 2/220
-2025-06-21 20:04:42,617 - pipeline - INFO - LLM API call #2
-2025-06-21 20:05:13,617 - pipeline - ERROR - Completion API failed: 
-2025-06-21 20:05:13,617 - pipeline - WARNING - LLM failed, applying basic formatting
-2025-06-21 20:05:13,618 - pipeline - INFO - Processing chunk 3/220
-2025-06-21 20:05:13,618 - pipeline - INFO - LLM API call #3
-^CTraceback (most recent call last):
-  File "/home/kdog/Desktop/temp/process transcript/run.py", line 33, in <module>
-    asyncio.run(main())
-  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
-    return loop.run_until_complete(main)
-  File "/usr/lib/python3.10/asyncio/base_events.py", line 636, in run_until_complete
-    self.run_forever()
-  File "/usr/lib/python3.10/asyncio/base_events.py", line 603, in run_forever
-    self._run_once()
-  File "/usr/lib/python3.10/asyncio/base_events.py", line 1871, in _run_once
-    event_list = self._selector.select(timeout)
-  File "/usr/lib/python3.10/selectors.py", line 469, in select
-    fd_event_list = self._selector.poll(timeout, max_ev)
-KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/kdog/Desktop/temp/process transcript/run.py", line 3, in <module>
+    from pipeline import TextProcessingPipeline
+  File "/home/kdog/Desktop/temp/process transcript/pipeline.py", line 19
+    def __init__(self, api_url: str = API_URL"):
+                                             ^
+SyntaxError: unterminated string literal (detected at line 19)
+(venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ 
+
 
 (venv) kdog@kdogsputer:~/Desktop/temp/process transcript$ 
 
