@@ -89,15 +89,6 @@ Activate the venv and then use run.py
 
 This project reads a long audio transcript and renders it into complete sentences and paragraphs in an essay format thatt retains faithfullness to original transcript content.
 
-=== PY __init__.py ===
-# __init__.py
-CHUNK_SIZE = 400  # Optimal for most transcripts
-CHUNK_OVERLAP = 150  # Enough for smooth transitions
-API_URL = "http://0.0.0.0:5000/v1/completions"
-API_TIMEOUT = 30  # seconds
-
-__all__ = ['CHUNK_SIZE', 'CHUNK_OVERLAP', 'API_URL', 'API_TIMEOUT']
-
 === PY alignment.py ===
 from difflib import SequenceMatcher
 import re
@@ -215,10 +206,17 @@ import aiohttp
 from typing import List
 from alignment import AlignmentProcessor
 
+from config import CHUNK_SIZE, CHUNK_OVERLAP, API_URL, API_TIMEOUT
+
+class TextProcessingPipeline:
+    def __init__(self, chunk_size: int = CHUNK_SIZE, chunk_overlap: int = CHUNK_OVERLAP):
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        # Rest of initialization...
 class LLMFormatter:
     """Enhanced LLM formatter with robust error handling"""
     
-    def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
+    def __init__(self, api_url: str = API_URL"):
         self.api_url = api_url
         self.logger = logging.getLogger(__name__)
         self.call_count = 0
@@ -262,7 +260,7 @@ Formatted version:"""
                         "stop": ["\n\n\n"]
                     },
                     headers={"Content-Type": "application/json"},
-                    timeout=aiohttp.ClientTimeout(total=30)
+                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
                 ) as response:
                     
                     if response.status != 200:
@@ -389,7 +387,6 @@ class TextProcessingPipeline:
             raise
 
 === PY run.py ===
-#!/usr/bin/env python3
 import logging
 import asyncio
 from pipeline import TextProcessingPipeline

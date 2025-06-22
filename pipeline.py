@@ -6,10 +6,17 @@ import aiohttp
 from typing import List
 from alignment import AlignmentProcessor
 
+from config import CHUNK_SIZE, CHUNK_OVERLAP, API_URL, API_TIMEOUT
+
+class TextProcessingPipeline:
+    def __init__(self, chunk_size: int = CHUNK_SIZE, chunk_overlap: int = CHUNK_OVERLAP):
+        self.chunk_size = chunk_size
+        self.chunk_overlap = chunk_overlap
+        # Rest of initialization...
 class LLMFormatter:
     """Enhanced LLM formatter with robust error handling"""
     
-    def __init__(self, api_url: str = "http://0.0.0.0:5000/v1/completions"):
+    def __init__(self, api_url: str = API_URL"):
         self.api_url = api_url
         self.logger = logging.getLogger(__name__)
         self.call_count = 0
@@ -53,7 +60,7 @@ Formatted version:"""
                         "stop": ["\n\n\n"]
                     },
                     headers={"Content-Type": "application/json"},
-                    timeout=aiohttp.ClientTimeout(total=30)
+                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
                 ) as response:
                     
                     if response.status != 200:
