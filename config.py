@@ -1,8 +1,8 @@
 # config.py
-CHUNK_SIZE = 1000  # Optimal for most transcripts
+CHUNK_SIZE = 1200  # Optimal for most transcripts
 CHUNK_OVERLAP = 200  # Enough for smooth transitions
 API_URL = "http://0.0.0.0:5000/v1/completions"
-API_TIMEOUT = 30  # seconds
+API_TIMEOUT = 60  # seconds
 MAX_TOKENS = 150  # Prevent excessive generation
 STOP_SEQUENCES = ["\n\n", "###", "##"]  # Paragraph/heading breaks
 REPETITION_PENALTY = 1.2  # Critical for Mistral models
