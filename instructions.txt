@@ -8,38 +8,64 @@ Purpose.  To identify sentences and punctuate and correct them when they are fou
 
 Algorithm design :
 
-Considering the previous chunk if any as possibly providing the start of a sentence, identify all complete sentences in the chunk. 
-When a complete sentence is identified spelling and punctuation is corrected in that sentence.  Sentences start with a capital letter and end 
-with a period or question mark.  Sentences have commas, connecting dashes will not be used.  Text that is not is in a sentence is unchanged 
-however linefeeds are removed and a space is optionally added to enforce word boundries.
+Considering the previous chunk if any as possibly providing the start of a sentence in the new chunk, identify all complete sentences in the chunk. 
+If a complete sentence is identified the spelling and punctuation is corrected for that sentence.  Sentences start with a capital letter and end 
+with a period or question mark.  Sentences have commas, connecting dashes will not be used.  Text that is not is in a sentence will be unchanged. 
+Linefeeds are removed and a space is optionally added to enforce word boundries.
 
-When a new chunk is added it overlaps the previous chunk if any, allowing the overlapped part to be rewritten because when a new chunk is 
-added to the output the overlap is overwritten.
+When a new chunk is added it overlaps the previous chunk, allowing the overlapped part to be rewritten subject to new chunk information 
+such as the new chunk completeing tthe sentence.
 
-The purpose of the LLM is to identify sentences in a raw audio transcript and gramatically them.
+The purpose of the LLM is to identify sentences in a raw audio transcript and gramatically correct them.
 
-Do not use connecting dashes. Connecting dashes can be replaced with a comma followed by a space or a period followed by two spaces and 
-the capital letter of a new sentence as appropriate if grammar cannot make the transition using an appropriate connecting word.
+Connecting dashes must be replaced with a comma followed by a space or a period followed by two spaces and 
+the capital letter of a new sentence as appropriate.
 
-The document is split into multiple chunks with overlap to accomplish the algorith across chunk boundaries.
+The document is split into multiple chunks with overlap to accomplish the sentence detections across chunk boundaries.
 
-Chunking is along word boundaries because of the nature of the continuous transcript.   
+Chunking is along word boundaries.   
 
-Transistions are smooth because chumking overlap allows corrections on the tail end of formatted output to accomidate information 
-provided by the leading edge of a new chunk.  The change being accom,plished as the new chunk is appended to the output.
+Chumking overlap allows corrections on the tail end of formatted output to accomidate information as the new chunk overlap 
+replaces the end of the previous chunk as the new chunk is appended to the output.
 
 Example:  If a chunk is 1000 characters long the second chunnk would begin at 800 characters so the 
-first 200 characters are reformatted or copied from the previous chunk.  This overlap allows a sentence to be found across a chunk boundry.
+first 200 characters are copied and possibly reformatted the previous chunk.  
 
-The end of the second chunk is at 1800 so the third chunk begins at 1600 to repeat the overlap re-write process allowing all complete 
-sentences to be identified and properly corrected.
+This overlap allows a sentence to be found across a chunk boundry.
 
-This should be a common technique to process a translation in chunks, and the web should be consulted as needed to ensure logic is correct.
+The end of the second chunk is at 1800 so the third chunk begins at 1600 to repeat the overlap re-write correction process allowing 
+all complete sentences to be identified and gramatically corrected.
+
+This should be a common technique to process a 'translation' in chunks.  The web should be consulted as needed to ensure logic is correct.
 
 Text outside of sentences is unchanged except that line breaks are removed.
 
-A single blank line will divide chunks as they are added to output, but these blank lines are invisible to the algorith and formatting 
-process.  
+A single blank line will divide chunks as they are added to the output file.  These blank lines are invisible to the algorithm and formatting 
+process as they are added post processing only to the output file.  
+
+Current output:
+
+(venv) kdog@kdogsputer:~/pythonprojects/process transcript$ python run.py 
+2025-06-25 16:49:04,755 - pipeline - INFO - Created 2 chunks
+2025-06-25 16:49:04,755 - pipeline - INFO - Processing chunk 1/2
+2025-06-25 16:49:04,755 - pipeline - INFO - LLM API call #1
+2025-06-25 16:49:13,656 - pipeline - WARNING - Chunk 1 formatting issues: ["Sentence too short at position 5: 'Outside, the'"]
+2025-06-25 16:49:13,656 - pipeline - INFO - Processing chunk 2/2
+2025-06-25 16:49:13,656 - pipeline - INFO - LLM API call #2
+2025-06-25 16:49:22,265 - pipeline - WARNING - Chunk 2 formatting issues: ["Missing ending punctuation: 'As she admired its beauty, it landed gracefully on top of'"]
+Successfully created formatted_transcript.txt
+(venv) kdog@kdogsputer:~/pythonprojects/process transcript$ 
+
+
+The task.  
+
+Complete evaluation of the existing code must be done to see what part of the desired algortithm has been implemented and to 
+determine what must be corrected.
+
+Complete files will be returned so python maintains correct indentation should there be any changes in python files.
+
+Current output in 'formatted_transcript.txt' does not match 'desired_output.txt'.  Correction is required.
+
 
 
 

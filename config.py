@@ -1,8 +1,8 @@
 # Core processing parameters
-CHUNK_SIZE = 1200  # Optimal for most transcripts
+CHUNK_SIZE = 1000  # Optimal for most transcripts
 CHUNK_OVERLAP = 200  # Enough for smooth transitions
-MIN_SENTENCE_LENGTH = 20  # Minimum words to consider complete
-MAX_FRAGMENT_LENGTH = 50  # Max chars for incomplete fragments
+MIN_SENTENCE_LENGTH = 3  # Minimum words to consider complete
+MAX_FRAGMENT_LENGTH = 100  # Max chars for incomplete fragments
 
 # API configuration
 API_URL = "http://0.0.0.0:5000/v1/completions"
