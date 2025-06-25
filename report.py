@@ -27,7 +27,7 @@ def git_save_changes(commit_message="dev code saved"):
 
 def create_report():
     # Base directory for the project
-    base_path = '/home/kdog/Desktop/temp/process transcript'
+    base_path = '/home/kdog/pythonprojects/process transcript'
 
     # Paths to include in the report
     boilerplate_files = [
@@ -36,7 +36,7 @@ def create_report():
     ]
 
     py_files = [
-        os.path.join(base_path, '__init__.py'),
+        os.path.join(base_path, 'config.py'),
         os.path.join(base_path, 'alignment.py'),
         os.path.join(base_path, 'formatters.py'),
         os.path.join(base_path, 'pipeline.py'),
@@ -48,7 +48,7 @@ def create_report():
 
     txt_files = [
         os.path.join(base_path, 'formatted_transcript.txt'),
-        os.path.join(base_path, 'desired_output.txt'),
+        #os.path.join(base_path, 'desired_output.txt'),
         os.path.join(base_path, 'transcript.txt'),
     ]
 
