@@ -39,6 +39,36 @@ class AlignmentProcessor:
             self._normalize_speakers(new_content)
         )
 
+    def get_tail_for_context(self, text: str, target_length: int = 200) -> str:
+        """Extract the tail end of text for context in next chunk processing."""
+        if not text or target_length <= 0:
+            return ""
+        
+        # Split into sentences first to maintain sentence boundaries
+        sentences = self.sentence_splitter.split(text)
+        if not sentences:
+            return ""
+        
+        # Work backwards to find enough content
+        tail = []
+        current_length = 0
+        for sentence in reversed(sentences):
+            sentence = sentence.strip()
+            if not sentence:
+                continue
+                
+            # Ensure sentence ends with punctuation
+            if sentence[-1] not in {'.', '?', '!'}:
+                sentence += '.'
+                
+            if current_length + len(sentence) > target_length and tail:
+                break
+                
+            tail.insert(0, sentence)
+            current_length += len(sentence) + 1  # +1 for space
+        
+        return ' '.join(tail)
+
     def _normalize_speakers(self, text: str) -> str:
         """Ensure consistent speaker formatting"""
         lines = []
