@@ -42,3 +42,29 @@ A single blank line will divide chunks as they are added to output, but these bl
 process.  
 
 
+
+current error :
+
+kdog@kdogsputer:~/pythonprojects/process transcript$ python run.py 
+2025-06-24 20:52:02,073 - pipeline - INFO - Created 53 chunks
+2025-06-24 20:52:02,073 - pipeline - INFO - Processing chunk 1/53
+2025-06-24 20:52:02,073 - pipeline - INFO - LLM API call #1
+2025-06-24 20:53:00,932 - pipeline - WARNING - Chunk 1 formatting issues: ["Missing ending punctuation: 'Furthermore, such aggression towards another country in the region could ignite a wider conflict involving multiple players like Russia, China, Turkey, and Syria which have their'"]
+2025-06-24 20:53:00,933 - pipeline - ERROR - Processing failed: 'AlignmentProcessor' object has no attribute 'get_tail_for_context'
+2025-06-24 20:53:00,933 - root - ERROR - Fatal error: 'AlignmentProcessor' object has no attribute 'get_tail_for_context'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process transcript/run.py", line 35, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/kdog/pythonprojects/process transcript/run.py", line 25, in main
+    await pipeline.process_file(
+  File "/home/kdog/pythonprojects/process transcript/pipeline.py", line 179, in process_file
+    previous_tail = self.aligner.get_tail_for_context(
+AttributeError: 'AlignmentProcessor' object has no attribute 'get_tail_for_context'
+kdog@kdogsputer:~/pythonprojects/process transcript$ 
+
+
+

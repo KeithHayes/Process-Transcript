@@ -1,20 +1,25 @@
 from difflib import SequenceMatcher
 import re
-from typing import Optional, Tuple, List
+from typing import Optional, Tuple, List, Dict
 
 class AlignmentProcessor:
-    """Complete text alignment processor with paragraph and sentence awareness."""
+    """Enhanced text alignment processor with strict sentence and speaker handling"""
     
     def __init__(self, min_match_ratio: float = 0.7, min_context_length: int = 50):
         self.paragraph_splitter = re.compile(r'\n\s*\n')
-        self.sentence_splitter = re.compile(r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s')
+        self.sentence_splitter = re.compile(
+            r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s+'
+        )
+        self.speaker_detector = re.compile(
+            r'^(?P<speaker>[A-Z][a-zA-Z\s]+):\s*(?P<content>.*)$'
+        )
         self.min_match_ratio = min_match_ratio
         self.min_context_length = min_context_length
-        self.min_paragraph_length = 20
-        self.default_target_length = 200
-    
+        self.min_sentence_length = 20
+        self.speaker_format = "{name}: {content}"
+
     def extract_new_content(self, combined: str, context: str) -> str:
-        """Extract only new content from combined text, preserving sentence structure."""
+        """Enhanced content extraction with sentence validation"""
         if not context or len(context) < self.min_context_length:
             return self._capitalize_first(combined)
         
@@ -29,88 +34,53 @@ class AlignmentProcessor:
             
         original_pos = len(combined) - len(clean_combined) + match.b + match.size
         new_content = combined[original_pos:].lstrip()
-        return self._repair_sentence_boundary(new_content)
-    
-    def drop_last_paragraph(self, text: str, min_paragraph_length: Optional[int] = None) -> str:
-        """Remove incomplete last paragraph if it's too short."""
-        min_len = min_paragraph_length or self.min_paragraph_length
-        paragraphs = [p for p in self.paragraph_splitter.split(text) if p.strip()]
         
-        if len(paragraphs) <= 1:
-            return text
-            
-        if len(paragraphs[-1]) < min_len:
-            return text
-            
-        return '\n\n'.join(paragraphs[:-1]).strip()
-    
-    def get_tail_for_context(self, text: str, target_length: Optional[int] = None) -> str:
-        """Get optimal tail portion of text for context, respecting paragraphs."""
-        length = target_length or self.default_target_length
-        if len(text) <= length:
-            return text
-            
-        paragraphs = [p for p in self.paragraph_splitter.split(text) if p.strip()]
-        
-        if len(paragraphs) == 1:
-            return text[-length:]
-            
-        accumulated = []
-        current_length = 0
-        
-        for para in reversed(paragraphs):
-            if current_length + len(para) > length and accumulated:
-                break
-            accumulated.insert(0, para)
-            current_length += len(para) + 2  # Account for paragraph breaks
-            
-        return '\n\n'.join(accumulated)
-    
-    def merge_paragraphs(self, paragraphs: List[str]) -> str:
-        """Enhanced merging with better punctuation and speaker handling"""
-        cleaned = []
-        current_speaker = None
-        
-        for para in paragraphs:
-            p = para.strip()
-            if not p:
+        return self._repair_sentence_boundary(
+            self._normalize_speakers(new_content)
+        )
+
+    def _normalize_speakers(self, text: str) -> str:
+        """Ensure consistent speaker formatting"""
+        lines = []
+        for line in text.split('\n'):
+            match = self.speaker_detector.match(line)
+            if match:
+                speaker = match.group('speaker').strip().title()
+                content = match.group('content').strip()
+                lines.append(self.speaker_format.format(name=speaker, content=content))
+            else:
+                lines.append(line)
+        return '\n'.join(lines)
+
+    def _repair_sentence_boundary(self, text: str) -> str:
+        """Fix broken sentences and punctuation"""
+        sentences = []
+        for sentence in self.sentence_splitter.split(text):
+            sentence = sentence.strip()
+            if not sentence:
                 continue
                 
-            # Detect speaker changes
-            if ':' in p.split()[0]:
-                new_speaker = p.split(':')[0]
-                if new_speaker != current_speaker:
-                    cleaned.append('')  # Add blank line between speakers
-                    current_speaker = new_speaker
+            # Ensure proper ending
+            if sentence[-1] not in {'.', '?', '!'}:
+                sentence += '.'
+            # Ensure proper capitalization
+            sentences.append(sentence[0].upper() + sentence[1:])
             
-            # Ensure proper punctuation
-            if p[-1] not in {'.', '?', '!', '\n'}:
-                p += '.'
-            
-            p = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', p)  # Fix spacing
-            cleaned.append(p)
-            
-        return '\n\n'.join(cleaned)
-    
+        return ' '.join(sentences)
+
     def _capitalize_first(self, text: str) -> str:
-        """Ensure proper sentence capitalization."""
+        """Capitalize first letter of text"""
         if not text:
             return text
         return text[0].upper() + text[1:] if text else text
-    
-    def _repair_sentence_boundary(self, text: str) -> str:
-        """Fix broken sentences at the boundary."""
-        if not text:
-            return text
-            
+
+    def validate_sentences(self, text: str) -> List[str]:
+        """Validate sentence completeness"""
+        errors = []
         sentences = self.sentence_splitter.split(text)
-        if len(sentences) <= 1:
-            return text.lstrip()
-            
-        first_sent = sentences[0].strip()
-        remaining = ' '.join(s.strip() for s in sentences[1:])
-        
-        if first_sent and first_sent[-1] not in {'.', '?', '!'}:
-            first_sent += '.'
-            
-        return f"{first_sent} {remaining}".lstrip()
+        for i, sentence in enumerate(sentences):
+            if len(sentence.split()) < 3:  # Too short
+                errors.append(f"Sentence too short at position {i}: '{sentence}'")
+            elif sentence[-1] not in {'.', '?', '!'}:
+                errors.append(f"Missing ending punctuation: '{sentence}'")
+        return errors
