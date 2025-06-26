@@ -57,17 +57,11 @@ python run.py in the command window is not logging any progress and status is un
 
 The task.
 
-The input and output files are now specified in directory /files.   Names are specified in config.py mage tthe adjustments in the python code.
+Evaluate existing code to see what part of the desired algortithm has been implemented and determine what must be corrected.
 
-Complete evaluation of the existing code must be done to see what part of the desired algortithm has been implemented and to 
-determine what must be corrected.
+Complete python files will shown in individual download boxes.
 
-Complete python files will be returned no snippets, complete files only in individual download boxes.
-
-Current output in 'formatted_transcript.txt' does not match 'desired_output.txt'.  Correction is required.  Verify the tail of the 
-output is rewritten correctly and that the complete input 'transcript.txt' is processed.
-
-
+Current output in 'transcript_formatted.txt' does not match 'desired_output.txt'.  dashes were added.  Correction is required.
 
 
 
