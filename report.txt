@@ -46,29 +46,10 @@ Text outside of sentences is unchanged except that line breaks are removed.
 A single blank line will divide chunks as they are added to the output file.  These blank lines are invisible to the algorithm and formatting 
 process as they are added post processing only to the output file.  
 
-Current output:
 
-python run.py 
-2025-06-25 17:15:38,370 - pipeline - INFO - Created 6 chunks
-2025-06-25 17:15:38,370 - pipeline - INFO - Processing chunk 1/6
-2025-06-25 17:15:38,371 - pipeline - INFO - LLM API call #1
-2025-06-25 17:15:47,365 - pipeline - WARNING - Chunk 1 formatting issues: ["Missing ending punctuation: 'Outside, her immaculate garden came alive under the'"]
-2025-06-25 17:15:47,365 - pipeline - INFO - Processing chunk 2/6
-2025-06-25 17:15:47,365 - pipeline - INFO - LLM API call #2
-2025-06-25 17:15:56,117 - pipeline - INFO - Processing chunk 3/6
-2025-06-25 17:15:56,117 - pipeline - INFO - LLM API call #3
-2025-06-25 17:16:05,127 - pipeline - WARNING - Chunk 3 formatting issues: ["Missing ending punctuation: 'This simple gesture evoked intense emotions within Alice, making her feel like she too'"]
-2025-06-25 17:16:05,127 - pipeline - INFO - Processing chunk 4/6
-2025-06-25 17:16:05,127 - pipeline - INFO - LLM API call #4
-2025-06-25 17:16:14,117 - pipeline - WARNING - Chunk 4 formatting issues: ["Missing ending punctuation: 'They took turns sipping from the mugs in awkward silence until finally speaking about anything but what was truly weighing'"]
-2025-06-25 17:16:14,117 - pipeline - INFO - Processing chunk 5/6
-2025-06-25 17:16:14,118 - pipeline - INFO - LLM API call #5
-2025-06-25 17:16:18,784 - pipeline - INFO - Processing chunk 6/6
-2025-06-25 17:16:18,784 - pipeline - INFO - LLM API call #6
-2025-06-25 17:16:27,781 - pipeline - WARNING - Chunk 6 formatting issues: ["Missing ending punctuation: 'With nothing but silence now filling their space, she allowed herself to gradually wind down from her reading while taking note of how quickly darkness fell upon them; marking both ends and beginnings within a single breath span between day and night activities such'"]
-2025-06-25 17:16:27,782 - pipeline - INFO - Successfully processed 6 chunks
-Successfully created formatted_transcript.txt
-(venv) kdog@kdogsputer:~/pythonprojects/process transcript$ 
+
+The formatted output is not like the desired output which preserves the original words in order.  The task is only to identify sentences.  
+The task is not to rewrite them.  The task is to find and punctuate pre-existing sentences.
 
 
 
@@ -77,10 +58,10 @@ The task.
 Complete evaluation of the existing code must be done to see what part of the desired algortithm has been implemented and to 
 determine what must be corrected.
 
-Complete files will be returned so python maintains correct indentation should there be any changes in python files.
+Complete python files will be returned no snippets.
 
 Current output in 'formatted_transcript.txt' does not match 'desired_output.txt'.  Correction is required.  Verify the tail of the 
-output is rewritten correctly and that the complete imput transcript.txt is processed.
+output is rewritten correctly and that the complete input 'transcript.txt' is processed.
 
 
 
@@ -162,24 +143,32 @@ class AlignmentProcessor:
         )
 
     def get_tail_for_context(self, text: str, target_length: int = 200) -> str:
-        """Extract the tail end of text for context in next chunk processing."""
+        """Improved version that better preserves sentence boundaries"""
         if not text or target_length <= 0:
             return ""
         
-        # Split into sentences first to maintain sentence boundaries
-        sentences = self.sentence_splitter.split(text)
-        if not sentences:
-            return ""
+        # Split into sentences first
+        sentences = []
+        current = ""
+        for char in text:
+            current += char
+            if char in {'.', '?', '!'}:
+                sentences.append(current.strip())
+                current = ""
+        
+        if current:
+            sentences.append(current.strip())
         
         # Work backwards to find enough content
         tail = []
         current_length = 0
         for sentence in reversed(sentences):
-            sentence = sentence.strip()
             if not sentence:
                 continue
                 
-            # Ensure sentence ends with punctuation
+            # Ensure proper capitalization and punctuation
+            if not sentence[0].isupper():
+                sentence = sentence[0].upper() + sentence[1:]
             if sentence[-1] not in {'.', '?', '!'}:
                 sentence += '.'
                 
@@ -187,7 +176,7 @@ class AlignmentProcessor:
                 break
                 
             tail.insert(0, sentence)
-            current_length += len(sentence) + 1  # +1 for space
+            current_length += len(sentence) + 1
         
         return ' '.join(tail)
 
@@ -235,6 +224,8 @@ class AlignmentProcessor:
                 errors.append(f"Sentence too short at position {i}: '{sentence}'")
             elif sentence[-1] not in {'.', '?', '!'}:
                 errors.append(f"Missing ending punctuation: '{sentence}'")
+            elif not sentence[0].isupper():
+                errors.append(f"Missing starting capitalization: '{sentence}'")
         return errors
 
 === PY pipeline.py ===
@@ -263,26 +254,28 @@ class LLMFormatter:
         self.call_count += 1
         self.logger.info(f"LLM API call #{self.call_count}")
         
-        prompt = f"""Reformat this transcript with STRICT rules:
+        prompt = f"""Reformat this transcript into polished, professional prose while preserving ALL original content:
+
 {text}
 
-RULES:
+STRICT RULES:
 1. COMPLETE SENTENCES ONLY (must end with .!?)
-2. PROPER SPEAKER FORMAT: "Name: content" (if speakers present)
-3. CORRECT CAPITALIZATION
-4. NO SENTENCE FRAGMENTS
-5. PROPER PUNCTUATION (replace dashes with commas or periods)
+2. PRESERVE ALL ORIGINAL DETAILS AND MEANING
+3. PROPER SPEAKER FORMAT: "Name: content" (if speakers present)
+4. CORRECT CAPITALIZATION AND PUNCTUATION
+5. REPLACE DASHES WITH COMMAS OR PERIODS AS APPROPRIATE
 6. REMOVE FILLER WORDS (uh, um)
-7. MAINTAIN ORIGINAL MEANING
-8. PRESERVE ALL ORIGINAL CONTENT
-9. ENSURE PROPER SPACING AFTER PUNCTUATION
-10. FORMAT LISTS AND DIALOGUE PROPERLY
+7. MAINTAIN COHERENT PARAGRAPH STRUCTURE
+8. ENSURE SMOOTH TRANSITIONS BETWEEN IDEAS
+9. PRESERVE ALL DESCRIPTIVE DETAILS
+10. IMPROVE FLOW WHILE KEEPING ORIGINAL MEANING
 
-Formatted version must:
-- Be grammatically correct
-- Maintain original factual content
+The output should:
+- Be grammatically perfect
+- Maintain all original content
 - Flow naturally
 - Preserve all important details
+- Have proper paragraph structure
 
 Formatted version:"""
 
@@ -353,6 +346,7 @@ Formatted version:"""
         # Fix common punctuation issues
         text = re.sub(r',\s*,', ',', text)  # Remove duplicate commas
         text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)  # Add space between words
+        text = re.sub(r'--+', ', ', text)  # Replace dashes with commas
         
         # Ensure proper paragraph breaks
         text = re.sub(r'\n{3,}', '\n\n', text)
@@ -422,42 +416,55 @@ class TextProcessingPipeline:
             with open(input_path, 'r', encoding='utf-8') as f:
                 text = f.read()
             
-            # Initial cleaning - preserve paragraph breaks but normalize other whitespace
-            text = re.sub(r'(?<!\n)\s+', ' ', text).strip()
-            chunks = self._chunk_text(text)
+            # Improved cleaning that preserves paragraph breaks
+            text = re.sub(r'(?<!\n)\s+', ' ', text)
+            text = re.sub(r'\n{3,}', '\n\n', text).strip()
             
+            chunks = self._chunk_text(text)
             formatted_parts = []
             previous_tail = ""
             
             for i, chunk in enumerate(chunks, 1):
                 self.logger.info(f"Processing chunk {i}/{len(chunks)}")
                 
-                # Combine with previous tail for context
-                combined = f"{previous_tail} {chunk}".strip() if previous_tail else chunk
+                # Combine with previous tail more intelligently
+                if previous_tail:
+                    if previous_tail[-1] in {'.', '?', '!'}:
+                        combined = f"{previous_tail} {chunk}"
+                    else:
+                        # Try to merge incomplete sentence
+                        combined = f"{previous_tail.rstrip('.!?')} {chunk.lstrip()}"
+                else:
+                    combined = chunk
+                    
                 formatted = await self.formatter.format_with_llm(combined)
                 
-                # Validate before adding
+                # More thorough validation
                 errors = self.aligner.validate_sentences(formatted)
                 if errors:
                     self.logger.warning(f"Chunk {i} formatting issues: {errors[:3]}")
-                    # Apply additional fixes for validation errors
                     formatted = self.aligner._repair_sentence_boundary(formatted)
+                    formatted = re.sub(r'--+', ', ', formatted)  # Fix dashes
 
-                # Extract new content and update tail
-                new_content = self.aligner.extract_new_content(formatted, previous_tail)
+                # Extract new content more carefully
+                new_content = self.aligner.extract_new_content(
+                    formatted, 
+                    previous_tail
+                )
                 if new_content:
                     formatted_parts.append(new_content)
                     previous_tail = self.aligner.get_tail_for_context(
                         formatted,
-                        target_length=self.chunk_overlap
+                        target_length=int(self.chunk_overlap * 1.5)  # Slightly larger overlap
                     )
                 
-            # Combine all parts with paragraph breaks
-            final_text = '\n\n'.join(formatted_parts)
-            
-            # Final cleanup pass
-            final_text = re.sub(r'\n{3,}', '\n\n', final_text)
+            # Final processing with better paragraph handling
+            final_text = '\n\n'.join(
+                p for p in formatted_parts if p.strip()
+            )
             final_text = re.sub(r'([.!?])([A-Z])', r'\1 \2', final_text)
+            final_text = re.sub(r'\s+', ' ', final_text)
+            final_text = re.sub(r'\n{3,}', '\n\n', final_text)
             
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(final_text)
@@ -672,17 +679,7 @@ if __name__ == "__main__":
         test_chunk_processing()
 
 === PY formatted_transcript.txt ===
-Alice Warren sat by a large window in the corner of her study as the late afternoon sunlight gently illuminated the wooden floor. She loved the peaceful atmosphere created by the hushed silence and the sound of turning pages. The room was filled with countless rows of books that lined every inch of the walls, providing hours of enjoyable reading. It was here where Alice sought refuge from her busy workday, consisting of meetings, presentations, and constant emails. In this serene environment, the stillness wasn't just an absence of noise; rather, it became a soothing presence, guiding her thoughts into calm reflection. Outside, her immaculate garden came alive under the.
-
-Alice sat outside in her meticulously maintained garden, admiring the small creatures that flitted amongst the wild clover. Occasionally, an orange butterfly with delicately veined wings would dance by, captivating her attention briefly. She returned to her book - an anthology filled with tales from early 20th century America - appreciative of their ability to weave mundane daily activities into compelling narratives. The aged pages were marked by years of careful handling; yet, despite their age, the words remained clear as day upon them. Each author skillfully captured time, place and character through richly detailed descriptions which Alice found truly charming.
-
-Alice read two stories by different authors. Each story was filled with vivid descriptions that brought characters' lives to life before her very eyes. She appreciated their attention to detail; even seemingly insignificant actions spoke volumes about each individual's dreams, fears, and internal struggles. In one tale, a girl stood by a river watching its currents flow towards an ominous horizon - it was mesmerizing how something so mundane could contain so many hidden depths. The narrative continued when the young lady lifted her arms upwards, allowing herself to be caressed by the cool breeze. This simple gesture evoked intense emotions within Alice, making her feel like she too.
-
-Alice's heart raced as he approached; his presence filled the room like an invisible force. She felt both terrified and exhilarated by the intensity of their connection. The silence hung heavy between them, punctuated only by their ragged breathing. Finally, unable to bear the tension any longer, she broke away from his gaze and busied herself pouring two cups of coffee from the pot that sat steaming on the table before them. As she handed him one, their fingers brushing against each other sent shockwaves through her system once more. They took turns sipping from the mugs in awkward silence until finally speaking about anything but what was truly weighing.
-
-Alice looked up as their names were called, setting down her nearly full plate. She turned towards him, offering a polite smile before following after the server who led them through the busy dining hall until they reached a quiet table tucked away near one of the towering windows overlooking the expansive grounds outside.
-
-Alice looked up as he approached, her eyes brightening slightly at his presence. She smiled politely and followed him through the bustling dining hall until they arrived at a secluded table by one of the massive windows overlooking the lush grounds outside. After setting the book down on the shelf beside her chair, Alice took a moment to savor the last sip of tea from her cup - an act of mindfulness amidst the chaos around them. With nothing but silence now filling their space, she allowed herself to gradually wind down from her reading while taking note of how quickly darkness fell upon them; marking both ends and beginnings within a single breath span between day and night activities such.
+In her peaceful study, Alice Warren enjoyed sitting by the large windows as the gentle afternoon sunlight streamed through, casting warm shadows on the wooden floors. The room was surrounded by countless bookshelves full of beloved novels; their stories providing solace amidst daily chaos. It was here where she sought refuge after busy days filled with work obligations such as meetings and emails. The tranquil ambiance offered more than just silence - it provided companionship for thoughtful reflection without interruption or distraction from external noises. Just beyond her window laid a serene garden teeming with life - vibrant red roses swaying in the slightest breeze alongside. The tranquil atmosphere offered more than mere silence; it provided solace for introspective contemplation without disruption or diversion from exterior sounds. A peaceful garden lay beyond Alice's window, brimming with life – vivid red roses swayed gently in the soft breeze amidst lush greenery dotted with buzzing insects like bees and tiny flies flitting about their business unbothered by Alice's presence. Occasionally, even a colorful butterfly would make an appearance – once, one as bright orange as a sunset adorned with delicate black veins passed leisurely through the aged glass pane catching Alice'. As dusk approached, Alice found herself engrossed in a novel set against a backdrop of rural England. Occasionally, even a colorful butterfly would make an appearance - once, one as bright orange as a sunset adorned with delicate black veins passed leisurely through the aged glass pane catching Alice's attention towards a stormy horizon. The author's simple descriptions formed a tapestry of everyday life; they were filled with emotions that revealed much about characters' hopes, fears, and inner worlds within each storyline. In one particular passage, there was a young woman standing at the edge of a river, feeling its currents carry unsp. At dusk by the river's edge stood Alice, feeling its calming currents flow around her feet. As daylight faded and stars began twinkling overhead, the once vibrant colors of nature transformed into soft shades of purple and gold. The lush garden behind her gradually blended into darkness, creating eerie yet mesmerizing silhouettes against the night sky. She took a deep breath, savoring the cool breeze that carried hints of floral perfumes from nearby gardens. Almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end. After closing the book on the anthology and feeling grateful for the tales within, Alice heard the night settle around her as darkness fell. The sound of horses' hooves and rough stones beneath their feet transported her imagination once more; yet here in her cozy study, surrounded by familiar things, she remained firmly planted amidst the pages of literature. Finishing up her tea, Alice knew it was time to tend to other tasks - journaling, dinner prep, maybe some starry-sky contemplation on the back porch. As dusk deepened, peace filled every corner of this tranquil writer's haven where words truly came alive.
 
 === PY desired_output.txt ===
 Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.

@@ -23,26 +23,28 @@ class LLMFormatter:
         self.call_count += 1
         self.logger.info(f"LLM API call #{self.call_count}")
         
-        prompt = f"""Reformat this transcript with STRICT rules:
+        prompt = f"""Reformat this transcript into polished, professional prose while preserving ALL original content:
+
 {text}
 
-RULES:
+STRICT RULES:
 1. COMPLETE SENTENCES ONLY (must end with .!?)
-2. PROPER SPEAKER FORMAT: "Name: content" (if speakers present)
-3. CORRECT CAPITALIZATION
-4. NO SENTENCE FRAGMENTS
-5. PROPER PUNCTUATION (replace dashes with commas or periods)
+2. PRESERVE ALL ORIGINAL DETAILS AND MEANING
+3. PROPER SPEAKER FORMAT: "Name: content" (if speakers present)
+4. CORRECT CAPITALIZATION AND PUNCTUATION
+5. REPLACE DASHES WITH COMMAS OR PERIODS AS APPROPRIATE
 6. REMOVE FILLER WORDS (uh, um)
-7. MAINTAIN ORIGINAL MEANING
-8. PRESERVE ALL ORIGINAL CONTENT
-9. ENSURE PROPER SPACING AFTER PUNCTUATION
-10. FORMAT LISTS AND DIALOGUE PROPERLY
+7. MAINTAIN COHERENT PARAGRAPH STRUCTURE
+8. ENSURE SMOOTH TRANSITIONS BETWEEN IDEAS
+9. PRESERVE ALL DESCRIPTIVE DETAILS
+10. IMPROVE FLOW WHILE KEEPING ORIGINAL MEANING
 
-Formatted version must:
-- Be grammatically correct
-- Maintain original factual content
+The output should:
+- Be grammatically perfect
+- Maintain all original content
 - Flow naturally
 - Preserve all important details
+- Have proper paragraph structure
 
 Formatted version:"""
 
@@ -113,6 +115,7 @@ Formatted version:"""
         # Fix common punctuation issues
         text = re.sub(r',\s*,', ',', text)  # Remove duplicate commas
         text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)  # Add space between words
+        text = re.sub(r'--+', ', ', text)  # Replace dashes with commas
         
         # Ensure proper paragraph breaks
         text = re.sub(r'\n{3,}', '\n\n', text)
@@ -182,42 +185,55 @@ class TextProcessingPipeline:
             with open(input_path, 'r', encoding='utf-8') as f:
                 text = f.read()
             
-            # Initial cleaning - preserve paragraph breaks but normalize other whitespace
-            text = re.sub(r'(?<!\n)\s+', ' ', text).strip()
-            chunks = self._chunk_text(text)
+            # Improved cleaning that preserves paragraph breaks
+            text = re.sub(r'(?<!\n)\s+', ' ', text)
+            text = re.sub(r'\n{3,}', '\n\n', text).strip()
             
+            chunks = self._chunk_text(text)
             formatted_parts = []
             previous_tail = ""
             
             for i, chunk in enumerate(chunks, 1):
                 self.logger.info(f"Processing chunk {i}/{len(chunks)}")
                 
-                # Combine with previous tail for context
-                combined = f"{previous_tail} {chunk}".strip() if previous_tail else chunk
+                # Combine with previous tail more intelligently
+                if previous_tail:
+                    if previous_tail[-1] in {'.', '?', '!'}:
+                        combined = f"{previous_tail} {chunk}"
+                    else:
+                        # Try to merge incomplete sentence
+                        combined = f"{previous_tail.rstrip('.!?')} {chunk.lstrip()}"
+                else:
+                    combined = chunk
+                    
                 formatted = await self.formatter.format_with_llm(combined)
                 
-                # Validate before adding
+                # More thorough validation
                 errors = self.aligner.validate_sentences(formatted)
                 if errors:
                     self.logger.warning(f"Chunk {i} formatting issues: {errors[:3]}")
-                    # Apply additional fixes for validation errors
                     formatted = self.aligner._repair_sentence_boundary(formatted)
+                    formatted = re.sub(r'--+', ', ', formatted)  # Fix dashes
 
-                # Extract new content and update tail
-                new_content = self.aligner.extract_new_content(formatted, previous_tail)
+                # Extract new content more carefully
+                new_content = self.aligner.extract_new_content(
+                    formatted, 
+                    previous_tail
+                )
                 if new_content:
                     formatted_parts.append(new_content)
                     previous_tail = self.aligner.get_tail_for_context(
                         formatted,
-                        target_length=self.chunk_overlap
+                        target_length=int(self.chunk_overlap * 1.5)  # Slightly larger overlap
                     )
                 
-            # Combine all parts with paragraph breaks
-            final_text = '\n\n'.join(formatted_parts)
-            
-            # Final cleanup pass
-            final_text = re.sub(r'\n{3,}', '\n\n', final_text)
+            # Final processing with better paragraph handling
+            final_text = '\n\n'.join(
+                p for p in formatted_parts if p.strip()
+            )
             final_text = re.sub(r'([.!?])([A-Z])', r'\1 \2', final_text)
+            final_text = re.sub(r'\s+', ' ', final_text)
+            final_text = re.sub(r'\n{3,}', '\n\n', final_text)
             
             with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(final_text)

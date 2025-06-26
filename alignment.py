@@ -40,24 +40,32 @@ class AlignmentProcessor:
         )
 
     def get_tail_for_context(self, text: str, target_length: int = 200) -> str:
-        """Extract the tail end of text for context in next chunk processing."""
+        """Improved version that better preserves sentence boundaries"""
         if not text or target_length <= 0:
             return ""
         
-        # Split into sentences first to maintain sentence boundaries
-        sentences = self.sentence_splitter.split(text)
-        if not sentences:
-            return ""
+        # Split into sentences first
+        sentences = []
+        current = ""
+        for char in text:
+            current += char
+            if char in {'.', '?', '!'}:
+                sentences.append(current.strip())
+                current = ""
+        
+        if current:
+            sentences.append(current.strip())
         
         # Work backwards to find enough content
         tail = []
         current_length = 0
         for sentence in reversed(sentences):
-            sentence = sentence.strip()
             if not sentence:
                 continue
                 
-            # Ensure sentence ends with punctuation
+            # Ensure proper capitalization and punctuation
+            if not sentence[0].isupper():
+                sentence = sentence[0].upper() + sentence[1:]
             if sentence[-1] not in {'.', '?', '!'}:
                 sentence += '.'
                 
@@ -65,7 +73,7 @@ class AlignmentProcessor:
                 break
                 
             tail.insert(0, sentence)
-            current_length += len(sentence) + 1  # +1 for space
+            current_length += len(sentence) + 1
         
         return ' '.join(tail)
 
@@ -113,4 +121,6 @@ class AlignmentProcessor:
                 errors.append(f"Sentence too short at position {i}: '{sentence}'")
             elif sentence[-1] not in {'.', '?', '!'}:
                 errors.append(f"Missing ending punctuation: '{sentence}'")
+            elif not sentence[0].isupper():
+                errors.append(f"Missing starting capitalization: '{sentence}'")
         return errors

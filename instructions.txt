@@ -43,29 +43,10 @@ Text outside of sentences is unchanged except that line breaks are removed.
 A single blank line will divide chunks as they are added to the output file.  These blank lines are invisible to the algorithm and formatting 
 process as they are added post processing only to the output file.  
 
-Current output:
 
-python run.py 
-2025-06-25 17:15:38,370 - pipeline - INFO - Created 6 chunks
-2025-06-25 17:15:38,370 - pipeline - INFO - Processing chunk 1/6
-2025-06-25 17:15:38,371 - pipeline - INFO - LLM API call #1
-2025-06-25 17:15:47,365 - pipeline - WARNING - Chunk 1 formatting issues: ["Missing ending punctuation: 'Outside, her immaculate garden came alive under the'"]
-2025-06-25 17:15:47,365 - pipeline - INFO - Processing chunk 2/6
-2025-06-25 17:15:47,365 - pipeline - INFO - LLM API call #2
-2025-06-25 17:15:56,117 - pipeline - INFO - Processing chunk 3/6
-2025-06-25 17:15:56,117 - pipeline - INFO - LLM API call #3
-2025-06-25 17:16:05,127 - pipeline - WARNING - Chunk 3 formatting issues: ["Missing ending punctuation: 'This simple gesture evoked intense emotions within Alice, making her feel like she too'"]
-2025-06-25 17:16:05,127 - pipeline - INFO - Processing chunk 4/6
-2025-06-25 17:16:05,127 - pipeline - INFO - LLM API call #4
-2025-06-25 17:16:14,117 - pipeline - WARNING - Chunk 4 formatting issues: ["Missing ending punctuation: 'They took turns sipping from the mugs in awkward silence until finally speaking about anything but what was truly weighing'"]
-2025-06-25 17:16:14,117 - pipeline - INFO - Processing chunk 5/6
-2025-06-25 17:16:14,118 - pipeline - INFO - LLM API call #5
-2025-06-25 17:16:18,784 - pipeline - INFO - Processing chunk 6/6
-2025-06-25 17:16:18,784 - pipeline - INFO - LLM API call #6
-2025-06-25 17:16:27,781 - pipeline - WARNING - Chunk 6 formatting issues: ["Missing ending punctuation: 'With nothing but silence now filling their space, she allowed herself to gradually wind down from her reading while taking note of how quickly darkness fell upon them; marking both ends and beginnings within a single breath span between day and night activities such'"]
-2025-06-25 17:16:27,782 - pipeline - INFO - Successfully processed 6 chunks
-Successfully created formatted_transcript.txt
-(venv) kdog@kdogsputer:~/pythonprojects/process transcript$ 
+
+The formatted output is not like the desired output which preserves the original words in order.  The task is only to identify sentences.  
+The task is not to rewrite them.  The task is to find and punctuate pre-existing sentences.
 
 
 
@@ -74,10 +55,10 @@ The task.
 Complete evaluation of the existing code must be done to see what part of the desired algortithm has been implemented and to 
 determine what must be corrected.
 
-Complete files will be returned so python maintains correct indentation should there be any changes in python files.
+Complete python files will be returned no snippets.
 
 Current output in 'formatted_transcript.txt' does not match 'desired_output.txt'.  Correction is required.  Verify the tail of the 
-output is rewritten correctly and that the complete imput transcript.txt is processed.
+output is rewritten correctly and that the complete input 'transcript.txt' is processed.
 
 
 
