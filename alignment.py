@@ -72,3 +72,4 @@ class AlignmentProcessor:
             elif not sentence[0].isupper():
                 errors.append(f"Missing starting capitalization: '{sentence}'")
         return errors
+    

@@ -30,6 +30,7 @@ RULES:
 3. Do not change or remove any words
 4. Replace connecting dashes with commas or periods
 5. Sentences must start with capital and end with .!?
+6. Do not add any new words or change word order
 
 Corrected version:"""
 
@@ -123,9 +124,16 @@ class TextProcessingPipeline:
                     target_length=self.chunk_overlap
                 )
         
-        # Combine with paragraph breaks
+        # Combine with paragraph breaks and fix any remaining formatting issues
         final_text = '\n\n'.join(p for p in formatted_parts if p.strip())
+        
+        # Post-processing to fix any remaining formatting issues
+        final_text = re.sub(r'--+', ', ', final_text)  # Replace multiple dashes with commas
+        final_text = re.sub(r'\s+([.,!?])', r'\1', final_text)  # Remove spaces before punctuation
+        final_text = re.sub(r'([.!?])([A-Z])', r'\1 \2', final_text)  # Ensure space after sentence end
+        
         with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
             f.write(final_text)
         
         self.logger.info(f"Successfully saved formatted output to {OUTPUT_FILE}")
+        
