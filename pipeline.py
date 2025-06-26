@@ -7,56 +7,33 @@ from alignment import AlignmentProcessor
 from config import (
     CHUNK_SIZE, CHUNK_OVERLAP, API_URL, API_TIMEOUT,
     MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY,
-    TEMPERATURE, TOP_P, MIN_SENTENCE_LENGTH
+    TEMPERATURE, TOP_P
 )
 
 class LLMFormatter:
-    """Enhanced LLM formatter with strict formatting rules"""
+    """LLM formatter focused only on sentence punctuation"""
     
     def __init__(self, api_url: str = API_URL):
         self.api_url = api_url
         self.logger = logging.getLogger(__name__)
         self.call_count = 0
 
-    async def format_with_llm(self, text: str) -> str:
-        """Get properly formatted text with strict rules"""
+    async def punctuate_text(self, text: str) -> str:
+        """Get properly punctuated text preserving all original words"""
         self.call_count += 1
-        self.logger.info(f"LLM API call #{self.call_count}")
-        
-        prompt = f"""Reformat this transcript into polished, professional prose while preserving ALL original content:
+        prompt = f"""Correct punctuation and capitalization in this transcript while preserving ALL original content:
 
 {text}
 
-STRICT RULES:
-1. COMPLETE SENTENCES ONLY (must end with .!?)
-2. PRESERVE ALL ORIGINAL DETAILS AND MEANING
-3. PROPER SPEAKER FORMAT: "Name: content" (if speakers present)
-4. CORRECT CAPITALIZATION AND PUNCTUATION
-5. REPLACE DASHES WITH COMMAS OR PERIODS AS APPROPRIATE
-6. REMOVE FILLER WORDS (uh, um)
-7. MAINTAIN COHERENT PARAGRAPH STRUCTURE
-8. ENSURE SMOOTH TRANSITIONS BETWEEN IDEAS
-9. PRESERVE ALL DESCRIPTIVE DETAILS
-10. IMPROVE FLOW WHILE KEEPING ORIGINAL MEANING
+RULES:
+1. ONLY add missing punctuation and capitalization
+2. PRESERVE ALL original words exactly
+3. Sentences must start with capital and end with .!?
+4. Replace connecting dashes with commas or periods
+5. Do not change word order or remove any words
 
-The output should:
-- Be grammatically perfect
-- Maintain all original content
-- Flow naturally
-- Preserve all important details
-- Have proper paragraph structure
+Corrected version:"""
 
-Formatted version:"""
-
-        formatted = await self._try_completion_api(prompt)
-        if formatted:
-            return self._post_process(formatted)
-            
-        self.logger.warning("LLM failed, applying basic formatting")
-        return self._basic_formatting(text)
-
-    async def _try_completion_api(self, prompt: str) -> str:
-        """Attempt to get formatted text from completion API"""
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -69,61 +46,29 @@ Formatted version:"""
                         "repetition_penalty": REPETITION_PENALTY,
                         "top_p": TOP_P
                     },
-                    headers={"Content-Type": "application/json"},
                     timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
                 ) as response:
                     
                     if response.status != 200:
-                        error = await response.text()
-                        self.logger.error(f"API Error {response.status}: {error[:200]}")
-                        return ""
+                        return self._basic_punctuation(text)
                     
                     result = await response.json()
                     return result.get("choices", [{}])[0].get("text", "").strip()
                     
-        except Exception as e:
-            self.logger.error(f"Completion API failed: {str(e)}")
-            return ""
+        except Exception:
+            return self._basic_punctuation(text)
 
-    def _basic_formatting(self, text: str) -> str:
-        """Apply minimum required formatting"""
+    def _basic_punctuation(self, text: str) -> str:
+        """Apply minimum required punctuation"""
         if not text:
             return ""
-        
-        # Capitalize first letter
         text = text[0].upper() + text[1:] if text else text
-        
-        # Add period if missing
         if text and text[-1] not in {'.','!','?'}:
             text += '.'
-            
-        # Basic speaker formatting
-        text = re.sub(r'(\w+)\s*(?=:)', r'\1', text)  # "Name :" -> "Name:"
-        
         return text
 
-    def _post_process(self, text: str) -> str:
-        """Final cleanup with enhanced rules"""
-        # Remove filler words
-        text = re.sub(r'\b(uh|um|ah|er)\b', '', text, flags=re.IGNORECASE)
-        
-        # Fix spacing and punctuation
-        text = re.sub(r'\s+', ' ', text)  # Normalize spaces
-        text = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', text)  # Add missing spaces
-        text = re.sub(r'\s([.,!?])', r'\1', text)  # Remove spaces before punctuation
-        
-        # Fix common punctuation issues
-        text = re.sub(r',\s*,', ',', text)  # Remove duplicate commas
-        text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)  # Add space between words
-        text = re.sub(r'--+', ', ', text)  # Replace dashes with commas
-        
-        # Ensure proper paragraph breaks
-        text = re.sub(r'\n{3,}', '\n\n', text)
-        
-        return text.strip()
-
 class TextProcessingPipeline:
-    """Enhanced processing pipeline with validation"""
+    """Processing pipeline focused on sentence punctuation"""
     
     def __init__(self, chunk_size: int = CHUNK_SIZE, chunk_overlap: int = CHUNK_OVERLAP):
         self.chunk_size = chunk_size
@@ -133,113 +78,55 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Improved chunking that respects sentence boundaries"""
+        """Split text into chunks with overlap"""
         words = text.split()
         chunks = []
         current_chunk = []
         current_length = 0
         
-        for i, word in enumerate(words):
-            word_length = len(word) + 1  # +1 for space
-            
-            if current_length + word_length > self.chunk_size and current_chunk:
-                # Look ahead to find a natural break point
-                look_ahead = 0
-                while i + look_ahead < len(words) - 1:
-                    next_word = words[i + look_ahead]
-                    if '.' in next_word or '?' in next_word or '!' in next_word:
-                        # Include this punctuation in current chunk
-                        for j in range(look_ahead + 1):
-                            current_chunk.append(words[i + j])
-                            current_length += len(words[i + j]) + 1
-                        i += look_ahead
-                        break
-                    look_ahead += 1
-                    
+        for word in words:
+            if current_length + len(word) > self.chunk_size and current_chunk:
                 chunks.append(' '.join(current_chunk))
-                
-                # Calculate overlap preserving full sentences
                 overlap_words = []
                 overlap_length = 0
                 for w in reversed(current_chunk):
-                    if overlap_length + len(w) > self.chunk_overlap * 0.8:  # 80% threshold
+                    if overlap_length + len(w) > self.chunk_overlap:
                         break
                     overlap_words.insert(0, w)
                     overlap_length += len(w) + 1
-                
                 current_chunk = overlap_words
                 current_length = overlap_length
             
             current_chunk.append(word)
-            current_length += word_length
+            current_length += len(word) + 1
         
         if current_chunk:
             chunks.append(' '.join(current_chunk))
-        
-        self.logger.info(f"Created {len(chunks)} chunks")
         return chunks
 
     async def process_file(self, input_path: str, output_path: str) -> None:
-        """Process file with enhanced validation and overlap handling"""
-        try:
-            with open(input_path, 'r', encoding='utf-8') as f:
-                text = f.read()
-            
-            # Improved cleaning that preserves paragraph breaks
-            text = re.sub(r'(?<!\n)\s+', ' ', text)
-            text = re.sub(r'\n{3,}', '\n\n', text).strip()
-            
-            chunks = self._chunk_text(text)
-            formatted_parts = []
-            previous_tail = ""
-            
-            for i, chunk in enumerate(chunks, 1):
-                self.logger.info(f"Processing chunk {i}/{len(chunks)}")
-                
-                # Combine with previous tail more intelligently
-                if previous_tail:
-                    if previous_tail[-1] in {'.', '?', '!'}:
-                        combined = f"{previous_tail} {chunk}"
-                    else:
-                        # Try to merge incomplete sentence
-                        combined = f"{previous_tail.rstrip('.!?')} {chunk.lstrip()}"
-                else:
-                    combined = chunk
-                    
-                formatted = await self.formatter.format_with_llm(combined)
-                
-                # More thorough validation
-                errors = self.aligner.validate_sentences(formatted)
-                if errors:
-                    self.logger.warning(f"Chunk {i} formatting issues: {errors[:3]}")
-                    formatted = self.aligner._repair_sentence_boundary(formatted)
-                    formatted = re.sub(r'--+', ', ', formatted)  # Fix dashes
-
-                # Extract new content more carefully
-                new_content = self.aligner.extract_new_content(
-                    formatted, 
-                    previous_tail
+        """Process input file and save punctuated output"""
+        with open(input_path, 'r', encoding='utf-8') as f:
+            text = f.read()
+        
+        text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
+        text = re.sub(r' +', ' ', text).strip()
+        
+        chunks = self._chunk_text(text)
+        formatted_parts = []
+        previous_tail = ""
+        
+        for chunk in chunks:
+            combined = f"{previous_tail} {chunk}" if previous_tail else chunk
+            punctuated = await self.formatter.punctuate_text(combined)
+            new_content = self.aligner.extract_new_content(punctuated, previous_tail)
+            if new_content:
+                formatted_parts.append(new_content)
+                previous_tail = self.aligner.get_tail_for_context(
+                    punctuated,
+                    target_length=self.chunk_overlap
                 )
-                if new_content:
-                    formatted_parts.append(new_content)
-                    previous_tail = self.aligner.get_tail_for_context(
-                        formatted,
-                        target_length=int(self.chunk_overlap * 1.5)  # Slightly larger overlap
-                    )
-                
-            # Final processing with better paragraph handling
-            final_text = '\n\n'.join(
-                p for p in formatted_parts if p.strip()
-            )
-            final_text = re.sub(r'([.!?])([A-Z])', r'\1 \2', final_text)
-            final_text = re.sub(r'\s+', ' ', final_text)
-            final_text = re.sub(r'\n{3,}', '\n\n', final_text)
-            
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(final_text)
-                
-            self.logger.info(f"Successfully processed {len(chunks)} chunks")
-                
-        except Exception as e:
-            self.logger.error(f"Processing failed: {str(e)}")
-            raise
+        
+        final_text = '\n\n'.join(p for p in formatted_parts if p.strip())
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(final_text)

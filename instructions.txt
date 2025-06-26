@@ -48,6 +48,8 @@ process as they are added post processing only to the output file.
 The formatted output is not like the desired output which preserves the original words in order.  The task is only to identify sentences.  
 The task is not to rewrite them.  The task is to find and punctuate pre-existing sentences.
 
+python run.py in the command window is not logging any progress and status is unknown.
+
 
 
 The task.  

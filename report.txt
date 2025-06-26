@@ -51,6 +51,8 @@ process as they are added post processing only to the output file.
 The formatted output is not like the desired output which preserves the original words in order.  The task is only to identify sentences.  
 The task is not to rewrite them.  The task is to find and punctuate pre-existing sentences.
 
+python run.py in the command window is not logging any progress and status is unknown.
+
 
 
 The task.  
@@ -106,7 +108,7 @@ import re
 from typing import Optional, Tuple, List, Dict
 
 class AlignmentProcessor:
-    """Enhanced text alignment processor with strict sentence and speaker handling"""
+    """Enhanced text alignment processor with strict sentence handling"""
     
     def __init__(self, min_match_ratio: float = 0.7, min_context_length: int = 50):
         self.paragraph_splitter = re.compile(r'\n\s*\n')
@@ -122,32 +124,26 @@ class AlignmentProcessor:
         self.speaker_format = "{name}: {content}"
 
     def extract_new_content(self, combined: str, context: str) -> str:
-        """Enhanced content extraction with sentence validation"""
+        """Extract only new content while preserving sentence boundaries"""
         if not context or len(context) < self.min_context_length:
             return self._capitalize_first(combined)
         
-        clean_context = ' '.join(context.split())
-        clean_combined = ' '.join(combined.split())
+        matcher = SequenceMatcher(None, context.lower(), combined.lower())
+        match = matcher.find_longest_match(0, len(context), 0, len(combined))
         
-        matcher = SequenceMatcher(None, clean_context.lower(), clean_combined.lower())
-        match = matcher.find_longest_match(0, len(clean_context), 0, len(clean_combined))
-        
-        if match.size < len(clean_context) * self.min_match_ratio:
+        if match.size < len(context) * self.min_match_ratio:
             return self._capitalize_first(combined)
             
-        original_pos = len(combined) - len(clean_combined) + match.b + match.size
+        original_pos = len(combined) - len(context) + match.b + match.size
         new_content = combined[original_pos:].lstrip()
         
-        return self._repair_sentence_boundary(
-            self._normalize_speakers(new_content)
-        )
+        return self._repair_sentence_boundary(new_content)
 
     def get_tail_for_context(self, text: str, target_length: int = 200) -> str:
-        """Improved version that better preserves sentence boundaries"""
+        """Get overlapping portion while preserving complete sentences"""
         if not text or target_length <= 0:
             return ""
         
-        # Split into sentences first
         sentences = []
         current = ""
         for char in text:
@@ -159,14 +155,12 @@ class AlignmentProcessor:
         if current:
             sentences.append(current.strip())
         
-        # Work backwards to find enough content
         tail = []
         current_length = 0
         for sentence in reversed(sentences):
             if not sentence:
                 continue
                 
-            # Ensure proper capitalization and punctuation
             if not sentence[0].isupper():
                 sentence = sentence[0].upper() + sentence[1:]
             if sentence[-1] not in {'.', '?', '!'}:
@@ -180,31 +174,15 @@ class AlignmentProcessor:
         
         return ' '.join(tail)
 
-    def _normalize_speakers(self, text: str) -> str:
-        """Ensure consistent speaker formatting"""
-        lines = []
-        for line in text.split('\n'):
-            match = self.speaker_detector.match(line)
-            if match:
-                speaker = match.group('speaker').strip().title()
-                content = match.group('content').strip()
-                lines.append(self.speaker_format.format(name=speaker, content=content))
-            else:
-                lines.append(line)
-        return '\n'.join(lines)
-
     def _repair_sentence_boundary(self, text: str) -> str:
-        """Fix broken sentences and punctuation"""
+        """Ensure proper sentence formatting"""
         sentences = []
         for sentence in self.sentence_splitter.split(text):
             sentence = sentence.strip()
             if not sentence:
                 continue
-                
-            # Ensure proper ending
             if sentence[-1] not in {'.', '?', '!'}:
                 sentence += '.'
-            # Ensure proper capitalization
             sentences.append(sentence[0].upper() + sentence[1:])
             
         return ' '.join(sentences)
@@ -220,7 +198,7 @@ class AlignmentProcessor:
         errors = []
         sentences = self.sentence_splitter.split(text)
         for i, sentence in enumerate(sentences):
-            if len(sentence.split()) < 3:  # Too short
+            if len(sentence.split()) < 3:
                 errors.append(f"Sentence too short at position {i}: '{sentence}'")
             elif sentence[-1] not in {'.', '?', '!'}:
                 errors.append(f"Missing ending punctuation: '{sentence}'")
@@ -238,56 +216,33 @@ from alignment import AlignmentProcessor
 from config import (
     CHUNK_SIZE, CHUNK_OVERLAP, API_URL, API_TIMEOUT,
     MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY,
-    TEMPERATURE, TOP_P, MIN_SENTENCE_LENGTH
+    TEMPERATURE, TOP_P
 )
 
 class LLMFormatter:
-    """Enhanced LLM formatter with strict formatting rules"""
+    """LLM formatter focused only on sentence punctuation"""
     
     def __init__(self, api_url: str = API_URL):
         self.api_url = api_url
         self.logger = logging.getLogger(__name__)
         self.call_count = 0
 
-    async def format_with_llm(self, text: str) -> str:
-        """Get properly formatted text with strict rules"""
+    async def punctuate_text(self, text: str) -> str:
+        """Get properly punctuated text preserving all original words"""
         self.call_count += 1
-        self.logger.info(f"LLM API call #{self.call_count}")
-        
-        prompt = f"""Reformat this transcript into polished, professional prose while preserving ALL original content:
+        prompt = f"""Correct punctuation and capitalization in this transcript while preserving ALL original content:
 
 {text}
 
-STRICT RULES:
-1. COMPLETE SENTENCES ONLY (must end with .!?)
-2. PRESERVE ALL ORIGINAL DETAILS AND MEANING
-3. PROPER SPEAKER FORMAT: "Name: content" (if speakers present)
-4. CORRECT CAPITALIZATION AND PUNCTUATION
-5. REPLACE DASHES WITH COMMAS OR PERIODS AS APPROPRIATE
-6. REMOVE FILLER WORDS (uh, um)
-7. MAINTAIN COHERENT PARAGRAPH STRUCTURE
-8. ENSURE SMOOTH TRANSITIONS BETWEEN IDEAS
-9. PRESERVE ALL DESCRIPTIVE DETAILS
-10. IMPROVE FLOW WHILE KEEPING ORIGINAL MEANING
+RULES:
+1. ONLY add missing punctuation and capitalization
+2. PRESERVE ALL original words exactly
+3. Sentences must start with capital and end with .!?
+4. Replace connecting dashes with commas or periods
+5. Do not change word order or remove any words
 
-The output should:
-- Be grammatically perfect
-- Maintain all original content
-- Flow naturally
-- Preserve all important details
-- Have proper paragraph structure
+Corrected version:"""
 
-Formatted version:"""
-
-        formatted = await self._try_completion_api(prompt)
-        if formatted:
-            return self._post_process(formatted)
-            
-        self.logger.warning("LLM failed, applying basic formatting")
-        return self._basic_formatting(text)
-
-    async def _try_completion_api(self, prompt: str) -> str:
-        """Attempt to get formatted text from completion API"""
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.post(
@@ -300,61 +255,29 @@ Formatted version:"""
                         "repetition_penalty": REPETITION_PENALTY,
                         "top_p": TOP_P
                     },
-                    headers={"Content-Type": "application/json"},
                     timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
                 ) as response:
                     
                     if response.status != 200:
-                        error = await response.text()
-                        self.logger.error(f"API Error {response.status}: {error[:200]}")
-                        return ""
+                        return self._basic_punctuation(text)
                     
                     result = await response.json()
                     return result.get("choices", [{}])[0].get("text", "").strip()
                     
-        except Exception as e:
-            self.logger.error(f"Completion API failed: {str(e)}")
-            return ""
+        except Exception:
+            return self._basic_punctuation(text)
 
-    def _basic_formatting(self, text: str) -> str:
-        """Apply minimum required formatting"""
+    def _basic_punctuation(self, text: str) -> str:
+        """Apply minimum required punctuation"""
         if not text:
             return ""
-        
-        # Capitalize first letter
         text = text[0].upper() + text[1:] if text else text
-        
-        # Add period if missing
         if text and text[-1] not in {'.','!','?'}:
             text += '.'
-            
-        # Basic speaker formatting
-        text = re.sub(r'(\w+)\s*(?=:)', r'\1', text)  # "Name :" -> "Name:"
-        
         return text
 
-    def _post_process(self, text: str) -> str:
-        """Final cleanup with enhanced rules"""
-        # Remove filler words
-        text = re.sub(r'\b(uh|um|ah|er)\b', '', text, flags=re.IGNORECASE)
-        
-        # Fix spacing and punctuation
-        text = re.sub(r'\s+', ' ', text)  # Normalize spaces
-        text = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', text)  # Add missing spaces
-        text = re.sub(r'\s([.,!?])', r'\1', text)  # Remove spaces before punctuation
-        
-        # Fix common punctuation issues
-        text = re.sub(r',\s*,', ',', text)  # Remove duplicate commas
-        text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)  # Add space between words
-        text = re.sub(r'--+', ', ', text)  # Replace dashes with commas
-        
-        # Ensure proper paragraph breaks
-        text = re.sub(r'\n{3,}', '\n\n', text)
-        
-        return text.strip()
-
 class TextProcessingPipeline:
-    """Enhanced processing pipeline with validation"""
+    """Processing pipeline focused on sentence punctuation"""
     
     def __init__(self, chunk_size: int = CHUNK_SIZE, chunk_overlap: int = CHUNK_OVERLAP):
         self.chunk_size = chunk_size
@@ -364,116 +287,58 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Improved chunking that respects sentence boundaries"""
+        """Split text into chunks with overlap"""
         words = text.split()
         chunks = []
         current_chunk = []
         current_length = 0
         
-        for i, word in enumerate(words):
-            word_length = len(word) + 1  # +1 for space
-            
-            if current_length + word_length > self.chunk_size and current_chunk:
-                # Look ahead to find a natural break point
-                look_ahead = 0
-                while i + look_ahead < len(words) - 1:
-                    next_word = words[i + look_ahead]
-                    if '.' in next_word or '?' in next_word or '!' in next_word:
-                        # Include this punctuation in current chunk
-                        for j in range(look_ahead + 1):
-                            current_chunk.append(words[i + j])
-                            current_length += len(words[i + j]) + 1
-                        i += look_ahead
-                        break
-                    look_ahead += 1
-                    
+        for word in words:
+            if current_length + len(word) > self.chunk_size and current_chunk:
                 chunks.append(' '.join(current_chunk))
-                
-                # Calculate overlap preserving full sentences
                 overlap_words = []
                 overlap_length = 0
                 for w in reversed(current_chunk):
-                    if overlap_length + len(w) > self.chunk_overlap * 0.8:  # 80% threshold
+                    if overlap_length + len(w) > self.chunk_overlap:
                         break
                     overlap_words.insert(0, w)
                     overlap_length += len(w) + 1
-                
                 current_chunk = overlap_words
                 current_length = overlap_length
             
             current_chunk.append(word)
-            current_length += word_length
+            current_length += len(word) + 1
         
         if current_chunk:
             chunks.append(' '.join(current_chunk))
-        
-        self.logger.info(f"Created {len(chunks)} chunks")
         return chunks
 
     async def process_file(self, input_path: str, output_path: str) -> None:
-        """Process file with enhanced validation and overlap handling"""
-        try:
-            with open(input_path, 'r', encoding='utf-8') as f:
-                text = f.read()
-            
-            # Improved cleaning that preserves paragraph breaks
-            text = re.sub(r'(?<!\n)\s+', ' ', text)
-            text = re.sub(r'\n{3,}', '\n\n', text).strip()
-            
-            chunks = self._chunk_text(text)
-            formatted_parts = []
-            previous_tail = ""
-            
-            for i, chunk in enumerate(chunks, 1):
-                self.logger.info(f"Processing chunk {i}/{len(chunks)}")
-                
-                # Combine with previous tail more intelligently
-                if previous_tail:
-                    if previous_tail[-1] in {'.', '?', '!'}:
-                        combined = f"{previous_tail} {chunk}"
-                    else:
-                        # Try to merge incomplete sentence
-                        combined = f"{previous_tail.rstrip('.!?')} {chunk.lstrip()}"
-                else:
-                    combined = chunk
-                    
-                formatted = await self.formatter.format_with_llm(combined)
-                
-                # More thorough validation
-                errors = self.aligner.validate_sentences(formatted)
-                if errors:
-                    self.logger.warning(f"Chunk {i} formatting issues: {errors[:3]}")
-                    formatted = self.aligner._repair_sentence_boundary(formatted)
-                    formatted = re.sub(r'--+', ', ', formatted)  # Fix dashes
-
-                # Extract new content more carefully
-                new_content = self.aligner.extract_new_content(
-                    formatted, 
-                    previous_tail
+        """Process input file and save punctuated output"""
+        with open(input_path, 'r', encoding='utf-8') as f:
+            text = f.read()
+        
+        text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
+        text = re.sub(r' +', ' ', text).strip()
+        
+        chunks = self._chunk_text(text)
+        formatted_parts = []
+        previous_tail = ""
+        
+        for chunk in chunks:
+            combined = f"{previous_tail} {chunk}" if previous_tail else chunk
+            punctuated = await self.formatter.punctuate_text(combined)
+            new_content = self.aligner.extract_new_content(punctuated, previous_tail)
+            if new_content:
+                formatted_parts.append(new_content)
+                previous_tail = self.aligner.get_tail_for_context(
+                    punctuated,
+                    target_length=self.chunk_overlap
                 )
-                if new_content:
-                    formatted_parts.append(new_content)
-                    previous_tail = self.aligner.get_tail_for_context(
-                        formatted,
-                        target_length=int(self.chunk_overlap * 1.5)  # Slightly larger overlap
-                    )
-                
-            # Final processing with better paragraph handling
-            final_text = '\n\n'.join(
-                p for p in formatted_parts if p.strip()
-            )
-            final_text = re.sub(r'([.!?])([A-Z])', r'\1 \2', final_text)
-            final_text = re.sub(r'\s+', ' ', final_text)
-            final_text = re.sub(r'\n{3,}', '\n\n', final_text)
-            
-            with open(output_path, 'w', encoding='utf-8') as f:
-                f.write(final_text)
-                
-            self.logger.info(f"Successfully processed {len(chunks)} chunks")
-                
-        except Exception as e:
-            self.logger.error(f"Processing failed: {str(e)}")
-            raise
+        
+        final_text = '\n\n'.join(p for p in formatted_parts if p.strip())
+        with open(output_path, 'w', encoding='utf-8') as f:
+            f.write(final_text)
 
 === PY run.py ===
 import logging
@@ -490,24 +355,17 @@ def configure_logging():
             logging.StreamHandler()
         ]
     )
-    # Set more verbose logging for pipeline
-    logging.getLogger('pipeline').setLevel(logging.DEBUG)
 
 async def main():
     configure_logging()
-    try:
-        pipeline = TextProcessingPipeline(
-            chunk_size=CHUNK_SIZE,
-            chunk_overlap=CHUNK_OVERLAP
-        )
-        await pipeline.process_file(
-            input_path="transcript.txt",
-            output_path="formatted_transcript.txt"
-        )
-        print("Successfully created formatted_transcript.txt")
-    except Exception as e:
-        logging.error(f"Fatal error: {str(e)}")
-        raise
+    pipeline = TextProcessingPipeline(
+        chunk_size=CHUNK_SIZE,
+        chunk_overlap=CHUNK_OVERLAP
+    )
+    await pipeline.process_file(
+        input_path="transcript.txt",
+        output_path="formatted_transcript.txt"
+    )
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -677,9 +535,6 @@ if __name__ == "__main__":
     if test_api_connection():
         logger.info("Proceeding to chunk processing test...")
         test_chunk_processing()
-
-=== PY formatted_transcript.txt ===
-In the late afternoon, Alice Warren sat by a large window in the corner of her study. The sun's golden rays cast a warm glow over the room as they filtered through the panes of glass. Books lined every inch of the walls, creating an oasis for someone like Alice who loved nothing more than losing herself in their worlds. In this peaceful sanctuary, she could escape from the chaos of work emails and endless meetings, finding serenity amongst the stacks of paper. Outside, the garden came alive; vibrant red roses swayed gracefully against their stems, mingling with delicate purple flowers that danced playfully. Small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much. Toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the. To ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds. As dusk approached, Alice put down her book about early mornings in bustling cities and prepared for bedtime rituals. She picked up her beloved porcelain teacup adorned with delicate blue forget-me-nots and poured freshly brewed chamomile infusion with hints of honey into it - another chapter ended gracefully before moving onto restful oblivion within moments after taking sips from the comforting beverage; her eyelids began feeling heavier as if weighed down by leaden stones signaling imminent sleepiness... As Alice finished reading the last story in the old leather bound book, she gently placed it back onto its spot on the dusty shelf. For a brief moment, she just sat there; teacup held tightly within her hands - lost in thought as she savored the tranquility of the moment. It wasn't merely about finishing another chapter or story but more so an opportunity to reflect upon what had been read - allowing herself time to fully appreciate both the beauty found within those pages as well as life’s simple pleasures such as fading sunlight and cooling air. With reluctance, Alice rose slowly from her chair signaling an end not only to their shared adventure through literature but.
 
 === PY desired_output.txt ===
 Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.
