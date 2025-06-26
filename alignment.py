@@ -1,9 +1,10 @@
 from difflib import SequenceMatcher
 import re
 from typing import List
+from config import MIN_SENTENCE_LENGTH
 
 class AlignmentProcessor:
-    """Text alignment processor focused on sentence boundaries"""
+    """Enhanced text alignment processor with strict sentence handling"""
     
     def __init__(self, min_match_ratio: float = 0.7, min_context_length: int = 50):
         self.sentence_splitter = re.compile(r'(?<=[.!?])\s+')
@@ -23,20 +24,25 @@ class AlignmentProcessor:
             
         return combined[match.b + match.size:].lstrip()
 
-    def get_tail_for_context(self, text: str, target_length: int = 200) -> str:
+    def get_tail_for_context(self, text: str, target_length: int) -> str:
         """Get overlapping portion while preserving complete sentences"""
         if not text or target_length <= 0:
             return ""
         
-        sentences = self.sentence_splitter.split(text)
-        if not sentences:
-            return ""
-            
+        sentences = []
+        current = ""
+        for char in text:
+            current += char
+            if char in {'.', '?', '!'}:
+                sentences.append(current.strip())
+                current = ""
+        
+        if current:
+            sentences.append(current.strip())
+        
         tail = []
         current_length = 0
-        
         for sentence in reversed(sentences):
-            sentence = sentence.strip()
             if not sentence:
                 continue
                 

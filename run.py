@@ -15,14 +15,15 @@ def configure_logging():
 
 async def main():
     configure_logging()
-    pipeline = TextProcessingPipeline(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP
-    )
-    await pipeline.process_file(
-        input_path="transcript.txt",
-        output_path="formatted_transcript.txt"
-    )
+    try:
+        pipeline = TextProcessingPipeline(
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP
+        )
+        await pipeline.process_file()
+    except Exception as e:
+        logging.error(f"Processing failed: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     asyncio.run(main())

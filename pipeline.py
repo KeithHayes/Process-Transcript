@@ -2,12 +2,13 @@ import re
 import logging
 import asyncio
 import aiohttp
+import os
 from typing import List
 from alignment import AlignmentProcessor
 from config import (
     CHUNK_SIZE, CHUNK_OVERLAP, API_URL, API_TIMEOUT,
     MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY,
-    TEMPERATURE, TOP_P, MIN_SENTENCE_LENGTH
+    TEMPERATURE, TOP_P, INPUT_FILE, OUTPUT_FILE
 )
 
 class LLMFormatter:
@@ -19,7 +20,7 @@ class LLMFormatter:
 
     async def punctuate_text(self, text: str) -> str:
         """Get properly punctuated text preserving all original words"""
-        prompt = f"""Correct ONLY punctuation and capitalization in this transcript while preserving ALL original words:
+        prompt = f"""Correct ONLY punctuation and capitalization in this transcript while preserving ALL original content:
 
 {text}
 
@@ -48,12 +49,14 @@ Corrected version:"""
                 ) as response:
                     
                     if response.status != 200:
+                        self.logger.warning(f"API returned status {response.status}")
                         return text
                     
                     result = await response.json()
                     return result.get("choices", [{}])[0].get("text", text).strip()
                     
-        except Exception:
+        except Exception as e:
+            self.logger.error(f"API call failed: {str(e)}")
             return text
 
 class TextProcessingPipeline:
@@ -67,7 +70,7 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Split text into chunks with overlap"""
+        """Split text into chunks with overlap along word boundaries"""
         words = text.split()
         chunks = []
         current_chunk = []
@@ -87,9 +90,14 @@ class TextProcessingPipeline:
             chunks.append(' '.join(current_chunk))
         return chunks
 
-    async def process_file(self, input_path: str, output_path: str) -> None:
+    async def process_file(self) -> None:
         """Process input file and save punctuated output"""
-        with open(input_path, 'r', encoding='utf-8') as f:
+        self.logger.info(f"Starting processing of {INPUT_FILE}")
+        
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+        
+        with open(INPUT_FILE, 'r', encoding='utf-8') as f:
             text = f.read()
         
         # Clean line breaks but preserve paragraphs
@@ -117,5 +125,7 @@ class TextProcessingPipeline:
         
         # Combine with paragraph breaks
         final_text = '\n\n'.join(p for p in formatted_parts if p.strip())
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
             f.write(final_text)
+        
+        self.logger.info(f"Successfully saved formatted output to {OUTPUT_FILE}")

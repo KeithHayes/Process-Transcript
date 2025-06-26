@@ -81,9 +81,9 @@ CHUNK_OVERLAP = 200  # Enough for smooth transitions
 MIN_SENTENCE_LENGTH = 3  # Minimum words to consider complete
 MAX_FRAGMENT_LENGTH = 100  # Max chars for incomplete fragments
 
-# Files
-INPUT_FILE = 'transcript.txt'
-OUTPUT_FILE = 'transcript_formatted.txt'
+# File configuration
+INPUT_FILE = 'files/transcript.txt'
+OUTPUT_FILE = 'files/transcript_formatted.txt'
 
 # API configuration
 API_URL = "http://0.0.0.0:5000/v1/completions"
@@ -105,16 +105,17 @@ __all__ = [
     'MAX_TOKENS', 'STOP_SEQUENCES', 'REPETITION_PENALTY',
     'TEMPERATURE', 'TOP_P', 'MIN_SENTENCE_LENGTH',
     'MAX_FRAGMENT_LENGTH', 'SPEAKER_FORMAT',
-    'MAX_SENTENCE_VALIDATION_ERRORS'
+    'MAX_SENTENCE_VALIDATION_ERRORS', 'INPUT_FILE', 'OUTPUT_FILE'
 ]
 
 === PY alignment.py ===
 from difflib import SequenceMatcher
 import re
 from typing import List
+from config import MIN_SENTENCE_LENGTH
 
 class AlignmentProcessor:
-    """Text alignment processor focused on sentence boundaries"""
+    """Enhanced text alignment processor with strict sentence handling"""
     
     def __init__(self, min_match_ratio: float = 0.7, min_context_length: int = 50):
         self.sentence_splitter = re.compile(r'(?<=[.!?])\s+')
@@ -134,20 +135,25 @@ class AlignmentProcessor:
             
         return combined[match.b + match.size:].lstrip()
 
-    def get_tail_for_context(self, text: str, target_length: int = 200) -> str:
+    def get_tail_for_context(self, text: str, target_length: int) -> str:
         """Get overlapping portion while preserving complete sentences"""
         if not text or target_length <= 0:
             return ""
         
-        sentences = self.sentence_splitter.split(text)
-        if not sentences:
-            return ""
-            
+        sentences = []
+        current = ""
+        for char in text:
+            current += char
+            if char in {'.', '?', '!'}:
+                sentences.append(current.strip())
+                current = ""
+        
+        if current:
+            sentences.append(current.strip())
+        
         tail = []
         current_length = 0
-        
         for sentence in reversed(sentences):
-            sentence = sentence.strip()
             if not sentence:
                 continue
                 
@@ -183,12 +189,13 @@ import re
 import logging
 import asyncio
 import aiohttp
+import os
 from typing import List
 from alignment import AlignmentProcessor
 from config import (
     CHUNK_SIZE, CHUNK_OVERLAP, API_URL, API_TIMEOUT,
     MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY,
-    TEMPERATURE, TOP_P, MIN_SENTENCE_LENGTH
+    TEMPERATURE, TOP_P, INPUT_FILE, OUTPUT_FILE
 )
 
 class LLMFormatter:
@@ -200,7 +207,7 @@ class LLMFormatter:
 
     async def punctuate_text(self, text: str) -> str:
         """Get properly punctuated text preserving all original words"""
-        prompt = f"""Correct ONLY punctuation and capitalization in this transcript while preserving ALL original words:
+        prompt = f"""Correct ONLY punctuation and capitalization in this transcript while preserving ALL original content:
 
 {text}
 
@@ -229,12 +236,14 @@ Corrected version:"""
                 ) as response:
                     
                     if response.status != 200:
+                        self.logger.warning(f"API returned status {response.status}")
                         return text
                     
                     result = await response.json()
                     return result.get("choices", [{}])[0].get("text", text).strip()
                     
-        except Exception:
+        except Exception as e:
+            self.logger.error(f"API call failed: {str(e)}")
             return text
 
 class TextProcessingPipeline:
@@ -248,7 +257,7 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Split text into chunks with overlap"""
+        """Split text into chunks with overlap along word boundaries"""
         words = text.split()
         chunks = []
         current_chunk = []
@@ -268,9 +277,14 @@ class TextProcessingPipeline:
             chunks.append(' '.join(current_chunk))
         return chunks
 
-    async def process_file(self, input_path: str, output_path: str) -> None:
+    async def process_file(self) -> None:
         """Process input file and save punctuated output"""
-        with open(input_path, 'r', encoding='utf-8') as f:
+        self.logger.info(f"Starting processing of {INPUT_FILE}")
+        
+        # Ensure output directory exists
+        os.makedirs(os.path.dirname(OUTPUT_FILE), exist_ok=True)
+        
+        with open(INPUT_FILE, 'r', encoding='utf-8') as f:
             text = f.read()
         
         # Clean line breaks but preserve paragraphs
@@ -298,8 +312,10 @@ class TextProcessingPipeline:
         
         # Combine with paragraph breaks
         final_text = '\n\n'.join(p for p in formatted_parts if p.strip())
-        with open(output_path, 'w', encoding='utf-8') as f:
+        with open(OUTPUT_FILE, 'w', encoding='utf-8') as f:
             f.write(final_text)
+        
+        self.logger.info(f"Successfully saved formatted output to {OUTPUT_FILE}")
 
 === PY run.py ===
 import logging
@@ -319,14 +335,15 @@ def configure_logging():
 
 async def main():
     configure_logging()
-    pipeline = TextProcessingPipeline(
-        chunk_size=CHUNK_SIZE,
-        chunk_overlap=CHUNK_OVERLAP
-    )
-    await pipeline.process_file(
-        input_path="transcript.txt",
-        output_path="formatted_transcript.txt"
-    )
+    try:
+        pipeline = TextProcessingPipeline(
+            chunk_size=CHUNK_SIZE,
+            chunk_overlap=CHUNK_OVERLAP
+        )
+        await pipeline.process_file()
+    except Exception as e:
+        logging.error(f"Processing failed: {str(e)}")
+        raise
 
 if __name__ == "__main__":
     asyncio.run(main())
@@ -497,18 +514,19 @@ if __name__ == "__main__":
         logger.info("Proceeding to chunk processing test...")
         test_chunk_processing()
 
-=== PY formatted_transcript.txt ===
-Alice Warren sat beside a wide window in the corner of her study. The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside, the garden
+=== PY transcript_formatted.txt ===
+Alice Warren sat beside a wide window in the corner of her study. The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence wasn't merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside, the
 
-The silence was not merely an absence of noise; it was a presence in itself — a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside, the garden exuded fragrant sweetness as a pair of robins hopped atop the low stone wall, pecking at small insects among the wild clover. Occasionally, a butterfly — orange with black-veined wings — fluttered past the aged glass. Alice followed its slow, drifting flight for a moment before returning to her book. Such ordinary spectacles, when observed with attention, held a profound beauty. It was a lesson she had learned early and often that the mar
+world fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally, a butterfly orange with black-veined wings fluttered past the aged glass, and Alice followed its slow drifting flight for a moment before returning to her book. Such ordinary spectacles, when observed with attention, held a profound beauty. It was a lesson she had learned early and often that the marvels of life are seldom grand or
 
-—that even the mundane possessed a certain charm. The way authors of that era wove descriptive passages around otherwise trivial actions—tying shoelaces, pouring tea, gazing out towards a stormy horizon—amazed Alice. She admired their attentiveness to detail, which transformed seemingly insignificant moments into captivating stories. A single sentence describing a young woman standing by a river's edge conveyed emotions powerful enough to stir up a reader's deepest yearnings. With just those few words, Alice could imagine herself feeling the cool
+place and character; there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions—tying shoelaces, pouring tea, gazing out toward a stormy horizon. Such attentiveness to detail formed a tapestry of everyday life, and it fascinated Alice how these small gestures could reveal so much about an individual's hopes, fears, and inner world in one story. In one passage, a young woman stood at the edge of a river,
 
-and restfulness. Turning back to her anthology, she selected a different story; this one described an early morning in a busy city - horse-drawn carriages rattled over cobblestone streets, merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air. As she read, Alice imagined herself there. She could almost hear the clip-clop of hooves and feel the rough stone beneath her feet. The weight of her satchel on her shoulder seemed real too. Again, closing her eyes, she let the sounds and textures sw
+feeling transported away from her studies to that riverside scene. She opened her eyes again, set the bookmark between the pages, and raised her gaze to the window—the sun had sunk lower, and the sky had begun to shift to ethereal shades of lavender and gold. Soon, the garden would blur into silhouettes, and the air would cool. Reaching for the small porcelain teapot on the table beside her, Alice found it held a fragrant chamomile infusion with just a hint of honey. She poured the steaming liquid into her favorite cup, painted with delicate
 
-irl around her, casting a soft pool of light around her chair beyond the window, the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance; a lone streetlamp flickered to life - its orange glow reflected off dewy leaves, turning them into luminous orbs. Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf. She sat for a moment longer, tea cup in hand, simply being – it was
+ing a soothing scene as the soft pool of light surrounded her chair. Beyond the window, the garden transformed into a shadowy realm—defined only by silhouettes and the occasional sparkle of a distant leaf caught in moonlight. A solitary streetlamp flickered to life down the road; its orange glow reflected off dampened leaves, transforming them into ethereal spheres of luminosity. 
+With a satisfied sigh, Alice gently closed the old anthology and pressed a reverent finger against its timeworn spine before returning it to its rightful place upon the shelf. She took
 
-- it was and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty, the anthology closed, and the quiet settled deeply over the room. Alice felt a gentle contentment, gratitude even for the stories; yes, and for the world beyond them. For the tactile, living reality she inhabited, and so, at the close of day, she gave thanks for words, for solitude, and for the small wonders that attended each ordinary
+hen stepped out onto the back porch to breathe beneath a sky of stars. Finally, after standing the teacup empty, she returned indoors where the quiet settled deeply over the room. Alice felt a gentle contentment; gratitude, even, for the stories—yes—and for the world beyond them, for the tactile, living reality she inhabited, and so at the close of day, she gave thanks for words, for solitude, and for the small wonders that attended each ordinary moment.
 
 === PY desired_output.txt ===
 Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.

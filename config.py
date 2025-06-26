@@ -4,9 +4,9 @@ CHUNK_OVERLAP = 200  # Enough for smooth transitions
 MIN_SENTENCE_LENGTH = 3  # Minimum words to consider complete
 MAX_FRAGMENT_LENGTH = 100  # Max chars for incomplete fragments
 
-# Files
-INPUT_FILE = 'transcript.txt'
-OUTPUT_FILE = 'transcript_formatted.txt'
+# File configuration
+INPUT_FILE = 'files/transcript.txt'
+OUTPUT_FILE = 'files/transcript_formatted.txt'
 
 # API configuration
 API_URL = "http://0.0.0.0:5000/v1/completions"
@@ -28,5 +28,5 @@ __all__ = [
     'MAX_TOKENS', 'STOP_SEQUENCES', 'REPETITION_PENALTY',
     'TEMPERATURE', 'TOP_P', 'MIN_SENTENCE_LENGTH',
     'MAX_FRAGMENT_LENGTH', 'SPEAKER_FORMAT',
-    'MAX_SENTENCE_VALIDATION_ERRORS'
+    'MAX_SENTENCE_VALIDATION_ERRORS', 'INPUT_FILE', 'OUTPUT_FILE'
 ]
