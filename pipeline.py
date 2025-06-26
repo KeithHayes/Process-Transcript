@@ -28,12 +28,21 @@ class LLMFormatter:
 
 RULES:
 1. COMPLETE SENTENCES ONLY (must end with .!?)
-2. PROPER SPEAKER FORMAT: "Name: content"
+2. PROPER SPEAKER FORMAT: "Name: content" (if speakers present)
 3. CORRECT CAPITALIZATION
 4. NO SENTENCE FRAGMENTS
-5. PROPER PUNCTUATION
+5. PROPER PUNCTUATION (replace dashes with commas or periods)
 6. REMOVE FILLER WORDS (uh, um)
 7. MAINTAIN ORIGINAL MEANING
+8. PRESERVE ALL ORIGINAL CONTENT
+9. ENSURE PROPER SPACING AFTER PUNCTUATION
+10. FORMAT LISTS AND DIALOGUE PROPERLY
+
+Formatted version must:
+- Be grammatically correct
+- Maintain original factual content
+- Flow naturally
+- Preserve all important details
 
 Formatted version:"""
 
@@ -93,10 +102,21 @@ Formatted version:"""
 
     def _post_process(self, text: str) -> str:
         """Final cleanup with enhanced rules"""
-        text = re.sub(r'\b(uh|um)\b', '', text, flags=re.IGNORECASE)
-        text = re.sub(r'\n{3,}', '\n\n', text)
-        text = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', text)  # Fix spacing
+        # Remove filler words
+        text = re.sub(r'\b(uh|um|ah|er)\b', '', text, flags=re.IGNORECASE)
+        
+        # Fix spacing and punctuation
+        text = re.sub(r'\s+', ' ', text)  # Normalize spaces
+        text = re.sub(r'(?<=[.,!?])(?=[^\s])', r' ', text)  # Add missing spaces
+        text = re.sub(r'\s([.,!?])', r'\1', text)  # Remove spaces before punctuation
+        
+        # Fix common punctuation issues
+        text = re.sub(r',\s*,', ',', text)  # Remove duplicate commas
         text = re.sub(r'([a-z])([A-Z])', r'\1 \2', text)  # Add space between words
+        
+        # Ensure proper paragraph breaks
+        text = re.sub(r'\n{3,}', '\n\n', text)
+        
         return text.strip()
 
 class TextProcessingPipeline:
@@ -110,7 +130,7 @@ class TextProcessingPipeline:
         self.logger = logging.getLogger(__name__)
     
     def _chunk_text(self, text: str) -> List[str]:
-        """Word-boundary chunking with sentence awareness"""
+        """Improved chunking that respects sentence boundaries"""
         words = text.split()
         chunks = []
         current_chunk = []
@@ -120,19 +140,26 @@ class TextProcessingPipeline:
             word_length = len(word) + 1  # +1 for space
             
             if current_length + word_length > self.chunk_size and current_chunk:
-                # Try to end on sentence boundary
-                if '.' not in word and i < len(words)-1:
-                    next_word = words[i+1]
-                    if next_word[0].islower():
-                        continue  # Keep going until sentence end
-                
+                # Look ahead to find a natural break point
+                look_ahead = 0
+                while i + look_ahead < len(words) - 1:
+                    next_word = words[i + look_ahead]
+                    if '.' in next_word or '?' in next_word or '!' in next_word:
+                        # Include this punctuation in current chunk
+                        for j in range(look_ahead + 1):
+                            current_chunk.append(words[i + j])
+                            current_length += len(words[i + j]) + 1
+                        i += look_ahead
+                        break
+                    look_ahead += 1
+                    
                 chunks.append(' '.join(current_chunk))
                 
-                # Calculate overlap preserving sentences
+                # Calculate overlap preserving full sentences
                 overlap_words = []
                 overlap_length = 0
                 for w in reversed(current_chunk):
-                    if overlap_length + len(w) > self.chunk_overlap:
+                    if overlap_length + len(w) > self.chunk_overlap * 0.8:  # 80% threshold
                         break
                     overlap_words.insert(0, w)
                     overlap_length += len(w) + 1
@@ -150,13 +177,13 @@ class TextProcessingPipeline:
         return chunks
 
     async def process_file(self, input_path: str, output_path: str) -> None:
-        """Process file with validation"""
+        """Process file with enhanced validation and overlap handling"""
         try:
-            with open(input_path) as f:
+            with open(input_path, 'r', encoding='utf-8') as f:
                 text = f.read()
             
-            # Initial cleaning
-            text = re.sub(r'\s+', ' ', text).strip()
+            # Initial cleaning - preserve paragraph breaks but normalize other whitespace
+            text = re.sub(r'(?<!\n)\s+', ' ', text).strip()
             chunks = self._chunk_text(text)
             
             formatted_parts = []
@@ -165,6 +192,7 @@ class TextProcessingPipeline:
             for i, chunk in enumerate(chunks, 1):
                 self.logger.info(f"Processing chunk {i}/{len(chunks)}")
                 
+                # Combine with previous tail for context
                 combined = f"{previous_tail} {chunk}".strip() if previous_tail else chunk
                 formatted = await self.formatter.format_with_llm(combined)
                 
@@ -172,7 +200,10 @@ class TextProcessingPipeline:
                 errors = self.aligner.validate_sentences(formatted)
                 if errors:
                     self.logger.warning(f"Chunk {i} formatting issues: {errors[:3]}")
+                    # Apply additional fixes for validation errors
+                    formatted = self.aligner._repair_sentence_boundary(formatted)
 
+                # Extract new content and update tail
                 new_content = self.aligner.extract_new_content(formatted, previous_tail)
                 if new_content:
                     formatted_parts.append(new_content)
@@ -181,9 +212,17 @@ class TextProcessingPipeline:
                         target_length=self.chunk_overlap
                     )
                 
+            # Combine all parts with paragraph breaks
             final_text = '\n\n'.join(formatted_parts)
-            with open(output_path, 'w') as f:
+            
+            # Final cleanup pass
+            final_text = re.sub(r'\n{3,}', '\n\n', final_text)
+            final_text = re.sub(r'([.!?])([A-Z])', r'\1 \2', final_text)
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
                 f.write(final_text)
+                
+            self.logger.info(f"Successfully processed {len(chunks)} chunks")
                 
         except Exception as e:
             self.logger.error(f"Processing failed: {str(e)}")

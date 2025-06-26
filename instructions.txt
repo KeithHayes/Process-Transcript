@@ -45,16 +45,28 @@ process as they are added post processing only to the output file.
 
 Current output:
 
-(venv) kdog@kdogsputer:~/pythonprojects/process transcript$ python run.py 
-2025-06-25 16:49:04,755 - pipeline - INFO - Created 2 chunks
-2025-06-25 16:49:04,755 - pipeline - INFO - Processing chunk 1/2
-2025-06-25 16:49:04,755 - pipeline - INFO - LLM API call #1
-2025-06-25 16:49:13,656 - pipeline - WARNING - Chunk 1 formatting issues: ["Sentence too short at position 5: 'Outside, the'"]
-2025-06-25 16:49:13,656 - pipeline - INFO - Processing chunk 2/2
-2025-06-25 16:49:13,656 - pipeline - INFO - LLM API call #2
-2025-06-25 16:49:22,265 - pipeline - WARNING - Chunk 2 formatting issues: ["Missing ending punctuation: 'As she admired its beauty, it landed gracefully on top of'"]
+python run.py 
+2025-06-25 17:15:38,370 - pipeline - INFO - Created 6 chunks
+2025-06-25 17:15:38,370 - pipeline - INFO - Processing chunk 1/6
+2025-06-25 17:15:38,371 - pipeline - INFO - LLM API call #1
+2025-06-25 17:15:47,365 - pipeline - WARNING - Chunk 1 formatting issues: ["Missing ending punctuation: 'Outside, her immaculate garden came alive under the'"]
+2025-06-25 17:15:47,365 - pipeline - INFO - Processing chunk 2/6
+2025-06-25 17:15:47,365 - pipeline - INFO - LLM API call #2
+2025-06-25 17:15:56,117 - pipeline - INFO - Processing chunk 3/6
+2025-06-25 17:15:56,117 - pipeline - INFO - LLM API call #3
+2025-06-25 17:16:05,127 - pipeline - WARNING - Chunk 3 formatting issues: ["Missing ending punctuation: 'This simple gesture evoked intense emotions within Alice, making her feel like she too'"]
+2025-06-25 17:16:05,127 - pipeline - INFO - Processing chunk 4/6
+2025-06-25 17:16:05,127 - pipeline - INFO - LLM API call #4
+2025-06-25 17:16:14,117 - pipeline - WARNING - Chunk 4 formatting issues: ["Missing ending punctuation: 'They took turns sipping from the mugs in awkward silence until finally speaking about anything but what was truly weighing'"]
+2025-06-25 17:16:14,117 - pipeline - INFO - Processing chunk 5/6
+2025-06-25 17:16:14,118 - pipeline - INFO - LLM API call #5
+2025-06-25 17:16:18,784 - pipeline - INFO - Processing chunk 6/6
+2025-06-25 17:16:18,784 - pipeline - INFO - LLM API call #6
+2025-06-25 17:16:27,781 - pipeline - WARNING - Chunk 6 formatting issues: ["Missing ending punctuation: 'With nothing but silence now filling their space, she allowed herself to gradually wind down from her reading while taking note of how quickly darkness fell upon them; marking both ends and beginnings within a single breath span between day and night activities such'"]
+2025-06-25 17:16:27,782 - pipeline - INFO - Successfully processed 6 chunks
 Successfully created formatted_transcript.txt
 (venv) kdog@kdogsputer:~/pythonprojects/process transcript$ 
+
 
 
 The task.  
@@ -64,7 +76,8 @@ determine what must be corrected.
 
 Complete files will be returned so python maintains correct indentation should there be any changes in python files.
 
-Current output in 'formatted_transcript.txt' does not match 'desired_output.txt'.  Correction is required.
+Current output in 'formatted_transcript.txt' does not match 'desired_output.txt'.  Correction is required.  Verify the tail of the 
+output is rewritten correctly and that the complete imput transcript.txt is processed.
 
 
 
