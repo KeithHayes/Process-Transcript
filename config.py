@@ -4,6 +4,10 @@ CHUNK_OVERLAP = 200  # Enough for smooth transitions
 MIN_SENTENCE_LENGTH = 3  # Minimum words to consider complete
 MAX_FRAGMENT_LENGTH = 100  # Max chars for incomplete fragments
 
+# Files
+INPUT_FILE = 'transcript.txt'
+OUTPUT_FILE = 'transcript_formatted.txt'
+
 # API configuration
 API_URL = "http://0.0.0.0:5000/v1/completions"
 API_TIMEOUT = 60  # seconds

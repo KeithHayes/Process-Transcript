@@ -79,6 +79,10 @@ CHUNK_OVERLAP = 200  # Enough for smooth transitions
 MIN_SENTENCE_LENGTH = 3  # Minimum words to consider complete
 MAX_FRAGMENT_LENGTH = 100  # Max chars for incomplete fragments
 
+# Files
+INPUT_FILE = 'transcript.txt'
+OUTPUT_FILE = 'transcript_formatted.txt'
+
 # API configuration
 API_URL = "http://0.0.0.0:5000/v1/completions"
 API_TIMEOUT = 60  # seconds
@@ -105,26 +109,18 @@ __all__ = [
 === PY alignment.py ===
 from difflib import SequenceMatcher
 import re
-from typing import Optional, Tuple, List, Dict
+from typing import List
 
 class AlignmentProcessor:
-    """Enhanced text alignment processor with strict sentence handling"""
+    """Text alignment processor focused on sentence boundaries"""
     
     def __init__(self, min_match_ratio: float = 0.7, min_context_length: int = 50):
-        self.paragraph_splitter = re.compile(r'\n\s*\n')
-        self.sentence_splitter = re.compile(
-            r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s+'
-        )
-        self.speaker_detector = re.compile(
-            r'^(?P<speaker>[A-Z][a-zA-Z\s]+):\s*(?P<content>.*)$'
-        )
+        self.sentence_splitter = re.compile(r'(?<=[.!?])\s+')
         self.min_match_ratio = min_match_ratio
         self.min_context_length = min_context_length
-        self.min_sentence_length = 20
-        self.speaker_format = "{name}: {content}"
 
     def extract_new_content(self, combined: str, context: str) -> str:
-        """Extract only new content while preserving sentence boundaries"""
+        """Extract only new content while preserving original words"""
         if not context or len(context) < self.min_context_length:
             return self._capitalize_first(combined)
         
@@ -134,37 +130,24 @@ class AlignmentProcessor:
         if match.size < len(context) * self.min_match_ratio:
             return self._capitalize_first(combined)
             
-        original_pos = len(combined) - len(context) + match.b + match.size
-        new_content = combined[original_pos:].lstrip()
-        
-        return self._repair_sentence_boundary(new_content)
+        return combined[match.b + match.size:].lstrip()
 
     def get_tail_for_context(self, text: str, target_length: int = 200) -> str:
         """Get overlapping portion while preserving complete sentences"""
         if not text or target_length <= 0:
             return ""
         
-        sentences = []
-        current = ""
-        for char in text:
-            current += char
-            if char in {'.', '?', '!'}:
-                sentences.append(current.strip())
-                current = ""
-        
-        if current:
-            sentences.append(current.strip())
-        
+        sentences = self.sentence_splitter.split(text)
+        if not sentences:
+            return ""
+            
         tail = []
         current_length = 0
+        
         for sentence in reversed(sentences):
+            sentence = sentence.strip()
             if not sentence:
                 continue
-                
-            if not sentence[0].isupper():
-                sentence = sentence[0].upper() + sentence[1:]
-            if sentence[-1] not in {'.', '?', '!'}:
-                sentence += '.'
                 
             if current_length + len(sentence) > target_length and tail:
                 break
@@ -173,19 +156,6 @@ class AlignmentProcessor:
             current_length += len(sentence) + 1
         
         return ' '.join(tail)
-
-    def _repair_sentence_boundary(self, text: str) -> str:
-        """Ensure proper sentence formatting"""
-        sentences = []
-        for sentence in self.sentence_splitter.split(text):
-            sentence = sentence.strip()
-            if not sentence:
-                continue
-            if sentence[-1] not in {'.', '?', '!'}:
-                sentence += '.'
-            sentences.append(sentence[0].upper() + sentence[1:])
-            
-        return ' '.join(sentences)
 
     def _capitalize_first(self, text: str) -> str:
         """Capitalize first letter of text"""
@@ -198,7 +168,7 @@ class AlignmentProcessor:
         errors = []
         sentences = self.sentence_splitter.split(text)
         for i, sentence in enumerate(sentences):
-            if len(sentence.split()) < 3:
+            if len(sentence.split()) < MIN_SENTENCE_LENGTH:
                 errors.append(f"Sentence too short at position {i}: '{sentence}'")
             elif sentence[-1] not in {'.', '?', '!'}:
                 errors.append(f"Missing ending punctuation: '{sentence}'")
@@ -216,7 +186,7 @@ from alignment import AlignmentProcessor
 from config import (
     CHUNK_SIZE, CHUNK_OVERLAP, API_URL, API_TIMEOUT,
     MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY,
-    TEMPERATURE, TOP_P
+    TEMPERATURE, TOP_P, MIN_SENTENCE_LENGTH
 )
 
 class LLMFormatter:
@@ -225,21 +195,19 @@ class LLMFormatter:
     def __init__(self, api_url: str = API_URL):
         self.api_url = api_url
         self.logger = logging.getLogger(__name__)
-        self.call_count = 0
 
     async def punctuate_text(self, text: str) -> str:
         """Get properly punctuated text preserving all original words"""
-        self.call_count += 1
-        prompt = f"""Correct punctuation and capitalization in this transcript while preserving ALL original content:
+        prompt = f"""Correct ONLY punctuation and capitalization in this transcript while preserving ALL original words:
 
 {text}
 
 RULES:
-1. ONLY add missing punctuation and capitalization
-2. PRESERVE ALL original words exactly
-3. Sentences must start with capital and end with .!?
+1. ONLY add missing punctuation (.!?) and capitalization
+2. PRESERVE ALL original words exactly in order
+3. Do not change or remove any words
 4. Replace connecting dashes with commas or periods
-5. Do not change word order or remove any words
+5. Sentences must start with capital and end with .!?
 
 Corrected version:"""
 
@@ -259,22 +227,13 @@ Corrected version:"""
                 ) as response:
                     
                     if response.status != 200:
-                        return self._basic_punctuation(text)
+                        return text
                     
                     result = await response.json()
-                    return result.get("choices", [{}])[0].get("text", "").strip()
+                    return result.get("choices", [{}])[0].get("text", text).strip()
                     
         except Exception:
-            return self._basic_punctuation(text)
-
-    def _basic_punctuation(self, text: str) -> str:
-        """Apply minimum required punctuation"""
-        if not text:
-            return ""
-        text = text[0].upper() + text[1:] if text else text
-        if text and text[-1] not in {'.','!','?'}:
-            text += '.'
-        return text
+            return text
 
 class TextProcessingPipeline:
     """Processing pipeline focused on sentence punctuation"""
@@ -296,15 +255,9 @@ class TextProcessingPipeline:
         for word in words:
             if current_length + len(word) > self.chunk_size and current_chunk:
                 chunks.append(' '.join(current_chunk))
-                overlap_words = []
-                overlap_length = 0
-                for w in reversed(current_chunk):
-                    if overlap_length + len(w) > self.chunk_overlap:
-                        break
-                    overlap_words.insert(0, w)
-                    overlap_length += len(w) + 1
+                overlap_words = current_chunk[-self.chunk_overlap//5:]
                 current_chunk = overlap_words
-                current_length = overlap_length
+                current_length = sum(len(w) + 1 for w in overlap_words)
             
             current_chunk.append(word)
             current_length += len(word) + 1
@@ -318,6 +271,7 @@ class TextProcessingPipeline:
         with open(input_path, 'r', encoding='utf-8') as f:
             text = f.read()
         
+        # Clean line breaks but preserve paragraphs
         text = re.sub(r'(?<!\n)\n(?!\n)', ' ', text)
         text = re.sub(r' +', ' ', text).strip()
         
@@ -325,9 +279,13 @@ class TextProcessingPipeline:
         formatted_parts = []
         previous_tail = ""
         
-        for chunk in chunks:
+        for i, chunk in enumerate(chunks, 1):
+            self.logger.info(f"Processing chunk {i}/{len(chunks)}")
+            
             combined = f"{previous_tail} {chunk}" if previous_tail else chunk
             punctuated = await self.formatter.punctuate_text(combined)
+            
+            # Extract new content ensuring we don't duplicate
             new_content = self.aligner.extract_new_content(punctuated, previous_tail)
             if new_content:
                 formatted_parts.append(new_content)
@@ -336,6 +294,7 @@ class TextProcessingPipeline:
                     target_length=self.chunk_overlap
                 )
         
+        # Combine with paragraph breaks
         final_text = '\n\n'.join(p for p in formatted_parts if p.strip())
         with open(output_path, 'w', encoding='utf-8') as f:
             f.write(final_text)
@@ -535,168 +494,4 @@ if __name__ == "__main__":
     if test_api_connection():
         logger.info("Proceeding to chunk processing test...")
         test_chunk_processing()
-
-=== PY desired_output.txt ===
-Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.
-
-Outside, the garden lay in gentle bloom. Roses of deep crimson and pale pink nodded in the early breeze, while lavender and thyme filled the afternoon air with fragrant sweetness. A pair of robins hopped atop the low stone wall, pecking at small insects among the wild clover. Occasionally, a butterfly—orange with black-veined wings—fluttered past the aging glass, and Alice followed its slow, drifting flight for a moment before returning to her book. Such ordinary spectacles, when observed with attention, held a profound beauty. It was a lesson she had learned, early and often: that the marvels of life are seldom grand or flashy; they are small, quiet, and easily overlooked.
-
-Her book, an anthology of short stories from the early twentieth century, lay open on her lap. The paper was slightly yellowed, but sturdy; the ink, crisp. Each story contained within had been selected for its faithful representation of time, place, and character. There was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions—tying shoelaces, pouring tea, gazing out toward a stormy horizon. Such attentiveness to detail formed a tapestry of everyday life, and it fascinated Alice how these small gestures could reveal so much about an individual’s hopes, fears, and inner world.
-
-In one story, a young woman stood at the edge of a river, watching the current drift by as though it carried with it unspoken promises of a distant future. The description was simple: “She lifted her hands above her head, letting the cool, early-spring wind play through her fingers.” Yet that image carried emotion enough to fill a lifetime of longing. Alice closed her eyes, imagining the wind on her skin, and for a moment, she felt transported away from her study to that riverside scene. Then she opened her eyes again, setting the bookmark between the pages, and raised her gaze to the window.
-
-The sun had sunk lower; the sky had begun to shift to ethereal shades of lavender and gold. Soon, the garden would blur into silhouettes, and the air would cool. She reached for the small porcelain teapot on the table beside her. It held a fragrant chamomile infusion, with just a hint of honey. Alice poured the steaming liquid into her favorite cup, the one painted with delicate blue forget‑me‑nots. She paused to inhale the warm steam, allowing its gentle scent to settle her mind. It had become something of a ritual, this tea-drinking ritual, a momentary pause between the realms of thought and rest.
-
-Turning back to her anthology, she selected a different story. This one described an early morning in a busy city: horse-drawn carriages rattling over cobblestones, merchants hawking wares at street stalls, and the clamor of voices in unfamiliar tongues. As she read, Alice imagined herself there: she could almost hear the clip-clop of hooves and feel the rough stone underfoot, the weight of her satchel on her shoulder. Again, she closed her eyes, letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality. Such was the power of fine writing—it created an illusion so vivid, so grounded, that the line between reader and narrator blurred.
-
-By the time she finished the second story, darkness had fallen completely. The study lamp cast a soft pool of light around her chair. Beyond the window, the garden was now a shadowy realm, defined only by silhouettes and the glimmer of a single landing moth. In the distance, a lone streetlamp flickered to life; its orange glow rebounded off dewy leaves, turning them into luminous orbs. Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf.
-
-She sat for a moment longer, teacup in hand, simply being. It was a practice in mindfulness, in appreciating transition. The end of daylight and arrival of evening, the movement from narrative to reflection. She allowed herself this small pause before rising to begin the next phase of her evening routine: preparing a light supper, writing a few thoughtful entries in her journal, and perhaps stepping out onto the back porch to breathe beneath a sky of stars.
-
-When she finally stood, the teacup empty, the anthology closed, and the quiet settled deeply over the room, Alice felt a gentle contentment. Gratitude, even. For the stories, yes—and for the world beyond them, for the tactile, living reality she inhabits. And so, at the close of day, she gave thanks: for words, for solitude, and for the small wonders that attend each ordinary moment.
-
-=== PY transcript.txt ===
-alice warren sat beside a wide
-window in the corner of her study the
-late afternoon light slanted gently
-across the hardwood floor illuminating
-endless rows of books that lined the
-walls she loved the hush of quiet
-contemplation the soft rustle of
-turning pages and the subtle comfort
-of stories held within paper and ink
-it was in this exact space that she
-found solace after a long day of
-meetings presentations and endless
-email chains the silence was not
-merely an absence of noise it was a
-presence in itself a companion that
-whispered in comfortable tones and
-allowed thoughts to drift unencumbered
-outside the garden lay in gentle
-bloom roses of deep crimson and pale
-pink nodded in the early breeze while
-lavender and thyme filled the
-afternoon air with fragrant sweetness
-a pair of robins hopped atop the low
-stone wall pecking at small insects
-among the wild clover occasionally a
-butterfly orange with black veined
-wings fluttered past the aging glass
-and alice followed its slow drifting
-flight for a moment before returning
-to her book such ordinary spectacles
-when observed with attention held a
-profound beauty it was a lesson she
-had learned early and often that the
-marvels of life are seldom grand or
-flashy they are small quiet and
-easily overlooked her book an anthology of 
-short stories from the early twentieth 
-century lay open on her lap the paper 
-was slightly yellowed but sturdy the 
-ink crisp each story contained within 
-had been selected for its faithful
-representation of time place and
-character there was a certain charm
-in the way authors of that era wove
-descriptive passages around otherwise
-trivial actions tying shoelaces
-pouring tea gazing out toward a
-stormy horizon such attentiveness to
-detail formed a tapestry of everyday
-life and it fascinated alice how these
-small gestures could reveal so much
-about an individuals hopes fears and
-inner world
-in one story a young woman stood at the
-edge of a river watching the current
-drift by as though it carried with it
-unspoken promises of a distant future
-the description was simple she lifted
-her hands above her head letting the
-cool early spring wind play through
-her fingers yet that image carried
-emotion enough to fill a lifetime of
-longing alice closed her eyes
-imagining the wind on her skin and for
-a moment she felt transported away
-from her study to that riverside scene
-then she opened her eyes again setting
-the bookmark between the pages and
-raised her gaze to the window
-the sun had sunk lower the sky had
-begun to shift to ethereal shades of
-lavender and gold soon the garden
-would blur into silhouettes and the
-air would cool she reached for the
-small porcelain teapot on the table
-beside her it held a fragrant
-chamomile infusion with just a hint
-of honey alice poured the steaming
-liquid into her favorite cup the one
-painted with delicate blue forget me
-nots she paused to inhale the warm
-steam allowing its gentle scent to
-settle her mind it had become something
-of a ritual this tea drinking ritual
-a momentary pause between the realms
-of thought and rest
-turning back to her anthology she
-selected a different story this one
-described an early morning in a busy
-city horse drawn carriages rattling
-over cobblestones merchants hawking
-wares at street stalls and the clamor
-of voices in unfamiliar tongues as she
-read alice imagined herself there she
-could almost hear the clip clop of
-hooves and feel the rough stone
-underfoot the weight of her satchel
-on her shoulder again she closed her
-eyes letting the sounds and textures
-swirl around her senses until she
-could scarcely distinguish them from
-her own reality such was the power of
-fine writing it created an illusion
-so vivid so grounded that the line
-between reader and narrator blurred
-by the time she finished the second
-story darkness had fallen completely
-the study lamp cast a soft pool of
-light around her chair beyond the
-window the garden was now a shadowy
-realm defined only by silhouettes and
-the glimmer of a single landing moth
-in the distance a lone streetlamp
-flickered to life its orange glow
-rebounded off dewy leaves turning them
-into luminous orbs alice closed the
-anthology pressed a finger against the
-spine and slid the book into its place
-on the shelf
-she sat for a moment longer teacup in
-hand simply being it was a practice
-in mindfulness in appreciating
-transition the end of daylight and
-arrival of evening the movement from
-narrative to reflection she allowed
-herself this small pause before rising
-to begin the next phase of her evening
-routine preparing a light supper
-writing a few thoughtful entries in
-her journal and perhaps stepping out
-onto the back porch to breathe beneath
-a sky of stars
-when she finally stood the teacup
-empty the anthology closed and the
-quiet settled deeply over the room
-alice felt a gentle contentment
-gratitude even for the stories yes and
-for the world beyond them for the
-tactile living reality she inhabits
-and so at the close of day she gave
-thanks for words for solitude and for
-the small wonders that attend each
-ordinary moment
 
