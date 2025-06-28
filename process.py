@@ -2,15 +2,6 @@ import os
 import re
 import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('textcleaner.log'),
-        logging.StreamHandler()
-    ]
-)
-
 class TextCleaner:
     def __init__(self, input_file: str, output_file: str):
         self.input_file = input_file
@@ -27,7 +18,7 @@ class TextCleaner:
                 text = re.sub(r' +', ' ', text).strip()
 
 
-                
+
 
             os.makedirs(os.path.dirname(self.output_file) or '.', exist_ok=True)
             with open(self.output_file, 'w', encoding='utf-8') as f:

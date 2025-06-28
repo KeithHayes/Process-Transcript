@@ -6,6 +6,7 @@ from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, CLEANED_FILE
 from process import TextCleaner
 
 def prepare_data():
+    configure_logging()
     cleaner = TextCleaner(INPUT_FILE, CLEANED_FILE)
     cleaner.preprocess()
 

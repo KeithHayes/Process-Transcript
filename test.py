@@ -2,11 +2,6 @@ import requests
 import logging
 from config import API_URL, API_TIMEOUT, CHUNK_SIZE, CHUNK_OVERLAP, MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY, TEMPERATURE, TOP_P
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger('api_test')
 
 def test_api_connection():

@@ -42,6 +42,8 @@ from pathlib import Path
 from config import LOG_DIR, LOG_FILE
 
 def configure_logging():
+    if logging.getLogger().hasHandlers():
+        return
     os.makedirs(LOG_DIR, exist_ok=True)
     log_path = Path(LOG_DIR) / LOG_FILE
     if log_path.exists():
@@ -60,15 +62,6 @@ import os
 import re
 import logging
 
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('textcleaner.log'),
-        logging.StreamHandler()
-    ]
-)
-
 class TextCleaner:
     def __init__(self, input_file: str, output_file: str):
         self.input_file = input_file
@@ -85,7 +78,7 @@ class TextCleaner:
                 text = re.sub(r' +', ' ', text).strip()
 
 
-                
+
 
             os.makedirs(os.path.dirname(self.output_file) or '.', exist_ok=True)
             with open(self.output_file, 'w', encoding='utf-8') as f:
@@ -298,6 +291,7 @@ from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, CLEANED_FILE
 from process import TextCleaner
 
 def prepare_data():
+    configure_logging()
     cleaner = TextCleaner(INPUT_FILE, CLEANED_FILE)
     cleaner.preprocess()
 
@@ -377,11 +371,6 @@ import requests
 import logging
 from config import API_URL, API_TIMEOUT, CHUNK_SIZE, CHUNK_OVERLAP, MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY, TEMPERATURE, TOP_P
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
 logger = logging.getLogger('api_test')
 
 def test_api_connection():
