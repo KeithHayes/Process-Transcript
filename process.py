@@ -4,7 +4,7 @@ import logging
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('textcleaner.log'),
         logging.StreamHandler()
@@ -34,5 +34,4 @@ class TextCleaner:
 
             self.logger.info(f'Successfully wrote cleaned text to {self.output_file}')
         except Exception as e:
-            self.logger.error(f'Failed to preprocess file: {e}')
-
+            self.logger.error(f'Failed to preprocess file: {e}', exc_info=True)

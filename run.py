@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from logger import configure_logging
 from pipeline import TextProcessingPipeline
 from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, CLEANED_FILE
