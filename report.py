@@ -27,7 +27,7 @@ def git_save_changes(commit_message="dev code saved"):
 
 def create_report():
     # Base directory for the project
-    base_path = '/home/kdog/pythonprojects/process transcript'
+    base_path = '/home/kdog/pythonprojects/process_transcript'
 
     # Paths to include in the report
     boilerplate_files = [
@@ -59,7 +59,7 @@ def create_report():
 
     try:
         with open(report_file, 'w', encoding='utf-8') as report:
-            report.write("=== process transcript ===\n\n")
+            report.write("=== process_transcript ===\n\n")
 
             # DOC section
             for doc_file in boilerplate_files:

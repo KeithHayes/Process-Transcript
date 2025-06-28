@@ -1,13 +1,10 @@
-=== process transcript ===
+=== process_transcript ===
 
 === DOCS instructions.txt ===
-(venv) kdog@kdogsputer:~/pythonprojects/process transcript$ python run.py
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process transcript/run.py", line 5, in <module>
-    from process import TextCleaner
-ImportError: cannot import name 'TextCleaner' from 'process' (/home/kdog/pythonprojects/process transcript/process.py)
-(venv) kdog@kdogsputer:~/pythonprojects/process transcript$ 
 
+logging.basicConfig
+
+Seems to be defined more than it has to.
 
 === PY config.py ===
 CHUNK_SIZE = 1000
@@ -65,7 +62,7 @@ import logging
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(message)s',
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('textcleaner.log'),
         logging.StreamHandler()
@@ -80,23 +77,24 @@ class TextCleaner:
         self.logger.info(f'Initialized TextCleaner for input: {input_file}, output: {output_file}')
 
     def preprocess(self):
-        self.logger.info(f'Starting preprocessing for {self.input_file}')
-
+        self.logger.info(f'Beginning of file processing {self.input_file}')
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 text = f.read()
-            text = text.replace('\n', ' ')
-            text = re.sub(r' +', ' ', text).strip()
+                text = text.replace('\n', ' ')
+                text = re.sub(r' +', ' ', text).strip()
+
+
+                
 
             os.makedirs(os.path.dirname(self.output_file) or '.', exist_ok=True)
-
             with open(self.output_file, 'w', encoding='utf-8') as f:
                 f.write(text)
 
-            self.logger.info(f'Successfully wrote cleaned text to {self.output_file}')
-        except Exception as e:
-            self.logger.error(f'Failed to preprocess file: {e}')
 
+            self.logger.info(f'End of the line {self.output_file}')
+        except Exception as e:
+            self.logger.error(f'A fucking error: {e}', exc_info=True)
 
 
 === PY alignment.py ===
@@ -293,6 +291,7 @@ class TextProcessingPipeline:
 
 === PY run.py ===
 import asyncio
+import logging
 from logger import configure_logging
 from pipeline import TextProcessingPipeline
 from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, CLEANED_FILE
@@ -488,18 +487,20 @@ if __name__ == "__main__":
         test_chunk_processing()
 
 === PY transcript_formatted.txt ===
-Alice Warren sat beside a wide window in the corner of her study; the late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains—the silence wasn't just an absence of noise, it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside,
+Alice Warren sat beside a wide window in the corner of her study; the late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains—the silence was not merely an absence of noise, but rather a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside the garden
 
-Outside, with fragrant sweetness—a pair of robins hopped atop the low stone wall, pecking at small insects among the wild clover; occasionally, a butterfly—orange with black-veined wings—flitted past the aging glass. Alice followed its slow drifting flight for a moment before returning to her book. Such ordinary spectacles, when observed with attention, held a profound beauty. It was a lesson she had learned early and often: that the marvels of life are seldom grand or flashy; they are small, quiet, and easily overlooked. Her book, an anthology of short stories from the early twentieth century,
+Outside, the garden - fragrant with sweetness - a pair of robins hopped atop the low stone wall, pecking at small insects amidst the wild clover. Occasionally, an orange-winged butterfly with black-veined wings fluttered past the aged glass. Alice followed its slow, drifting flight for a moment before returning to her book. Such ordinary spectacles, when observed with attention, held a profound beauty; it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy—they're small, quiet, and easily overlooked. Her book, an anthology of short stories from
 
-"I feel like I'm going crazy," Alice said, looking up from her desk. She picked up the book lying open next to her laptop and stared blankly at its cover. The room seemed darker than usual; shadows lurked behind furniture, threatening to spill onto the floorboards. It wasn't just because dusk was falling outside—something else was wrong here too."
+Her book, an anthology of short stories from different eras, held a special charm in the way authors weaved descriptive passages around ordinary actions like tying shoelaces, pouring tea, or simply gazing out towards a stormy horizon. These meticulous details painted vivid pictures of daily life and its hidden intricacies - dreams, fears, and inner worlds were all captured within those seemingly mundane scenes.
+In one particular story, Alice found herself captivated by a young woman standing by a river's edge; her emotions stirred up by the simplicity of the described action. With nothing more than a mention of lifting her arms to let the wind play through
 
-"a moment, she felt transported away from her study to that riverside scene." Then she opened her eyes again, setting the bookmark between the pages, and raised her gaze to the window. The sun had sunk lower, the sky had begun to shift to ethereal shades of lavender and gold. Soon, the garden would blur into silhouettes, and the air would cool. She reached for the small porcelain teapot on the table beside her. It held a fragrant chamomile infusion with just a hint of honey. Alice poured the steaming liquid into her favorite cup - the one painted with delicate blue forget-me-nots.
+1. Alice, With nothing more than a mention of lifting her arms to let the wind play through, she felt transported away from her study to that riverside scene. Then she opened her eyes again, setting the bookmark between the pages. Raising her gaze to the window, the sun had sunk lower; the sky had begun to shift to ethereal shades of lavender and gold. Soon, the garden would blur into silhouettes, and the air would cool. Reaching for the small porcelain teapot on the table beside her, it held a fragrant chamomile infusion with just a hint of honey. 
+Alice carefully poured the
 
-As she turned back to her anthology, she selected a different story. This one described an early morning in a busy city; horse-drawn carriages rattled over cobblestones, merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air. 
-As she read, Alice imagined herself there; she could almost hear the clip-clop of hooves and feel the rough stone
+tea into her delicate china cup before returning to her anthology. She selected a different story; this one described an early morning in a busy city - horse-drawn carriages rattled over cobblestone streets, merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air. As she read, Alice imagined herself there, feeling the rough stone underfoot, hearing the clip-clop of hooves, and. She cast a soft pool of light around her chair as she continued reading outside the window. The garden was now a shadowy realm—defined only by silhouettes and the glimmer of a single landing moth in the distance. A lone streetlamp flickered to life; its orange glow reflected off the dewy leaves, turning them into luminescent orbs. 
+Alice carefully closed the anthology, pressing a finger against the spine, and then sliding the book into its proper place on the shelf. Sitting still for another moment, tea
 
-- and perhaps stepping out onto the back porch to breathe beneath a sky of stars. When she finally stood the teacup empty, the anthology closed, and the quiet settled deeply over the room. Alice felt a gentle contentment - gratitude even for the stories, yes, and for the world beyond them. For the tactile, living reality she inhabited, and so, at the close of day, she gave thanks for words, for solitude, and for the small wonders that attend each ordinary moment.
+—and perhaps stepping out onto the back porch to breathe beneath a sky of stars—when she finally stood the teacup empty. The anthology was closed, and the quiet settled deeply over the room. Alice felt a gentle contentment; gratitude, even for the stories—yes, and for the world beyond them. For the tactile, living reality she inhabited, and so at the close of day, she gave thanks for words, for solitude, and for the small wonders that attend each ordinary moment.
 
 === PY desired_output.txt ===
 Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.

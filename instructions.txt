@@ -1,6 +1,4 @@
-(venv) kdog@kdogsputer:~/pythonprojects/process transcript$ python run.py
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process transcript/run.py", line 5, in <module>
-    from process import TextCleaner
-ImportError: cannot import name 'TextCleaner' from 'process' (/home/kdog/pythonprojects/process transcript/process.py)
-(venv) kdog@kdogsputer:~/pythonprojects/process transcript$ 
+
+logging.basicConfig
+
+Seems to be defined more than it has to.
