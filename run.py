@@ -1,13 +1,18 @@
-import logging
 import asyncio
 from logger import configure_logging
 from pipeline import TextProcessingPipeline
-from config import CHUNK_SIZE, CHUNK_OVERLAP
+from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, CLEANED_FILE
+from process import TextCleaner
+
+def prepare_data():
+    cleaner = TextCleaner(INPUT_FILE, CLEANED_FILE)
+    cleaner.preprocess()
 
 async def main():
     configure_logging()
     logger = logging.getLogger('main')
     try:
+        prepare_data()
         logger.info("Starting transcript processing pipeline")
         pipeline = TextProcessingPipeline(
             chunk_size=CHUNK_SIZE,
