@@ -1,72 +1,8 @@
 === process transcript ===
 
 === DOCS instructions.txt ===
-Current status:   
-
-Output is generated, but the program algorithm has not been clearly defined until now.  Therefore the project must be examined and 
-compared to the following logic and corrected as needed.
-
-Purpose.  To identify sentences and punctuate and correct them when they are found.  Leaving other text unchanged.
-
-
-Algorithm design :
-
-Considering the previous chunk if any as possibly providing the start of a sentence in the new chunk, identify all complete sentences in the chunk. 
-If a complete sentence is identified the spelling and punctuation is corrected for that sentence.  Sentences start with a capital letter and end 
-with a period or question mark.  Sentences have commas, connecting dashes will not be used.  Text that is not is in a sentence will be unchanged. 
-Linefeeds are removed and a space is optionally added to enforce word boundries.
-
-When a new chunk is added it overlaps the previous chunk, allowing the overlapped part to be rewritten subject to new chunk information 
-such as the new chunk completeing tthe sentence.
-
-The purpose of the LLM is to identify sentences in a raw audio transcript and gramatically correct them.
-
-Connecting dashes must be replaced with a comma followed by a space or a period followed by two spaces and 
-the capital letter of a new sentence as appropriate.
-
-The document is split into multiple chunks with overlap to accomplish the sentence detections across chunk boundaries.
-
-Chunking is along word boundaries.   
-
-Chumking overlap allows corrections on the tail end of formatted output to accomidate information as the new chunk overlap 
-replaces the end of the previous chunk as the new chunk is appended to the output.
-
-Example:  If a chunk is 1000 characters long the second chunnk would begin at 800 characters so the 
-first 200 characters are copied and possibly reformatted the previous chunk.  
-
-This overlap allows a sentence to be found across a chunk boundry.
-
-The end of the second chunk is at 1800 so the third chunk begins at 1600 to repeat the overlap re-write correction process allowing 
-all complete sentences to be identified and gramatically corrected.
-
-This should be a common technique to process a 'translation' in chunks.  The web should be consulted as needed to ensure logic is correct.
-
-Text outside of sentences is unchanged except that line breaks are removed.
-
-A single blank line will divide chunks as they are added to the output file.  These blank lines are invisible to the algorithm and formatting 
-process as they are added post processing only to the output file.  
-
-
-
-The formatted output is not like the desired output which preserves the original words in order.  The task is only to identify sentences.  
-The task is not to rewrite them.  The task is to find and punctuate pre-existing sentences.
-
-python run.py in the command window is not logging any progress and status is unknown.
-
-
-
-The task.
-
-Evaluate existing code to see what part of the desired algortithm has been implemented and determine what must be corrected.
-
-Complete python files will shown in individual download boxes.
-
-Current output in 'transcript_formatted.txt' does not match 'desired_output.txt'.  dashes were added.  Correction is required.
-
-
-
-
-
+logger.py is added in and a directory has been made to log what happens on the command 
+line when run.py is executed.  runlog.log is to be placed in the logs directory and is cleared with every run.
 
 === PY config.py ===
 # Core processing parameters

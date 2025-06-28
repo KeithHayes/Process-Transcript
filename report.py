@@ -37,6 +37,7 @@ def create_report():
 
     py_files = [
         os.path.join(base_path, 'config.py'),
+        os.path.join(base_path, 'logger.py'),
         os.path.join(base_path, 'alignment.py'),
         os.path.join(base_path, 'formatters.py'),
         os.path.join(base_path, 'pipeline.py'),
