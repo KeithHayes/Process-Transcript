@@ -11,80 +11,37 @@ In our case the chunk will be searched for sentences and the leading and trailin
 replaced by '\n' for each sentence found.  This changesthe chunk by selectively replacing spaces with '\n'  
 , 
 
-for reference only as our punctation is different : 
-
-async def punctuate_text(self, text: str) -> str:
-        self.logger.info(f"Sending {len(text)} characters to LLM for punctuation")
-        prompt = f"""Correct ONLY punctuation and capitalization in this transcript while preserving ALL original content:
-
-{text}
+async def formatchunk(self):
+    complete with revised rules.
 
 RULES:
-1. ONLY add missing punctuation (.!?) and capitalization
-2. PRESERVE ALL original words exactly in order
-3. Do not change or remove any words
-4. Replace connecting dashes with commas or periods
-5. Sentences must start with capital and end with .!?
-6. Do not add any new words or change word order
+1. PRESERVE ALL original words exactly in order
+2. Add a newline after before each sentence replacing the space
+3. Add a newline after each sentence replacing the space
+4. Do not change or remove any words
+5. Do not add any new words or change word order
 
-Corrected version:"""
+Formatted version:"""
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    json={
-                        "prompt": prompt,
-                        "max_tokens": MAX_TOKENS,
-                        "temperature": TEMPERATURE,
-                        "stop": STOP_SEQUENCES,
-                        "repetition_penalty": REPETITION_PENALTY,
-                        "top_p": TOP_P
-                    },
-                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-                ) as response:
-                    if response.status != 200:
-                        self.logger.warning(f"API returned status {response.status}")
-                        return text
-                    result = await response.json()
-                    return result.get("choices", [{}])[0].get("text", text).strip()
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}")
-            return text    async def punctuate_text(self, text: str) -> str:
-        self.logger.info(f"Sending {len(text)} characters to LLM for punctuation")
-        prompt = f"""Correct ONLY punctuation and capitalization in this transcript while preserving ALL original content:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                API_URL,
+                json={
+                    "prompt": prompt,
+                    "max_tokens": MAX_TOKENS,
+                    "temperature": TEMPERATURE,
+                    "stop": STOP_SEQUENCES,
+                    "repetition_penalty": REPETITION_PENALTY,
+                    "top_p": TOP_P
+                },
+                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
+                if response.status != 200:
+                    self.logger.warning(f"API returned status {response.status}")
+                    return
+                result = await response.json()
+                self.chunk = result.get("choices", [{}])[0].get("text", self.chunk).strip()
+                
+    except Exception as e:
+        self.logger.error(f"API call failed: {str(e)}")
 
-{text}
-
-RULES:
-1. ONLY add missing punctuation (.!?) and capitalization
-2. PRESERVE ALL original words exactly in order
-3. Do not change or remove any words
-4. Replace connecting dashes with commas or periods
-5. Sentences must start with capital and end with .!?
-6. Do not add any new words or change word order
-
-Corrected version:"""
-
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    json={
-                        "prompt": prompt,
-                        "max_tokens": MAX_TOKENS,
-                        "temperature": TEMPERATURE,
-                        "stop": STOP_SEQUENCES,
-                        "repetition_penalty": REPETITION_PENALTY,
-                        "top_p": TOP_P
-                    },
-                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-                ) as response:
-                    if response.status != 200:
-                        self.logger.warning(f"API returned status {response.status}")
-                        return text
-                    result = await response.json()
-                    return result.get("choices", [{}])[0].get("text", text).strip()
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}")
-            return text

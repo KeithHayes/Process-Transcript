@@ -14,83 +14,41 @@ In our case the chunk will be searched for sentences and the leading and trailin
 replaced by '\n' for each sentence found.  This changesthe chunk by selectively replacing spaces with '\n'  
 , 
 
-for reference only as our punctation is different : 
-
-async def punctuate_text(self, text: str) -> str:
-        self.logger.info(f"Sending {len(text)} characters to LLM for punctuation")
-        prompt = f"""Correct ONLY punctuation and capitalization in this transcript while preserving ALL original content:
-
-{text}
+async def formatchunk(self):
+    complete with revised rules.
 
 RULES:
-1. ONLY add missing punctuation (.!?) and capitalization
-2. PRESERVE ALL original words exactly in order
-3. Do not change or remove any words
-4. Replace connecting dashes with commas or periods
-5. Sentences must start with capital and end with .!?
-6. Do not add any new words or change word order
+1. PRESERVE ALL original words exactly in order
+2. Add a newline after before each sentence replacing the space
+3. Add a newline after each sentence replacing the space
+4. Do not change or remove any words
+5. Do not add any new words or change word order
 
-Corrected version:"""
+Formatted version:"""
 
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    json={
-                        "prompt": prompt,
-                        "max_tokens": MAX_TOKENS,
-                        "temperature": TEMPERATURE,
-                        "stop": STOP_SEQUENCES,
-                        "repetition_penalty": REPETITION_PENALTY,
-                        "top_p": TOP_P
-                    },
-                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-                ) as response:
-                    if response.status != 200:
-                        self.logger.warning(f"API returned status {response.status}")
-                        return text
-                    result = await response.json()
-                    return result.get("choices", [{}])[0].get("text", text).strip()
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}")
-            return text    async def punctuate_text(self, text: str) -> str:
-        self.logger.info(f"Sending {len(text)} characters to LLM for punctuation")
-        prompt = f"""Correct ONLY punctuation and capitalization in this transcript while preserving ALL original content:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                API_URL,
+                json={
+                    "prompt": prompt,
+                    "max_tokens": MAX_TOKENS,
+                    "temperature": TEMPERATURE,
+                    "stop": STOP_SEQUENCES,
+                    "repetition_penalty": REPETITION_PENALTY,
+                    "top_p": TOP_P
+                },
+                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
+                if response.status != 200:
+                    self.logger.warning(f"API returned status {response.status}")
+                    return
+                result = await response.json()
+                self.chunk = result.get("choices", [{}])[0].get("text", self.chunk).strip()
+                
+    except Exception as e:
+        self.logger.error(f"API call failed: {str(e)}")
 
-{text}
 
-RULES:
-1. ONLY add missing punctuation (.!?) and capitalization
-2. PRESERVE ALL original words exactly in order
-3. Do not change or remove any words
-4. Replace connecting dashes with commas or periods
-5. Sentences must start with capital and end with .!?
-6. Do not add any new words or change word order
-
-Corrected version:"""
-
-        try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    json={
-                        "prompt": prompt,
-                        "max_tokens": MAX_TOKENS,
-                        "temperature": TEMPERATURE,
-                        "stop": STOP_SEQUENCES,
-                        "repetition_penalty": REPETITION_PENALTY,
-                        "top_p": TOP_P
-                    },
-                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-                ) as response:
-                    if response.status != 200:
-                        self.logger.warning(f"API returned status {response.status}")
-                        return text
-                    result = await response.json()
-                    return result.get("choices", [{}])[0].get("text", text).strip()
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}")
-            return text
 
 === PY config.py ===
 CHUNK_SIZE = 1000
@@ -681,15 +639,17 @@ if __name__ == "__main__":
         test_chunk_processing()
 
 === PY transcript_formatted.txt ===
-Alice Warren sat beside a wide window in the corner of her study; the late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence wasn't merely an absence of noise—it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside, the
+Alice Warren sat beside a wide window in the corner of her study; the late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise—it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside, the garden
 
-garden, fragrant with sweetness, a pair of robins hopped atop the low stone wall, pecking at small insects among the wild clover. Occasionally, a butterfly—orange with black-veined wings—fluttered past the aging glass, and Alice followed its slow, drifting flight for a moment before returning to her book. Such ordinary spectacles, when observed with attention, held a profound beauty; it was a lesson she had learned early and
+exuded fragrant sweetness; a pair of robins hopped atop the low stone wall, pecking at small insects among the wild clover. Occasionally, an orange-with-black-veined-wings butterfly flitted past the aged glass, and Alice followed its slow, drifting flight for a moment before returning to her book. Such ordinary spectacles, when observed with attention, held a profound beauty; it was a lesson she had learned early and often,. Place and character—there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions like tying shoelaces or pouring tea, gazing out towards a stormy horizon. Such attentiveness to detail formed a tapestry of everyday life, and it fascinated Alice how these small gestures could reveal so much about an individual's hopes, fears, and inner world in just one story. In one scene, a young woman stood at the edge of a river, watching the current drift by as if it carried with
 
-—and placed elsewhere, character took a backseat to descriptive prowess. There was a certain charm in the way authors of that era wove detailed passages around otherwise mundane actions like tying shoe laces, pouring tea, or simply gazing out towards a stormy horizon. The intricate weaving of seemingly insignificant moments into captivating narratives never failed to astound Alice. In one particular passage, a young woman stood at the edge of a river watching its currents drift idly by as though they carried within them unspoken promises for
+it a moment she felt transported away from her studies to that riverside scene. She opened her eyes again, setting the bookmark between the pages, and raised her gaze to the window—the sun had sunk lower; the sky had begun to shift to ethereal shades of lavender and gold. Soon, the garden would blur into silhouettes, and the air would cool. Reaching for the small porcelain teapot on the table beside her, it held a fragrant chamomile infusion with just a hint of honey. Alice poured the
 
-In one particular passage, a young woman stood at the edge of a river watching its currents drift idly by—as though they carried within them unspoken promises—cast a soft pool of light around her chair. Beyond the window, the garden was now a shadowy realm, defined only by silhouettes and the glimmer of a single landing moth in the distance; a lone streetlamp flickered to life, its orange glow rebounded off dewy leaves, turning them into luminous orbs. Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf. She sat for a moment longer, tea cup in
+tea into her delicate bone china cup before settling back into her armchair. Turning to her anthology, she selected a different story - this one described an early morning in a busy city; horse-drawn carriages rattled over cobblestone streets, merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air. As she read, Alice imagined herself there; she could almost hear the clip-clop
 
-hand, considering whether to step out onto the back porch to breathe beneath a sky of stars. When she finally stood up, the teacup was empty; the anthology was closed; and the quiet had settled deeply over the room. Alice felt a gentle contentment, gratitude even - for the stories, yes, but also for the world beyond them, for the tactile living reality she inhabited, and for the small wonders that attended each ordinary moment. At the close of day, she gave silent thanks for words, solitude
+- cast a soft pool of light around her chair. Beyond the window, the garden was now a shadowy realm, defined only by silhouettes and the glimmer of a single landing moth in the distance. A lone streetlamp flickered to life, its orange glow rebounding off dewy leaves, turning them into luminous orbs. Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf. She sat for a moment longer, tea cup in hand, simply being—it was a practice in mindful
+
+ness and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty; the anthology closed and the quiet settled deeply over the room. Alice felt a gentle contentment, gratitude even for the stories—yes—and for the world beyond them. For the tactile, living reality she inhabited, and so at the close of day, she gave thanks for words, for solitude, and for the small wonders
 
 === PY desired_output.txt ===
 Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.
