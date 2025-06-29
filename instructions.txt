@@ -1,11 +1,12 @@
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-29 12:47:34,990 - processor_test - INFO - Starting LLM processing test...
-2025-06-29 12:47:34,990 - processor_test - INFO - Test text length: 1445 chars
-2025-06-29 12:47:34,990 - processor_test - INFO - Calling LLM to process text...
-2025-06-29 12:47:52,078 - processor_test - ERROR - No sentence separation found in LLM output
-2025-06-29 12:47:52,078 - processor_test - ERROR - FAILURE: LLM processing issues found
+python test.py 
+2025-06-29 13:09:07,929 - processor_test - INFO - Starting sentence separation test...
+2025-06-29 13:09:07,929 - processor_test - INFO - Test text length: 1445 chars
+2025-06-29 13:09:07,929 - processor_test - INFO - Calling LLM to identify sentences...
+2025-06-29 13:09:49,151 - processor_test - ERROR - No sentence separation found in LLM output
+2025-06-29 13:09:49,151 - processor_test - ERROR - FAILURE: Sentence separation issues found
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
+Add better error handling.  Show the output from the steps.
 
 This is a two step process and the processes are being debugged together because they are interdependent.
 

@@ -1,14 +1,15 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-29 12:47:34,990 - processor_test - INFO - Starting LLM processing test...
-2025-06-29 12:47:34,990 - processor_test - INFO - Test text length: 1445 chars
-2025-06-29 12:47:34,990 - processor_test - INFO - Calling LLM to process text...
-2025-06-29 12:47:52,078 - processor_test - ERROR - No sentence separation found in LLM output
-2025-06-29 12:47:52,078 - processor_test - ERROR - FAILURE: LLM processing issues found
+python test.py 
+2025-06-29 13:09:07,929 - processor_test - INFO - Starting sentence separation test...
+2025-06-29 13:09:07,929 - processor_test - INFO - Test text length: 1445 chars
+2025-06-29 13:09:07,929 - processor_test - INFO - Calling LLM to identify sentences...
+2025-06-29 13:09:49,151 - processor_test - ERROR - No sentence separation found in LLM output
+2025-06-29 13:09:49,151 - processor_test - ERROR - FAILURE: Sentence separation issues found
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
+Add better error handling.  Show the output from the steps.
 
 This is a two step process and the processes are being debugged together because they are interdependent.
 
@@ -350,7 +351,9 @@ async def call_llm(prompt):
                     "prompt": prompt,
                     "max_tokens": MAX_TOKENS,
                     "temperature": 0.7,
-                    "stop": ["\n\n"]
+                    "stop": ["\n\n"],
+                    "repetition_penalty": 1.2,
+                    "top_p": 0.9
                 },
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:
@@ -364,11 +367,11 @@ async def call_llm(prompt):
         logger.error(f"LLM call failed: {str(e)}")
         return None
 
-async def test_llm_processing():
-    """Test the actual LLM sentence processing workflow"""
-    logger.info("Starting LLM processing test...")
+async def test_sentence_separation():
+    """Test sentence separation and punctuation with newlines"""
+    logger.info("Starting sentence separation test...")
     
-    # 1. Read raw unformatted text
+    # 1. Read preprocessed text
     with open(CLEANED_FILE, 'r') as f:
         raw_text = f.read().strip()
     
@@ -377,20 +380,25 @@ async def test_llm_processing():
     test_text = ' '.join(test_words)
     logger.info(f"Test text length: {len(test_text)} chars")
 
-    # 2. Create proper LLM prompt
+    # 2. Create focused LLM prompt for sentence separation only
     prompt = (
-        "Please format this unpunctuated text into proper sentences.\n"
-        "Rules:\n"
-        "1. Add correct punctuation\n"
-        "2. Put each sentence on its own line\n"
-        "3. Preserve all original words\n"
-        "4. Do not add or remove any words\n\n"
-        f"Text to format:\n{test_text}\n\n"
+        "Identify and punctuate complete sentences in this text. Follow these rules exactly:\n"
+        "1. Preserve all original words exactly\n"
+        "2. Maintain original word order\n"
+        "3. Do not add any new content\n"
+        "4. Only add punctuation where sentences clearly end\n"
+        "5. Replace the space before each sentence with a newline\n"
+        "6. Replace the space after each sentence with a newline\n"
+        "7. Keep the space after the last word if present\n\n"
+        "Example:\n"
+        "Input: 'she walked the dog it was happy'\n"
+        "Output: 'she walked the dog\nit was happy '\n\n"
+        f"Text to process:\n{test_text}\n\n"
         "Formatted text:"
     )
 
     # 3. Call LLM to process text
-    logger.info("Calling LLM to process text...")
+    logger.info("Calling LLM to identify sentences...")
     llm_output = await call_llm(prompt)
     if not llm_output:
         logger.error("LLM processing failed")
@@ -398,13 +406,13 @@ async def test_llm_processing():
 
     logger.debug(f"LLM output:\n{llm_output}")
 
-    # 4. Verify output
+    # 4. Verify output meets requirements
     # a) Check we have newlines between sentences
     if '\n' not in llm_output:
         logger.error("No sentence separation found in LLM output")
         return False
 
-    # b) Verify original words are preserved
+    # b) Verify original words are preserved in order
     original_words = test_text.split()
     processed_words = llm_output.replace('\n', ' ').split()
     
@@ -414,7 +422,14 @@ async def test_llm_processing():
         logger.error(f"Processed words: {processed_words[:10]}...")
         return False
 
-    logger.info("LLM processing test passed successfully")
+    # c) Check length matches (except for space->newline conversions)
+    original_length = len(test_text)
+    processed_length = len(llm_output.replace('\n', ' '))
+    if original_length != processed_length:
+        logger.error(f"Length mismatch: original={original_length}, processed={processed_length}")
+        return False
+
+    logger.info("Sentence separation test passed successfully")
     return True
 
 if __name__ == "__main__":
@@ -424,10 +439,10 @@ if __name__ == "__main__":
     )
     
     async def run_test():
-        if await test_llm_processing():
-            logger.info("SUCCESS: LLM processing works correctly")
+        if await test_sentence_separation():
+            logger.info("SUCCESS: Sentence separation works correctly")
         else:
-            logger.error("FAILURE: LLM processing issues found")
+            logger.error("FAILURE: Sentence separation issues found")
     
     asyncio.run(run_test())
 
