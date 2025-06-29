@@ -111,7 +111,7 @@ class ParseFile:
             2. Maintain the original word order.
             3. Ensure proper capitalization for the start of each sentence.
             4. Add necessary punctuation (periods, question marks, exclamation points) to end each sentence.
-            5. Single space each complete sentence using newlines.
+            5. Separate each complete sentence with a single space. Do NOT use newlines.
             6. Do not add or remove any content beyond essential punctuation.
 
             Reformatted text:""")
