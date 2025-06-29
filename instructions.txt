@@ -1,27 +1,41 @@
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-29 12:09:32,572 - processor_test - INFO - Testing post-processor...
-2025-06-29 12:09:32,572 - processor_test - ERROR - Post-processing failed to restore original text
-2025-06-29 12:09:32,572 - processor_test - ERROR - FAILURE: Post-processor needs fixes
+2025-06-29 12:47:34,990 - processor_test - INFO - Starting LLM processing test...
+2025-06-29 12:47:34,990 - processor_test - INFO - Test text length: 1445 chars
+2025-06-29 12:47:34,990 - processor_test - INFO - Calling LLM to process text...
+2025-06-29 12:47:52,078 - processor_test - ERROR - No sentence separation found in LLM output
+2025-06-29 12:47:52,078 - processor_test - ERROR - FAILURE: LLM processing issues found
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
 
+This is a two step process and the processes are being debugged together because they are interdependent.
 
 
-The LLM is not processing data correctly. the test.py file is needs to be corrected.
-
-At this time the only file to be changed is test.py.  The LLM will be debugged using test.py only.  Only after the test.py can 
+The test.py file is needs to be rewritten.  Only file to be changed is test.py.  The LLM will be debugged using test.py only.  Only after the test.py can 
 identify the sentences in the first 250 words in transcript_preprocessed.txt and delineate them with newlines 
 instead of the spaces used now will formatchunk in class ParseFile be changed to reflect lessons not yet learned.
 
+First the LLM will identify existing sentences in the test text which is the first chunk of 250 words 
+which ends with a space.  The test code will read the input from preprocessed.
 
-There current Lesson learned is that the LLM cannot refrain from puncuating sentences as it identifies them.
+The LLM will puncuate these sentences.  Only identified sentences will be punctuated.
 
-Therefore the LLM will be encouraged to identify and punctuate sentences and in the process the newlines will be added 
-before the capital letter of a sentence and after the period or question mark or exclamation point terminator.
+Preserve all original words exactly
+Maintain original word order
+Do not add any new content
+A newline replaces the space in front of a sentence that was originally a word separator.
+A newline replaces the space at the end of a sentence that was originally a word separator.
 
-Then regular expressions will remove all sentence formatting retaining only any added newlines in a post processing step
+This is the end of step one.  Sentences are identified, and where they are identified as complete they are 
+punctuated with newline characters replacing the spaces before and after the sentence unless the space is 
+after the last word in which case the space remains.
 
-Enhancing the identification of sentences and then removing the unwanted formatting from them, but retaining the newlines using 
-regular expressions will be a more robust solution.
+This puts each identified sentence on a separate line.
 
-if everything is correct the end string length will match the input length.
+End of the first step.
+
+Next step:
+
+In a post processing step regular expressions will remove all sentence formatting retaining only newlines.
+
+if everything is correct the end string length will match the input length.  all that has happened is that the sentences
+identified by the llm are on separate lines.

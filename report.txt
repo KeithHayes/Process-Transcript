@@ -2,32 +2,46 @@
 
 === DOCS instructions.txt ===
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-29 12:09:32,572 - processor_test - INFO - Testing post-processor...
-2025-06-29 12:09:32,572 - processor_test - ERROR - Post-processing failed to restore original text
-2025-06-29 12:09:32,572 - processor_test - ERROR - FAILURE: Post-processor needs fixes
+2025-06-29 12:47:34,990 - processor_test - INFO - Starting LLM processing test...
+2025-06-29 12:47:34,990 - processor_test - INFO - Test text length: 1445 chars
+2025-06-29 12:47:34,990 - processor_test - INFO - Calling LLM to process text...
+2025-06-29 12:47:52,078 - processor_test - ERROR - No sentence separation found in LLM output
+2025-06-29 12:47:52,078 - processor_test - ERROR - FAILURE: LLM processing issues found
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
 
+This is a two step process and the processes are being debugged together because they are interdependent.
 
 
-The LLM is not processing data correctly. the test.py file is needs to be corrected.
-
-At this time the only file to be changed is test.py.  The LLM will be debugged using test.py only.  Only after the test.py can 
+The test.py file is needs to be rewritten.  Only file to be changed is test.py.  The LLM will be debugged using test.py only.  Only after the test.py can 
 identify the sentences in the first 250 words in transcript_preprocessed.txt and delineate them with newlines 
 instead of the spaces used now will formatchunk in class ParseFile be changed to reflect lessons not yet learned.
 
+First the LLM will identify existing sentences in the test text which is the first chunk of 250 words 
+which ends with a space.  The test code will read the input from preprocessed.
 
-There current Lesson learned is that the LLM cannot refrain from puncuating sentences as it identifies them.
+The LLM will puncuate these sentences.  Only identified sentences will be punctuated.
 
-Therefore the LLM will be encouraged to identify and punctuate sentences and in the process the newlines will be added 
-before the capital letter of a sentence and after the period or question mark or exclamation point terminator.
+Preserve all original words exactly
+Maintain original word order
+Do not add any new content
+A newline replaces the space in front of a sentence that was originally a word separator.
+A newline replaces the space at the end of a sentence that was originally a word separator.
 
-Then regular expressions will remove all sentence formatting retaining only any added newlines in a post processing step
+This is the end of step one.  Sentences are identified, and where they are identified as complete they are 
+punctuated with newline characters replacing the spaces before and after the sentence unless the space is 
+after the last word in which case the space remains.
 
-Enhancing the identification of sentences and then removing the unwanted formatting from them, but retaining the newlines using 
-regular expressions will be a more robust solution.
+This puts each identified sentence on a separate line.
 
-if everything is correct the end string length will match the input length.
+End of the first step.
+
+Next step:
+
+In a post processing step regular expressions will remove all sentence formatting retaining only newlines.
+
+if everything is correct the end string length will match the input length.  all that has happened is that the sentences
+identified by the llm are on separate lines.
 
 
 === PY config.py ===
@@ -320,93 +334,87 @@ if __name__ == "__main__":
 === PY test.py ===
 import re
 import logging
-from config import CLEANED_FILE
+import aiohttp
+import asyncio
+from config import CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS
 
 logger = logging.getLogger('processor_test')
 
-def clean_llm_output(llm_output, original_text):
-    """
-    Process LLM output to:
-    1. Preserve all original words exactly
-    2. Keep only the newlines added between sentences
-    3. Remove any other formatting changes
-    """
-    # Split both texts into words
-    original_words = original_text.split()
-    llm_words = llm_output.split()
-    
-    # Verify word count matches
-    if len(llm_words) != len(original_words):
-        logger.error(f"Word count mismatch: original={len(original_words)}, llm={len(llm_words)}")
-        return original_text
-    
-    # Rebuild text with original words but LLM's newlines
-    output_lines = []
-    current_line = []
-    word_index = 0
-    
-    # Process LLM output line by line
-    for line in llm_output.split('\n'):
-        line_words = line.split()
-        line_length = len(line_words)
-        
-        # Get corresponding original words
-        original_segment = original_words[word_index:word_index+line_length]
-        current_line.extend(original_segment)
-        word_index += line_length
-        
-        # If this was a complete sentence (ends with punctuation)
-        if line.strip().endswith(('.', '?', '!')):
-            output_lines.append(' '.join(current_line))
-            current_line = []
-    
-    # Add any remaining words
-    if current_line:
-        output_lines.append(' '.join(current_line))
-    
-    return '\n'.join(output_lines)
+async def call_llm(prompt):
+    """Make actual LLM API call to process text"""
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                API_URL,
+                json={
+                    "prompt": prompt,
+                    "max_tokens": MAX_TOKENS,
+                    "temperature": 0.7,
+                    "stop": ["\n\n"]
+                },
+                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
+                if response.status != 200:
+                    error = await response.text()
+                    logger.error(f"LLM API error: {error}")
+                    return None
+                result = await response.json()
+                return result.get("choices", [{}])[0].get("text", "").strip()
+    except Exception as e:
+        logger.error(f"LLM call failed: {str(e)}")
+        return None
 
-def test_post_processor():
-    """Test the post-processing cleanup with actual text from transcript"""
-    logger.info("Loading test text...")
+async def test_llm_processing():
+    """Test the actual LLM sentence processing workflow"""
+    logger.info("Starting LLM processing test...")
+    
+    # 1. Read raw unformatted text
     with open(CLEANED_FILE, 'r') as f:
-        original_text = f.read()
+        raw_text = f.read().strip()
     
     # Take first 250 words for testing
-    test_words = original_text.split()[:250]
-    original_segment = ' '.join(test_words)
-    
-    # Simulate LLM output with newlines between sentences
-    llm_output = """alice warren sat beside a wide window in the corner of her study
-the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls
-she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink
-it was in this exact space that she found solace after a long day of meetings presentations and endless email chains
-the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered
-outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness
-a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover
-occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book
-such ordinary spectacles when observed with attention held a profound beauty
-it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked
-her book an anthology of short stories from the early twentieth century lay open on her lap
-the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character
-there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon
-such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world"""
-    
-    logger.info("Testing post-processing...")
-    cleaned = clean_llm_output(llm_output, original_segment)
-    
-    # Verify the cleaned text matches original words
-    if cleaned.replace('\n', ' ') != original_segment:
-        logger.error("Post-processing failed to restore original text")
+    test_words = raw_text.split()[:250]
+    test_text = ' '.join(test_words)
+    logger.info(f"Test text length: {len(test_text)} chars")
+
+    # 2. Create proper LLM prompt
+    prompt = (
+        "Please format this unpunctuated text into proper sentences.\n"
+        "Rules:\n"
+        "1. Add correct punctuation\n"
+        "2. Put each sentence on its own line\n"
+        "3. Preserve all original words\n"
+        "4. Do not add or remove any words\n\n"
+        f"Text to format:\n{test_text}\n\n"
+        "Formatted text:"
+    )
+
+    # 3. Call LLM to process text
+    logger.info("Calling LLM to process text...")
+    llm_output = await call_llm(prompt)
+    if not llm_output:
+        logger.error("LLM processing failed")
         return False
-    
-    # Verify newlines were preserved between sentences
-    line_count = len(cleaned.split('\n'))
-    if line_count < 5:  # Should have multiple lines for this text segment
-        logger.error(f"Insufficient newlines - only {line_count} lines found")
+
+    logger.debug(f"LLM output:\n{llm_output}")
+
+    # 4. Verify output
+    # a) Check we have newlines between sentences
+    if '\n' not in llm_output:
+        logger.error("No sentence separation found in LLM output")
         return False
+
+    # b) Verify original words are preserved
+    original_words = test_text.split()
+    processed_words = llm_output.replace('\n', ' ').split()
     
-    logger.info("Post-processing successfully cleaned LLM output")
+    if original_words != processed_words:
+        logger.error("Word content mismatch between input and output")
+        logger.error(f"Original words: {original_words[:10]}...")
+        logger.error(f"Processed words: {processed_words[:10]}...")
+        return False
+
+    logger.info("LLM processing test passed successfully")
     return True
 
 if __name__ == "__main__":
@@ -415,11 +423,13 @@ if __name__ == "__main__":
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    logger.info("Testing post-processor...")
-    if test_post_processor():
-        logger.info("SUCCESS: Post-processor works correctly")
-    else:
-        logger.error("FAILURE: Post-processor needs fixes")
+    async def run_test():
+        if await test_llm_processing():
+            logger.info("SUCCESS: LLM processing works correctly")
+        else:
+            logger.error("FAILURE: LLM processing issues found")
+    
+    asyncio.run(run_test())
 
 === PY transcript.txt ===
 alice warren sat beside a wide
