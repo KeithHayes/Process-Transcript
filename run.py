@@ -16,13 +16,13 @@ async def main():
     logger = logging.getLogger('main')
     try:
         prepare_data()
-        logger.info("Starting transcript processing pipeline")
-        pipeline = TextProcessingPipeline(
-            chunk_size=CHUNK_SIZE,
-            chunk_overlap=CHUNK_OVERLAP
-        )
-        await pipeline.process_file()
-        logger.info("Processing completed successfully")
+        #logger.info("Starting transcript processing pipeline")
+        #pipeline = TextProcessingPipeline(
+        #    chunk_size=CHUNK_SIZE,
+        #    chunk_overlap=CHUNK_OVERLAP
+        #)
+        #await pipeline.process_file()
+        logger.info("Processing completed")
     except Exception as e:
         logger.error(f"Processing failed: {str(e)}", exc_info=True)
         raise

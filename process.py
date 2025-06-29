@@ -14,6 +14,75 @@ class ParseFile:
         self._cleaned = False
         self.logger = logging.getLogger(__name__)
 
+    def count_words(self, text):
+        return len(text.split()) if text.strip() else 0
+
+    def loadchunk(self, word_count):
+        words_loaded = 0
+        words = []
+        i = self.input_pointer
+        
+        while i < len(self.input_array) and words_loaded < word_count:
+            space_pos = self.input_array.find(' ', i)
+            if space_pos == -1:  # Last word in input
+                word = self.input_array[i:]
+                words.append(word + ' ')
+                words_loaded += 1
+                i = len(self.input_array)
+                break
+            else:
+                word = self.input_array[i:space_pos+1]
+                words.append(word)
+                words_loaded += 1
+                i = space_pos + 1  # Move past space
+        
+        self.input_pointer = i
+        new_chunk_part = ''.join(words)
+        self.chunk = (self.chunk + new_chunk_part).strip()
+        if self.chunk:
+            self.chunk += ' '  # Ensure space at end for proper word splitting
+        self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
+        return self.chunk
+    
+    def savechunk(self):
+        self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
+        try:
+            words = self.chunk.split(' ')
+            # Filter out empty strings from split
+            words = [word for word in words if word]
+            
+            # Take first 150 words (or all if less than 150)
+            first_150 = words[:150]
+            first_150_text = ' '.join(first_150)
+            if first_150_text:
+                first_150_text += ' '  # Add space after each chunk
+                self.output_array += first_150_text
+                self.output_pointer += len(first_150_text)
+            
+            # Keep remaining words (should be 100 in normal case)
+            remaining_words = words[150:] if len(words) > 150 else []
+            self.chunk = ' '.join(remaining_words)
+            if self.chunk:
+                self.chunk += ' '  # Maintain space for next iteration
+            
+            self.logger.debug(
+                f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}\n'
+                f'First 50 output chars: {self.output_array[:50]}\n'
+                f'First 50 new chunk chars: {self.chunk[:50]}'
+            )
+            
+        except Exception as e:
+            self.logger.error(f'Save chunk failed: {e}', exc_info=True)
+            raise
+
+    def formatchunk(self):
+        self.logger.debug(f'Formatting chunk')
+        # Currently just a stub, no actual formatting
+
+
+
+        
+
     def preprocess(self, input_file):
         self.input_file = input_file
         self.logger.debug(f'Files: input={self.input_file}')
@@ -80,69 +149,4 @@ class ParseFile:
                 
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
-            raise
-
-    def count_words(self, text):
-        return len(text.split()) if text.strip() else 0
-
-    def loadchunk(self, word_count):
-        words_loaded = 0
-        words = []
-        i = self.input_pointer
-        
-        while i < len(self.input_array) and words_loaded < word_count:
-            space_pos = self.input_array.find(' ', i)
-            if space_pos == -1:  # Last word in input
-                word = self.input_array[i:]
-                words.append(word + ' ')
-                words_loaded += 1
-                i = len(self.input_array)
-                break
-            else:
-                word = self.input_array[i:space_pos+1]
-                words.append(word)
-                words_loaded += 1
-                i = space_pos + 1  # Move past space
-        
-        self.input_pointer = i
-        new_chunk_part = ''.join(words)
-        self.chunk = (self.chunk + new_chunk_part).strip()
-        if self.chunk:
-            self.chunk += ' '  # Ensure space at end for proper word splitting
-        self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
-        return self.chunk
-    
-    def formatchunk(self):
-        self.logger.debug(f'Formatting chunk')
-        # Currently just a stub, no actual formatting
-
-    def savechunk(self):
-        self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
-        try:
-            words = self.chunk.split(' ')
-            # Filter out empty strings from split
-            words = [word for word in words if word]
-            
-            # Take first 150 words (or all if less than 150)
-            first_150 = words[:150]
-            first_150_text = ' '.join(first_150)
-            if first_150_text:
-                first_150_text += ' '  # Add space after each chunk
-                self.output_array += first_150_text
-                self.output_pointer += len(first_150_text)
-            
-            # Keep remaining words (should be 100 in normal case)
-            remaining_words = words[150:] if len(words) > 150 else []
-            self.chunk = ' '.join(remaining_words)
-            if self.chunk:
-                self.chunk += ' '  # Maintain space for next iteration
-            
-            self.logger.debug(
-                f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}\n'
-                f'First 50 output chars: {self.output_array[:50]}\n'
-                f'First 50 new chunk chars: {self.chunk[:50]}'
-            )
-            
-        except Exception as e:
-            self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
