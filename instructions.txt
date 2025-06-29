@@ -6,3 +6,16 @@ savechunk(self): converts the array into a string and then processes the string.
 This technique is superior to what I have in the other class definitions in process.py
 
 Change the code to match the technique.
+
+class ParseFile:
+    input_pointer = 0
+    output_pointer = 0
+    input_array = []
+    chunk = []
+    output_array = []
+
+
+input_array, chunk, output_array will be strings
+
+make no otther improvements than to refine the string processing to replace array processing in the 
+ParseFile class.
