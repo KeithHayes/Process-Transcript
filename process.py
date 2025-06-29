@@ -49,9 +49,57 @@ class ParseFile:
                 self.formatchunk()
                 self.savechunk()
 
-                while (self.output_pointer < self.textsize):
+                while True:
+                    # Check if we've processed all input
+                    if self.input_pointer >= len(self.input_array) and len(self.chunk) <= 0:
+                        break
+                    
                     self.formatchunk()
                     self.savechunk()
+                    
+                    # Additional termination condition if no progress is being made
+                    if self.output_pointer >= self.textsize:
+                        break
+
+            # Write final output to file
+            with open(self.output_file, 'w', encoding='utf-8') as f:
+                f.write(self.output_array)
+                
+        except Exception as e:
+            self.logger.error(f'Processing failed: {e}', exc_info=True)
+            raise    def process(self):
+        if not self._cleaned:
+            raise RuntimeError("Call preprocess() before process()")
+        self.logger.debug(f'Processing: {self.output_file}')
+        try:
+            with open(self.output_file, 'r', encoding='utf-8') as f:
+                f.seek(self.input_pointer)
+                self.input_array = f.read()
+                self.input_pointer = 0  # pointer for chunk loading
+                self.logger.debug(f'Loaded {len(self.input_array)} characters.')
+                self.loadchunk(250) # Load first 250 words
+                self.formatchunk()
+                self.savechunk()
+
+                while True:
+                    # Check if we've processed all input
+                    if self.input_pointer >= len(self.input_array) and len(self.chunk) <= 0:
+                        break
+                    
+                    self.formatchunk()
+                    self.savechunk()
+                    
+                    # Additional termination condition if no progress is being made
+                    if self.output_pointer >= self.textsize:
+                        break
+
+            # Write final output to file
+            with open(self.output_file, 'w', encoding='utf-8') as f:
+                f.write(self.output_array)
+                
+        except Exception as e:
+            self.logger.error(f'Processing failed: {e}', exc_info=True)
+            raise
 
 
 
