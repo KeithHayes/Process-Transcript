@@ -1,60 +1,39 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-python run.py 
-2025-06-29 11:30:00,012 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-29 11:30:00,012 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-29 11:30:00,012 - process - DEBUG - Processing to: files/transcript_processed.txt
-2025-06-29 11:30:00,012 - process - INFO - Loaded 5055 characters for processing
-2025-06-29 11:30:00,013 - process - INFO - Loaded 250 words (total 1446 chars)
-2025-06-29 11:30:00,013 - process - DEBUG - Formatting chunk of 1446 chars
-2025-06-29 11:30:00,722 - process - WARNING - Received empty response from API
-2025-06-29 11:30:00,722 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
-2025-06-29 11:30:00,723 - process - DEBUG - Updated pointers - input: 1446, output: 860
-2025-06-29 11:30:00,723 - process - DEBUG - Formatting chunk of 586 chars
-2025-06-29 11:30:01,211 - process - WARNING - Received empty response from API
-2025-06-29 11:30:01,211 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=860)
-2025-06-29 11:30:01,212 - process - DEBUG - Updated pointers - input: 1446, output: 1446
-2025-06-29 11:30:01,212 - process - INFO - Loaded 150 words (total 863 chars)
-2025-06-29 11:30:01,212 - process - DEBUG - Formatting chunk of 863 chars
-2025-06-29 11:30:01,925 - process - WARNING - Received empty response from API
-2025-06-29 11:30:01,925 - process - DEBUG - Saving chunk (input_pointer=2309, output_pointer=1446)
-2025-06-29 11:30:01,925 - process - DEBUG - Updated pointers - input: 2309, output: 2309
-2025-06-29 11:30:01,926 - process - INFO - Loaded 150 words (total 835 chars)
-2025-06-29 11:30:01,926 - process - DEBUG - Formatting chunk of 835 chars
-2025-06-29 11:30:02,675 - process - WARNING - Received empty response from API
-2025-06-29 11:30:02,675 - process - DEBUG - Saving chunk (input_pointer=3144, output_pointer=2309)
-2025-06-29 11:30:02,675 - process - DEBUG - Updated pointers - input: 3144, output: 3144
-2025-06-29 11:30:02,675 - process - INFO - Loaded 150 words (total 860 chars)
-2025-06-29 11:30:02,675 - process - DEBUG - Formatting chunk of 860 chars
-2025-06-29 11:30:03,428 - process - WARNING - Received empty response from API
-2025-06-29 11:30:03,428 - process - DEBUG - Saving chunk (input_pointer=4004, output_pointer=3144)
-2025-06-29 11:30:03,428 - process - DEBUG - Updated pointers - input: 4004, output: 4004
-2025-06-29 11:30:03,428 - process - INFO - Loaded 150 words (total 865 chars)
-2025-06-29 11:30:03,428 - process - DEBUG - Formatting chunk of 865 chars
-2025-06-29 11:30:04,062 - process - WARNING - Received empty response from API
-2025-06-29 11:30:04,062 - process - DEBUG - Saving chunk (input_pointer=4869, output_pointer=4004)
-2025-06-29 11:30:04,062 - process - DEBUG - Updated pointers - input: 4869, output: 4869
-2025-06-29 11:30:04,062 - process - INFO - Loaded 34 words (total 187 chars)
-2025-06-29 11:30:04,063 - process - DEBUG - Formatting chunk of 187 chars
-2025-06-29 11:30:04,383 - process - WARNING - Received empty response from API
-2025-06-29 11:30:04,384 - process - DEBUG - Saving chunk (input_pointer=5055, output_pointer=4869)
-2025-06-29 11:30:04,384 - process - DEBUG - Updated pointers - input: 5055, output: 5056
-2025-06-29 11:30:04,384 - process - INFO - Saved 5055 characters to files/transcript_processed.txt
-2025-06-29 11:30:04,384 - main - INFO - Processing completed successfully
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
+2025-06-29 11:42:36,158 - sentence_test - INFO - Starting sentence formatting tests...
+2025-06-29 11:42:36,158 - sentence_test - INFO - Testing sentence formatting on first 250 words (250 words)
+2025-06-29 11:42:36,158 - sentence_test - ERROR - No sentence boundaries found - no newlines added
 
 
-The LLM is not processing data. the test.py file is old and it needs to be updated to reflect the changes now in formatchunk in 
-class ParseFile.
 
-At this time do not attempt to fix process.py.  The LLM will be debugged using test.py.  Maake the changes needed to test.py.
+The LLM is not processing data. the test.py file is needs to be corrected.
+
+At this time the only file changed is test.py.  The LLM will be debugged using test.py.
 
 Only after the test.py can identify the sentences in the first 250 words in transcript_preprocessed.txt and delineate them with newlines 
-instead of spaces will formatchunk in class ParseFile be changed.
+instead of the spaces used now will formatchunk in class ParseFile be changed to reflect lessons not yet learned.
 
 
-test.py will check the error condition that the number of returned words does not match.  This can be done simply by comparing 
-total length which does not change since only spaces are replaced with newlines in certain places which mark sentences.
+test.py will check the error condition that the number of returned words does not match those sent.  This can be done simply by comparing 
+the total length of the total length which does not change since only spaces are replaced with newlines in certain places which 
+mark sentences in the algorithm.
+
+verify the model.  the loaded model does not have to match but there must be a model loaded.  Here is some sample code.
+
+import requests
+
+url = "http://0.0.0.0:5000/v1/completions"
+payload = {
+    "model": "TheBloke_Mistral-7B-Instruct-v0.2-AWQ",
+    "prompt": "[INST] What is the capital of France? [/INST]",
+    "max_tokens": 20
+}
+
+response = requests.post(url, json=payload)
+print("Status Code:", response.status_code)
+print("Response:", response.json())
 
 
 === PY config.py ===
@@ -345,113 +324,82 @@ if __name__ == "__main__":
     asyncio.run(main())
 
 === PY test.py ===
-import requests
+import re
 import logging
-from config import API_URL, API_TIMEOUT, CHUNK_SIZE, CHUNK_OVERLAP, MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY, TEMPERATURE, TOP_P
+from pathlib import Path
+from config import CLEANED_FILE
 
-logger = logging.getLogger('api_test')
+logger = logging.getLogger('sentence_test')
 
-def test_api_connection():
-    """Test the LLM API with a minimal valid request."""
-    test_payload = {
-        "model": "TheBloke_Mistral-7B-Instruct-v0.2-AWQ",
-        "prompt": "This is a connection test. Respond with 'OK' if working.",
-        "max_tokens": 5,
-        "temperature": 0
-    }
+def count_words(text):
+    """Count words in text (split on whitespace)"""
+    return len(text.split()) if text.strip() else 0
 
+def identify_sentences(text):
+    """
+    Identify sentence boundaries and replace spaces with newlines.
+    Returns formatted text and original word count for verification.
+    """
+    # Basic sentence boundary detection (period followed by space and capital letter)
+    sentence_pattern = re.compile(r'(?<=[.!?])\s+(?=[A-Z])')
+    
+    # Split into sentences
+    sentences = re.split(sentence_pattern, text)
+    
+    # Join with newlines and ensure proper spacing
+    formatted_text = '\n'.join(s.strip() for s in sentences if s.strip())
+    
+    return formatted_text, count_words(text)
+
+def test_sentence_formatting():
+    """Test sentence identification and formatting in first 250 words"""
     try:
-        logger.info(f"Testing API connection to {API_URL}")
-        response = requests.post(
-            API_URL,
-            json=test_payload,
-            timeout=API_TIMEOUT
-        )
+        # Load preprocessed text
+        with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
+            full_text = f.read()
         
-        response.raise_for_status()  # Raises exception for 4XX/5XX status codes
+        # Extract first 250 words
+        words = full_text.split()[:250]
+        test_text = ' '.join(words)
+        original_word_count = len(words)
         
-        data = response.json()
-        if 'choices' not in data or len(data['choices']) == 0:
-            logger.error("API response missing choices")
+        logger.info(f"Testing sentence formatting on first 250 words ({original_word_count} words)")
+        
+        # Process the text
+        formatted_text, verified_word_count = identify_sentences(test_text)
+        
+        # Verify word count remains the same
+        if original_word_count != verified_word_count:
+            logger.error(f"Word count mismatch! Original: {original_word_count}, Verified: {verified_word_count}")
+            return False
+        
+        # Verify newlines were added
+        if '\n' not in formatted_text:
+            logger.error("No sentence boundaries found - no newlines added")
             return False
             
-        logger.info(f"API Success! Response: {data}")
+        # Verify no content was changed
+        formatted_words = formatted_text.replace('\n', ' ').split()
+        if formatted_words != words:
+            logger.error("Content was modified during formatting")
+            return False
+            
+        logger.info("Sentence formatting test passed successfully!")
+        logger.debug(f"Formatted text sample:\n{formatted_text[:500]}...")
         return True
-
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Connection failed: {str(e)}")
-        return False
-    except ValueError as e:
-        logger.error(f"Invalid JSON response: {str(e)}")
-        return False
-
-def test_chunk_processing():
-    """Test processing a single chunk with realistic content."""
-    test_chunk = (
-        "this is a test chunk of transcribed audio content containing approximately 400 "
-        "characters with overlapping speech for simulation purposes the Application "
-        "programming interface (api) must transform it into well-constructed paragraphs "
-        "complete with appropriate punctuation and capitalization"
-    )
-
-    payload = {
-        "model": "TheBloke_Mistral-7B-Instruct-v0.2-AWQ",
-        "prompt": (
-            "REFORMAT THIS TRANSCRIPT INTO PROFESSIONAL PROSE:\n\n"
-            "Requirements:\n"
-            "1. Use proper punctuation and capitalization\n"
-            "2. Form coherent paragraphs\n"
-            "3. Remove any filler words or repetitions\n\n"
-            "Original:\n"
-            f"{test_chunk}\n\n"
-            "Reformatted:"
-        ),
-        "max_tokens": MAX_TOKENS,
-        "temperature": TEMPERATURE,
-        "stop": STOP_SEQUENCES,
-        "repetition_penalty": REPETITION_PENALTY,
-        "top_k": 50,
-        "truncate": False
-    }
-
-    try:
-        logger.info("Testing chunk processing...")
-        response = requests.post(
-            API_URL,
-            json=payload,
-            timeout=API_TIMEOUT
-        )
         
-        response.raise_for_status()
-        data = response.json()
-        
-        if 'choices' not in data or len(data['choices']) == 0:
-            logger.error("API response missing choices")
-            return False
-            
-        result = data['choices'][0]['text'].strip()
-        if not result:
-            logger.error("API returned empty content!")
-            return False
-            
-        logger.info(f"Processed chunk successfully:\n{result}")
-        return True
-
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Chunk processing error: {str(e)}")
-        return False
-    except ValueError as e:
-        logger.error(f"Invalid JSON response: {str(e)}")
-        return False
-    except KeyError as e:
-        logger.error(f"Malformed API response - missing field: {str(e)}")
+    except Exception as e:
+        logger.error(f"Sentence formatting test failed: {str(e)}")
         return False
 
 if __name__ == "__main__":
-    logger.info("Starting API tests...")
-    if test_api_connection():
-        logger.info("Proceeding to chunk processing test...")
-        test_chunk_processing()
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    logger.info("Starting sentence formatting tests...")
+    test_sentence_formatting()
 
 === PY transcript.txt ===
 alice warren sat beside a wide
@@ -602,5 +550,5 @@ ordinary moment
 alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 
 === PY transcript_processed.txt ===
-alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
+alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally,a butterfly orange with black-veined wings fluttered past the aging glass. Alice followed its slow drifting flight for a moment before returning to her book,such ordinary spectacles when observed with attention held a profound beauty. It was a lesson she had learned early and often that the marvels of life are seldom grand or flashy;they are small,quiet,and easily overlooked. Her book,an anthology of short stories from the early twentieth century,lay open on her lap. The paper was slightly yellowed but sturdy,and the ink crisp. Each story contained within The selection process involved choosing works that accurately represented their respective times, places, and characters. There was something charming about the meticulous attention authors of those eras paid to even seemingly mundane activities - like tying shoelaces or pouring tea - skillfully weaving detailed descriptions into larger narratives which painted vivid pictures of daily life experiences shared universally across humanity; small gestures revealing profound insights about people's aspirations, anxieties, dreams... In one particular tale featuring a young lady standing beside a tranquil stream amidst early-spring breezes, readers were privy to intimate glimpses of her innermost thoughts and Alice found herself transported away from her study to that riverside scene, then she opened her eyes again, setting the bookmark between the pages. She raised her gaze to the window - the sun had sunk lower; the sky had begun to shift to ethereal shades of lavender and gold. Soon, the garden would blur into silhouettes, and the air would cool. Reaching for the small porcelain teapot on the table beside her, Alice poured the steaming liquid into her favorite cup - the one painted with delicate blue forget-me-nots. Pausing to inhale the warm steam, allowing its gentle scent to settle her mind, early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 

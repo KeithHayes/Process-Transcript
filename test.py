@@ -1,107 +1,76 @@
-import requests
+import re
 import logging
-from config import API_URL, API_TIMEOUT, CHUNK_SIZE, CHUNK_OVERLAP, MAX_TOKENS, STOP_SEQUENCES, REPETITION_PENALTY, TEMPERATURE, TOP_P
+from pathlib import Path
+from config import CLEANED_FILE
 
-logger = logging.getLogger('api_test')
+logger = logging.getLogger('sentence_test')
 
-def test_api_connection():
-    """Test the LLM API with a minimal valid request."""
-    test_payload = {
-        "model": "TheBloke_Mistral-7B-Instruct-v0.2-AWQ",
-        "prompt": "This is a connection test. Respond with 'OK' if working.",
-        "max_tokens": 5,
-        "temperature": 0
-    }
+def count_words(text):
+    """Count words in text (split on whitespace)"""
+    return len(text.split()) if text.strip() else 0
 
+def identify_sentences(text):
+    """
+    Identify sentence boundaries and replace spaces with newlines.
+    Returns formatted text and original word count for verification.
+    """
+    # Basic sentence boundary detection (period followed by space and capital letter)
+    sentence_pattern = re.compile(r'(?<=[.!?])\s+(?=[A-Z])')
+    
+    # Split into sentences
+    sentences = re.split(sentence_pattern, text)
+    
+    # Join with newlines and ensure proper spacing
+    formatted_text = '\n'.join(s.strip() for s in sentences if s.strip())
+    
+    return formatted_text, count_words(text)
+
+def test_sentence_formatting():
+    """Test sentence identification and formatting in first 250 words"""
     try:
-        logger.info(f"Testing API connection to {API_URL}")
-        response = requests.post(
-            API_URL,
-            json=test_payload,
-            timeout=API_TIMEOUT
-        )
+        # Load preprocessed text
+        with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
+            full_text = f.read()
         
-        response.raise_for_status()  # Raises exception for 4XX/5XX status codes
+        # Extract first 250 words
+        words = full_text.split()[:250]
+        test_text = ' '.join(words)
+        original_word_count = len(words)
         
-        data = response.json()
-        if 'choices' not in data or len(data['choices']) == 0:
-            logger.error("API response missing choices")
+        logger.info(f"Testing sentence formatting on first 250 words ({original_word_count} words)")
+        
+        # Process the text
+        formatted_text, verified_word_count = identify_sentences(test_text)
+        
+        # Verify word count remains the same
+        if original_word_count != verified_word_count:
+            logger.error(f"Word count mismatch! Original: {original_word_count}, Verified: {verified_word_count}")
+            return False
+        
+        # Verify newlines were added
+        if '\n' not in formatted_text:
+            logger.error("No sentence boundaries found - no newlines added")
             return False
             
-        logger.info(f"API Success! Response: {data}")
+        # Verify no content was changed
+        formatted_words = formatted_text.replace('\n', ' ').split()
+        if formatted_words != words:
+            logger.error("Content was modified during formatting")
+            return False
+            
+        logger.info("Sentence formatting test passed successfully!")
+        logger.debug(f"Formatted text sample:\n{formatted_text[:500]}...")
         return True
-
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Connection failed: {str(e)}")
-        return False
-    except ValueError as e:
-        logger.error(f"Invalid JSON response: {str(e)}")
-        return False
-
-def test_chunk_processing():
-    """Test processing a single chunk with realistic content."""
-    test_chunk = (
-        "this is a test chunk of transcribed audio content containing approximately 400 "
-        "characters with overlapping speech for simulation purposes the Application "
-        "programming interface (api) must transform it into well-constructed paragraphs "
-        "complete with appropriate punctuation and capitalization"
-    )
-
-    payload = {
-        "model": "TheBloke_Mistral-7B-Instruct-v0.2-AWQ",
-        "prompt": (
-            "REFORMAT THIS TRANSCRIPT INTO PROFESSIONAL PROSE:\n\n"
-            "Requirements:\n"
-            "1. Use proper punctuation and capitalization\n"
-            "2. Form coherent paragraphs\n"
-            "3. Remove any filler words or repetitions\n\n"
-            "Original:\n"
-            f"{test_chunk}\n\n"
-            "Reformatted:"
-        ),
-        "max_tokens": MAX_TOKENS,
-        "temperature": TEMPERATURE,
-        "stop": STOP_SEQUENCES,
-        "repetition_penalty": REPETITION_PENALTY,
-        "top_k": 50,
-        "truncate": False
-    }
-
-    try:
-        logger.info("Testing chunk processing...")
-        response = requests.post(
-            API_URL,
-            json=payload,
-            timeout=API_TIMEOUT
-        )
         
-        response.raise_for_status()
-        data = response.json()
-        
-        if 'choices' not in data or len(data['choices']) == 0:
-            logger.error("API response missing choices")
-            return False
-            
-        result = data['choices'][0]['text'].strip()
-        if not result:
-            logger.error("API returned empty content!")
-            return False
-            
-        logger.info(f"Processed chunk successfully:\n{result}")
-        return True
-
-    except requests.exceptions.RequestException as e:
-        logger.error(f"Chunk processing error: {str(e)}")
-        return False
-    except ValueError as e:
-        logger.error(f"Invalid JSON response: {str(e)}")
-        return False
-    except KeyError as e:
-        logger.error(f"Malformed API response - missing field: {str(e)}")
+    except Exception as e:
+        logger.error(f"Sentence formatting test failed: {str(e)}")
         return False
 
 if __name__ == "__main__":
-    logger.info("Starting API tests...")
-    if test_api_connection():
-        logger.info("Proceeding to chunk processing test...")
-        test_chunk_processing()
+    logging.basicConfig(
+        level=logging.INFO,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    )
+    
+    logger.info("Starting sentence formatting tests...")
+    test_sentence_formatting()
