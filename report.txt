@@ -7,7 +7,7 @@ This is the algorithm to be implementted and if you examine the code in process.
 implements the algorithm, but the end condition is not being implemented correctly and 
 code does not terminate and goes into an endless loop.
 
-
+All input words must be transferred through the chunk operation to the output
 
 === PY config.py ===
 CHUNK_SIZE = 1000
