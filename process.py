@@ -41,25 +41,36 @@ class ParseFile:
         self.logger.debug(f'Processing: {self.output_file}')
         try:
             with open(self.output_file, 'r', encoding='utf-8') as f:
-                f.seek(self.input_pointer)
                 self.input_array = f.read()
-                self.input_pointer = 0  # pointer for chunk loading
                 self.logger.debug(f'Loaded {len(self.input_array)} characters.')
-                self.loadchunk(250) # Load first 250 words
-                self.formatchunk()
-                self.savechunk()
-
+                
+                # Initialize pointers
+                self.input_pointer = 0
+                self.output_pointer = 0
+                
+                # Load first chunk (250 words)
+                self.loadchunk(250)
+                
                 while True:
-                    # Check if we've processed all input
-                    if self.input_pointer >= len(self.input_array) and len(self.chunk) <= 0:
-                        break
-                    
+                    # Format and save chunk
                     self.formatchunk()
                     self.savechunk()
                     
-                    # Additional termination condition if no progress is being made
-                    if self.output_pointer >= self.textsize:
+                    # Check termination conditions
+                    if self.input_pointer >= len(self.input_array) and len(self.chunk) == 0:
                         break
+                    
+                    # Load next chunk (100 remaining + 150 new words)
+                    remaining_words = self.count_words(self.chunk)
+                    if remaining_words > 0:
+                        # Only load new words if we have input remaining
+                        if self.input_pointer < len(self.input_array):
+                            self.loadchunk(150)
+                        else:
+                            # No more input, just process remaining words
+                            self.chunk = self.chunk.strip()
+                            if len(self.chunk) == 0:
+                                break
 
             # Write final output to file
             with open(self.output_file, 'w', encoding='utf-8') as f:
@@ -69,21 +80,31 @@ class ParseFile:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
             raise
 
+    def count_words(self, text):
+        return len(text.split()) if text.strip() else 0
+
     def loadchunk(self, word_count):
-        self.chunk = ""
         words_loaded = 0
+        words = []
         i = self.input_pointer
-        # Find first space after the current position
+        
         while i < len(self.input_array) and words_loaded < word_count:
             space_pos = self.input_array.find(' ', i)
-            if space_pos == -1:
-                self.chunk += self.input_array[i:] # last word
+            if space_pos == -1:  # Last word in input
+                word = self.input_array[i:]
+                words.append(word + ' ')
+                words_loaded += 1
+                i = len(self.input_array)
                 break
-            self.chunk += self.input_array[i:space_pos+1] # add word and space
-            words_loaded += 1
-            i = space_pos + 1  # Move past space
-            
-        self.input_pointer = i  # Update pointer to current position
+            else:
+                word = self.input_array[i:space_pos+1]
+                words.append(word)
+                words_loaded += 1
+                i = space_pos + 1  # Move past space
+        
+        self.input_pointer = i
+        new_chunk_part = ''.join(words)
+        self.chunk = (self.chunk + new_chunk_part).strip()
         self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
         return self.chunk
     
@@ -93,40 +114,19 @@ class ParseFile:
     def savechunk(self):
         self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
         try:
-            words = []
-            current_word = []
-            for char in self.chunk:
-                if char in (' ', '\n'):
-                    if current_word:  # Only add if we have a word
-                        words.append(''.join(current_word))
-                        current_word = []
-                    words.append(char)  # Keep the separator
-                else:
-                    current_word.append(char)
-            if current_word:
-                words.append(''.join(current_word))  # Add last word
-                
-            first_150 = ''.join(words[:150])  # Copy 150 words to output array
-            self.output_array += first_150
-            self.output_pointer += len(first_150)
-            last_100 = ''.join(words[-100:])
-            self.chunk = last_100  # move the last 100 words
+            words = self.chunk.split(' ')
+            # Filter out empty strings from split
+            words = [word for word in words if word]
             
-            additional_words = []
-            words_added = 0
-            i = self.input_pointer
-            # Add 150 more words from input array
-            while i < len(self.input_array) and words_added < 150:
-                space_pos = self.input_array.find(' ', i)
-                if space_pos == -1:
-                    additional_words.append(self.input_array[i:]) # Add last word
-                    break
-                    
-                additional_words.append(self.input_array[i:space_pos+1])
-                words_added += 1
-                i = space_pos + 1
-            self.chunk += ''.join(additional_words)
-            self.input_pointer = i
+            # Take first 150 words (or all if less than 150)
+            first_150 = words[:150]
+            first_150_text = ' '.join(first_150) + ' '
+            self.output_array += first_150_text
+            self.output_pointer += len(first_150_text)
+            
+            # Keep remaining words (should be 100 in normal case)
+            remaining_words = words[150:] if len(words) > 150 else []
+            self.chunk = ' '.join(remaining_words)
             
             self.logger.debug(
                 f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}\n'
