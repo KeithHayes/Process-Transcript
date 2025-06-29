@@ -1,60 +1,52 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-The only file to be modified is process.py 
+The only file to be modified is process.py and possibly run.py
 
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python run.py 
-2025-06-29 10:51:30,775 - process - DEBUG - Files: input=files/transcript.txt
-2025-06-29 10:51:30,775 - process - DEBUG - Cleaned: files/transcript_preprocessed.txt
-2025-06-29 10:51:30,775 - process - DEBUG - Processing: files/transcript_processed.txt
-2025-06-29 10:51:30,775 - process - DEBUG - Loaded 5055 characters.
-2025-06-29 10:51:30,775 - process - INFO - Loaded 250 words (total 1446 chars)
-2025-06-29 10:51:30,776 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
-2025-06-29 10:51:30,776 - process - ERROR - Save chunk failed: 'coroutine' object has no attribute 'split'
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
-    words = self.chunk.split(' ')
-AttributeError: 'coroutine' object has no attribute 'split'
-2025-06-29 10:51:30,776 - process - ERROR - Processing failed: 'coroutine' object has no attribute 'split'
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
-    self.savechunk()
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
-    words = self.chunk.split(' ')
-AttributeError: 'coroutine' object has no attribute 'split'
-2025-06-29 10:51:30,776 - main - ERROR - Processing failed: 'coroutine' object has no attribute 'split'
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 18, in main
-    prepare_data()
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 12, in prepare_data
-    filerunner.process(PROCESSED_FILE)
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
-    self.savechunk()
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
-    words = self.chunk.split(' ')
-AttributeError: 'coroutine' object has no attribute 'split'
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 31, in <module>
-    asyncio.run(main())
-  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
-    return loop.run_until_complete(main)
-  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
-    return future.result()
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 18, in main
-    prepare_data()
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 12, in prepare_data
-    filerunner.process(PROCESSED_FILE)
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
-    self.savechunk()
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
-    words = self.chunk.split(' ')
-AttributeError: 'coroutine' object has no attribute 'split'
-sys:1: RuntimeWarning: coroutine 'ParseFile.formatchunk' was never awaited
+2025-06-29 11:02:55,618 - process - DEBUG - Preprocessing: files/transcript.txt
+2025-06-29 11:02:55,619 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
+2025-06-29 11:02:55,619 - process - DEBUG - Processing to: files/transcript_processed.txt
+2025-06-29 11:02:55,619 - process - INFO - Loaded 5055 characters for processing
+2025-06-29 11:02:55,619 - process - INFO - Loaded 250 words (total 1446 chars)
+2025-06-29 11:02:55,619 - process - DEBUG - Formatting chunk of 1446 chars
+2025-06-29 11:02:56,271 - process - WARNING - Received empty response from API
+2025-06-29 11:02:56,271 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
+2025-06-29 11:02:56,271 - process - DEBUG - Updated pointers - input: 1446, output: 860
+2025-06-29 11:02:56,271 - process - DEBUG - Formatting chunk of 586 chars
+2025-06-29 11:03:04,837 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=860)
+2025-06-29 11:03:04,837 - process - DEBUG - Updated pointers - input: 1446, output: 1457
+2025-06-29 11:03:04,838 - process - INFO - Loaded 150 words (total 863 chars)
+2025-06-29 11:03:04,838 - process - DEBUG - Formatting chunk of 863 chars
+2025-06-29 11:03:14,041 - process - DEBUG - Saving chunk (input_pointer=2309, output_pointer=1457)
+2025-06-29 11:03:14,041 - process - DEBUG - Updated pointers - input: 2309, output: 2110
+2025-06-29 11:03:14,042 - process - INFO - Loaded 150 words (total 835 chars)
+2025-06-29 11:03:14,042 - process - DEBUG - Formatting chunk of 835 chars
+2025-06-29 11:03:23,420 - process - DEBUG - Saving chunk (input_pointer=3144, output_pointer=2110)
+2025-06-29 11:03:23,420 - process - DEBUG - Updated pointers - input: 3144, output: 2702
+2025-06-29 11:03:23,421 - process - INFO - Loaded 150 words (total 860 chars)
+2025-06-29 11:03:23,421 - process - DEBUG - Formatting chunk of 860 chars
+2025-06-29 11:03:23,906 - process - WARNING - Received empty response from API
+2025-06-29 11:03:23,906 - process - DEBUG - Saving chunk (input_pointer=4004, output_pointer=2702)
+2025-06-29 11:03:23,906 - process - DEBUG - Updated pointers - input: 4004, output: 3562
+2025-06-29 11:03:23,906 - process - INFO - Loaded 150 words (total 865 chars)
+2025-06-29 11:03:23,906 - process - DEBUG - Formatting chunk of 865 chars
+2025-06-29 11:03:24,365 - process - WARNING - Received empty response from API
+2025-06-29 11:03:24,365 - process - DEBUG - Saving chunk (input_pointer=4869, output_pointer=3562)
+2025-06-29 11:03:24,366 - process - DEBUG - Updated pointers - input: 4869, output: 4427
+2025-06-29 11:03:24,366 - process - INFO - Loaded 34 words (total 187 chars)
+2025-06-29 11:03:24,366 - process - DEBUG - Formatting chunk of 187 chars
+2025-06-29 11:03:27,630 - process - DEBUG - Saving chunk (input_pointer=5055, output_pointer=4427)
+2025-06-29 11:03:27,630 - process - DEBUG - Updated pointers - input: 5055, output: 4618
+2025-06-29 11:03:27,630 - process - INFO - Saved 4617 characters to files/transcript_processed.txt
+2025-06-29 11:03:27,630 - main - INFO - Processing completed successfully
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
 
-formatchunk had been an empty stub and it is being developed to mark sentences in a text string by delimiting them with 
-newlines instead of the spaces which currently surround them.  The llm is loaded and waiting for input.  correct whatever 
-is wrong with self.chunk = self.formatchunk(self.chunk)
+
+formatchunk had been an empty stub and it is being developed to mark sentences in a text string by delimiting identified 
+sentences with newlines instead of spaces which currently surround sentences.  The llm is loaded and waiting for input.  
+Correct whatever is wrong with self.chunk = self.formatchunk(self.chunk)
 
 
 === PY config.py ===
@@ -115,11 +107,11 @@ import re
 import asyncio
 import logging
 import textwrap
-from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, 
+import aiohttp
+from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P)
 
 class ParseFile:
-
     def __init__(self):
         self.input_pointer = 0
         self.output_pointer = 0
@@ -129,6 +121,15 @@ class ParseFile:
         self._cleaned = False
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
+        self.session = None  # Will hold our aiohttp session
+
+    async def __aenter__(self):
+        self.session = aiohttp.ClientSession()
+        return self
+
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        if self.session:
+            await self.session.close()
 
     def count_words(self, text):
         return len(text.split()) if text.strip() else 0
@@ -150,155 +151,159 @@ class ParseFile:
                 word = self.input_array[i:space_pos+1]
                 words.append(word)
                 words_loaded += 1
-                i = space_pos + 1  # Move past space
+                i = space_pos + 1
         
         self.input_pointer = i
         new_chunk_part = ''.join(words)
         self.chunk = (self.chunk + new_chunk_part).strip()
         if self.chunk:
-            self.chunk += ' '  # Ensure space at end for proper word splitting
+            self.chunk += ' '
         self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
         return self.chunk
     
     def savechunk(self):
         self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
         try:
-            words = self.chunk.split(' ')
-            # Filter out empty strings from split
-            words = [word for word in words if word]
+            if not self.chunk:
+                return
+
+            words = [word for word in self.chunk.split(' ') if word]
             
-            # Take first 150 words (or all if less than 150)
+            # Process first 150 words
             first_150 = words[:150]
-            first_150_text = ' '.join(first_150)
-            if first_150_text:
-                first_150_text += ' '  # Add space after each chunk
+            if first_150:
+                first_150_text = ' '.join(first_150) + ' '
                 self.output_array += first_150_text
                 self.output_pointer += len(first_150_text)
             
-            # Keep remaining words (should be 100 in normal case)
+            # Keep remaining words
             remaining_words = words[150:] if len(words) > 150 else []
             self.chunk = ' '.join(remaining_words)
             if self.chunk:
-                self.chunk += ' '  # Maintain space for next iteration
+                self.chunk += ' '
             
-            self.logger.debug(
-                f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}\n'
-                f'First 50 output chars: {self.output_array[:50]}\n'
-                f'First 50 new chunk chars: {self.chunk[:50]}'
-            )
+            self.logger.debug(f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}')
             
         except Exception as e:
             self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
     async def formatchunk(self, chunktext):
-        self.logger.debug(f'Formatting chunk')
-        # Currently just a stub, no actual formatting
+        if not chunktext.strip():
+            return chunktext
+
+        self.logger.debug(f'Formatting chunk of {len(chunktext)} chars')
         prompt = textwrap.dedent(f"""\
-            Change ONLY spaces in this string while preserving ALL other original content:
+            Reformatted this text with proper sentence formatting:
 
             {chunktext}
 
-            RULES:
-            1. ONLY replace spaces around sentences with linefeed missing punctuation (.!?) and capitalization
-            2. PRESERVE ALL original words exactly in order
-            3. Do not change or remove any words
-            4. Do not add any new words or change word order
-            5. If the last character in the string is a space do not change it
+            Rules:
+            1. Preserve all original words exactly
+            2. Only modify spacing and punctuation
+            3. Ensure sentences end with proper punctuation (.!?)
+            4. Capitalize the first letter of each sentence
+            5. Maintain original word order
 
-            Corrected version:""")
+            Reformatted text:""")
 
         try:
-            async with aiohttp.ClientSession() as session:
-                async with session.post(
-                    self.api_url,
-                    json={
-                        "prompt": prompt,
-                        "max_tokens": MAX_TOKENS,
-                        "temperature": TEMPERATURE,
-                        "stop": STOP_SEQUENCES,
-                        "repetition_penalty": REPETITION_PENALTY,
-                        "top_p": TOP_P
-                    },
-                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-                ) as response:
-                    if response.status != 200:
-                        self.logger.warning(f"API returned status {response.status}")
-                        return chunktext
-                    result = await response.json()
-                    return result.get("choices", [{}])[0].get("chunktext", chunktext).strip()
+            async with self.session.post(
+                self.api_url,
+                json={
+                    "prompt": prompt,
+                    "max_tokens": MAX_TOKENS,
+                    "temperature": TEMPERATURE,
+                    "stop": STOP_SEQUENCES,
+                    "repetition_penalty": REPETITION_PENALTY,
+                    "top_p": TOP_P
+                },
+                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
+                if response.status != 200:
+                    error = await response.text()
+                    self.logger.warning(f"API error {response.status}: {error}")
+                    return chunktext
+                
+                result = await response.json()
+                formatted_text = result.get("choices", [{}])[0].get("text", "").strip()
+                
+                if not formatted_text:
+                    self.logger.warning("Received empty response from API")
+                    return chunktext
+                
+                return formatted_text
+                
+        except asyncio.TimeoutError:
+            self.logger.warning("API request timed out")
+            return chunktext
         except Exception as e:
             self.logger.error(f"API call failed: {str(e)}")
             return chunktext
-        
-
-
-        
 
     def preprocess(self, input_file):
         self.input_file = input_file
-        self.logger.debug(f'Files: input={self.input_file}')
+        self.logger.debug(f'Preprocessing: {self.input_file}')
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
-                f.seek(self.input_pointer)
                 text = f.read()
-                text = text.replace('\n', ' ').strip()
-                text = re.sub(r' +', ' ', text)
+                text = re.sub(r'\s+', ' ', text).strip()
                 self.textsize = len(text)
+            
             os.makedirs(os.path.dirname(CLEANED_FILE) or '.', exist_ok=True)
             with open(CLEANED_FILE, 'w', encoding='utf-8') as f:
                 f.write(text)
+            
             self._cleaned = True
-            self.logger.debug(f'Cleaned: {CLEANED_FILE}')
+            self.logger.debug(f'Cleaned file saved: {CLEANED_FILE}')
             
         except Exception as e:
-            self.logger.error(f'Preprocessing Error: {e}', exc_info=True)
+            self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
 
-    def process(self, output_file: str):
-        self.output_file = output_file
+    async def process(self, output_file: str):
         if not self._cleaned:
-            raise RuntimeError("Call preprocess() before process()")
-        self.logger.debug(f'Processing: {self.output_file}')
+            raise RuntimeError("Must call preprocess() before process()")
+        
+        self.output_file = output_file
+        self.logger.debug(f'Processing to: {self.output_file}')
+        
         try:
             with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
                 self.input_array = f.read()
-                self.logger.debug(f'Loaded {len(self.input_array)} characters.')
+                self.logger.info(f'Loaded {len(self.input_array)} characters for processing')
                 
-                # Initialize pointers
+                # Initialize processing state
                 self.input_pointer = 0
                 self.output_pointer = 0
                 self.chunk = ""
+                self.output_array = ""
                 
-                # Load first chunk (250 words)
+                # Initial chunk load
                 self.loadchunk(250)
                 
+                # Main processing loop
                 while True:
-                    # Format and save chunk
-
-                    self.chunk = self.formatchunk(self.chunk)
+                    # Format current chunk
+                    self.chunk = await self.formatchunk(self.chunk)
+                    
+                    # Save formatted chunk
                     self.savechunk()
                     
-                    # Check termination conditions
-                    if self.input_pointer >= len(self.input_array) and len(self.chunk) == 0:
+                    # Check if we're done
+                    if self.input_pointer >= len(self.input_array) and not self.chunk.strip():
                         break
                     
-                    # Load next chunk (100 remaining + 150 new words)
+                    # Load next chunk if needed
                     remaining_words = self.count_words(self.chunk)
-                    if remaining_words > 0:
-                        # Only load new words if we have input remaining
-                        if self.input_pointer < len(self.input_array):
-                            self.loadchunk(150)
-                        else:
-                            # No more input, just process remaining words
-                            self.chunk = self.chunk.strip()
-                            if len(self.chunk) == 0:
-                                break
+                    if remaining_words < 100 and self.input_pointer < len(self.input_array):
+                        self.loadchunk(150)
+                
             # Write final output
             with open(self.output_file, 'w', encoding='utf-8') as f:
-                if self.output_array.endswith(' '):
-                    self.output_array = self.output_array[:-1]
-                f.write(self.output_array)
+                final_output = self.output_array.rstrip()
+                f.write(final_output)
+                self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
                 
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
@@ -504,24 +509,18 @@ from pipeline import TextProcessingPipeline
 from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, PROCESSED_FILE
 from process import ParseFile
 
-def prepare_data():
+async def prepare_data():
     configure_logging()
-    filerunner = ParseFile()
-    filerunner.preprocess(INPUT_FILE)
-    filerunner.process(PROCESSED_FILE)
+    async with ParseFile() as filerunner:
+        filerunner.preprocess(INPUT_FILE)
+        await filerunner.process(PROCESSED_FILE)
 
 async def main():
     configure_logging()
     logger = logging.getLogger('main')
     try:
-        prepare_data()
-        #logger.info("Starting transcript processing pipeline")
-        #pipeline = TextProcessingPipeline(
-        #    chunk_size=CHUNK_SIZE,
-        #    chunk_overlap=CHUNK_OVERLAP
-        #)
-        #await pipeline.process_file()
-        logger.info("Processing completed")
+        await prepare_data()
+        logger.info("Processing completed successfully")
     except Exception as e:
         logger.error(f"Processing failed: {str(e)}", exc_info=True)
         raise

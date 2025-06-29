@@ -1,54 +1,46 @@
-The only file to be modified is process.py 
+The only file to be modified is process.py and possibly run.py
 
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python run.py 
-2025-06-29 10:51:30,775 - process - DEBUG - Files: input=files/transcript.txt
-2025-06-29 10:51:30,775 - process - DEBUG - Cleaned: files/transcript_preprocessed.txt
-2025-06-29 10:51:30,775 - process - DEBUG - Processing: files/transcript_processed.txt
-2025-06-29 10:51:30,775 - process - DEBUG - Loaded 5055 characters.
-2025-06-29 10:51:30,775 - process - INFO - Loaded 250 words (total 1446 chars)
-2025-06-29 10:51:30,776 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
-2025-06-29 10:51:30,776 - process - ERROR - Save chunk failed: 'coroutine' object has no attribute 'split'
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
-    words = self.chunk.split(' ')
-AttributeError: 'coroutine' object has no attribute 'split'
-2025-06-29 10:51:30,776 - process - ERROR - Processing failed: 'coroutine' object has no attribute 'split'
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
-    self.savechunk()
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
-    words = self.chunk.split(' ')
-AttributeError: 'coroutine' object has no attribute 'split'
-2025-06-29 10:51:30,776 - main - ERROR - Processing failed: 'coroutine' object has no attribute 'split'
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 18, in main
-    prepare_data()
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 12, in prepare_data
-    filerunner.process(PROCESSED_FILE)
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
-    self.savechunk()
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
-    words = self.chunk.split(' ')
-AttributeError: 'coroutine' object has no attribute 'split'
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 31, in <module>
-    asyncio.run(main())
-  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
-    return loop.run_until_complete(main)
-  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
-    return future.result()
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 18, in main
-    prepare_data()
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 12, in prepare_data
-    filerunner.process(PROCESSED_FILE)
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
-    self.savechunk()
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
-    words = self.chunk.split(' ')
-AttributeError: 'coroutine' object has no attribute 'split'
-sys:1: RuntimeWarning: coroutine 'ParseFile.formatchunk' was never awaited
+2025-06-29 11:02:55,618 - process - DEBUG - Preprocessing: files/transcript.txt
+2025-06-29 11:02:55,619 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
+2025-06-29 11:02:55,619 - process - DEBUG - Processing to: files/transcript_processed.txt
+2025-06-29 11:02:55,619 - process - INFO - Loaded 5055 characters for processing
+2025-06-29 11:02:55,619 - process - INFO - Loaded 250 words (total 1446 chars)
+2025-06-29 11:02:55,619 - process - DEBUG - Formatting chunk of 1446 chars
+2025-06-29 11:02:56,271 - process - WARNING - Received empty response from API
+2025-06-29 11:02:56,271 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
+2025-06-29 11:02:56,271 - process - DEBUG - Updated pointers - input: 1446, output: 860
+2025-06-29 11:02:56,271 - process - DEBUG - Formatting chunk of 586 chars
+2025-06-29 11:03:04,837 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=860)
+2025-06-29 11:03:04,837 - process - DEBUG - Updated pointers - input: 1446, output: 1457
+2025-06-29 11:03:04,838 - process - INFO - Loaded 150 words (total 863 chars)
+2025-06-29 11:03:04,838 - process - DEBUG - Formatting chunk of 863 chars
+2025-06-29 11:03:14,041 - process - DEBUG - Saving chunk (input_pointer=2309, output_pointer=1457)
+2025-06-29 11:03:14,041 - process - DEBUG - Updated pointers - input: 2309, output: 2110
+2025-06-29 11:03:14,042 - process - INFO - Loaded 150 words (total 835 chars)
+2025-06-29 11:03:14,042 - process - DEBUG - Formatting chunk of 835 chars
+2025-06-29 11:03:23,420 - process - DEBUG - Saving chunk (input_pointer=3144, output_pointer=2110)
+2025-06-29 11:03:23,420 - process - DEBUG - Updated pointers - input: 3144, output: 2702
+2025-06-29 11:03:23,421 - process - INFO - Loaded 150 words (total 860 chars)
+2025-06-29 11:03:23,421 - process - DEBUG - Formatting chunk of 860 chars
+2025-06-29 11:03:23,906 - process - WARNING - Received empty response from API
+2025-06-29 11:03:23,906 - process - DEBUG - Saving chunk (input_pointer=4004, output_pointer=2702)
+2025-06-29 11:03:23,906 - process - DEBUG - Updated pointers - input: 4004, output: 3562
+2025-06-29 11:03:23,906 - process - INFO - Loaded 150 words (total 865 chars)
+2025-06-29 11:03:23,906 - process - DEBUG - Formatting chunk of 865 chars
+2025-06-29 11:03:24,365 - process - WARNING - Received empty response from API
+2025-06-29 11:03:24,365 - process - DEBUG - Saving chunk (input_pointer=4869, output_pointer=3562)
+2025-06-29 11:03:24,366 - process - DEBUG - Updated pointers - input: 4869, output: 4427
+2025-06-29 11:03:24,366 - process - INFO - Loaded 34 words (total 187 chars)
+2025-06-29 11:03:24,366 - process - DEBUG - Formatting chunk of 187 chars
+2025-06-29 11:03:27,630 - process - DEBUG - Saving chunk (input_pointer=5055, output_pointer=4427)
+2025-06-29 11:03:27,630 - process - DEBUG - Updated pointers - input: 5055, output: 4618
+2025-06-29 11:03:27,630 - process - INFO - Saved 4617 characters to files/transcript_processed.txt
+2025-06-29 11:03:27,630 - main - INFO - Processing completed successfully
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
 
-formatchunk had been an empty stub and it is being developed to mark sentences in a text string by delimiting them with 
-newlines instead of the spaces which currently surround them.  The llm is loaded and waiting for input.  correct whatever 
-is wrong with self.chunk = self.formatchunk(self.chunk)
+
+formatchunk had been an empty stub and it is being developed to mark sentences in a text string by delimiting identified 
+sentences with newlines instead of spaces which currently surround sentences.  The llm is loaded and waiting for input.  
+Correct whatever is wrong with self.chunk = self.formatchunk(self.chunk)
