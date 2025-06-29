@@ -1,64 +1,25 @@
 
-The test.py file is needs to be rewritten.  Only file to be changed is test.py.  The LLM will be debugged using test.py only.  
+Only file to be changed is test.py.  The LLM will be debugged using test.py only.  
 
-The test code will read the first 250 words from preprocessed.txt
+The test code reads the first 250 words from preprocessed.txt
 
-test.py will test the LLM starting with this.  Add all the imports and extra code to put this functionality into test.py
+--- Formatted Output ---
+2025-06-29 14:58:56,447 - __main__ - INFO - Alice Warren sat beside a wide window in the corner of her study. The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. 
+The silence wasn't merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside
+2025-06-29 14:58:56,447 - __main__ - INFO - --- End Formatted Output ---
 
-
- async def formatchunk(self, chunktext):
-
-        chunklength = len(chunktext)
-        self.logger.debug(f'Formatting chunk of {chunklength} chars')
-        prompt = textwrap.dedent(f"""\
-            Reformatted this text with proper sentence formatting:
-
-            {chunktext}
-
-            Rules:
-            1. Preserve all original words exactly
-            2. Only modify spacing characters
-            5. Separate sentences with newlines instead of spaces before sentence
-            5. Separate sentences with newlines instead of spaces aftter sentence
-            6. Maintain original word order
-            7. Do not add any new content
-            8. Ignore the space replacement rule for space after tthe last word
-
-            Reformatted text:""")
-
-        try:
-            async with self.session.post(
-                self.api_url,
-                json={
-                    "prompt": prompt,  # Note: Fix typo here ("prompt" -> "prompt")
-                    "max_tokens": MAX_TOKENS,
-                    "temperature": TEMPERATURE,
-                    "stop": STOP_SEQUENCES,
-                    "repetition_penalty": REPETITION_PENALTY,
-                    "top_p": TOP_P
-                },
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-            ) as response:
-                if response.status != 200:
-                    error = await response.text()
-                    self.logger.warning(f"API error {response.status}: {error}")
-                    return chunktext
-                
-                result = await response.json()
-                formatted_text = result.get("choices", [{}])[0].get("text", "").strip()
-                
-                if not formatted_text:
-                    self.logger.warning("Received empty response from API")
-                    return chunktext
-                
-                return formatted_text
-                
-        except asyncio.TimeoutError:
-            self.logger.warning("API request timed out")
-            return chunktext
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}")
-            return chunktext
+2025-06-29 14:58:56,448 - __main__ - INFO - aiohttp session closed.
 
 
+Above is incorrect, below is desired.  Each sentence is on a separate line.
 
+--- Formatted Output ---
+2025-06-29 14:58:56,447 - __main__ - INFO - Alice Warren sat beside a wide window in the corner of her study. 
+The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. 
+She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. 
+It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. 
+The silence wasn't merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. 
+Outside
+2025-06-29 14:58:56,447 - __main__ - INFO - --- End Formatted Output ---
+
+2025-06-29 14:58:56,448 - __main__ - INFO - aiohttp session closed.

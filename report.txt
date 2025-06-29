@@ -2,70 +2,30 @@
 
 === DOCS instructions.txt ===
 
-The test.py file is needs to be rewritten.  Only file to be changed is test.py.  The LLM will be debugged using test.py only.  
+Only file to be changed is test.py.  The LLM will be debugged using test.py only.  
 
-The test code will read the first 250 words from preprocessed.txt
+The test code reads the first 250 words from preprocessed.txt
 
-test.py will test the LLM starting with this.  Add all the imports and extra code to put this functionality into test.py
+--- Formatted Output ---
+2025-06-29 14:58:56,447 - __main__ - INFO - Alice Warren sat beside a wide window in the corner of her study. The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. 
+The silence wasn't merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside
+2025-06-29 14:58:56,447 - __main__ - INFO - --- End Formatted Output ---
 
-
- async def formatchunk(self, chunktext):
-
-        chunklength = len(chunktext)
-        self.logger.debug(f'Formatting chunk of {chunklength} chars')
-        prompt = textwrap.dedent(f"""\
-            Reformatted this text with proper sentence formatting:
-
-            {chunktext}
-
-            Rules:
-            1. Preserve all original words exactly
-            2. Only modify spacing characters
-            5. Separate sentences with newlines instead of spaces before sentence
-            5. Separate sentences with newlines instead of spaces aftter sentence
-            6. Maintain original word order
-            7. Do not add any new content
-            8. Ignore the space replacement rule for space after tthe last word
-
-            Reformatted text:""")
-
-        try:
-            async with self.session.post(
-                self.api_url,
-                json={
-                    "prompt": prompt,  # Note: Fix typo here ("prompt" -> "prompt")
-                    "max_tokens": MAX_TOKENS,
-                    "temperature": TEMPERATURE,
-                    "stop": STOP_SEQUENCES,
-                    "repetition_penalty": REPETITION_PENALTY,
-                    "top_p": TOP_P
-                },
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-            ) as response:
-                if response.status != 200:
-                    error = await response.text()
-                    self.logger.warning(f"API error {response.status}: {error}")
-                    return chunktext
-                
-                result = await response.json()
-                formatted_text = result.get("choices", [{}])[0].get("text", "").strip()
-                
-                if not formatted_text:
-                    self.logger.warning("Received empty response from API")
-                    return chunktext
-                
-                return formatted_text
-                
-        except asyncio.TimeoutError:
-            self.logger.warning("API request timed out")
-            return chunktext
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}")
-            return chunktext
+2025-06-29 14:58:56,448 - __main__ - INFO - aiohttp session closed.
 
 
+Above is incorrect, below is desired.  Each sentence is on a separate line.
 
+--- Formatted Output ---
+2025-06-29 14:58:56,447 - __main__ - INFO - Alice Warren sat beside a wide window in the corner of her study. 
+The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. 
+She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. 
+It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. 
+The silence wasn't merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. 
+Outside
+2025-06-29 14:58:56,447 - __main__ - INFO - --- End Formatted Output ---
 
+2025-06-29 14:58:56,448 - __main__ - INFO - aiohttp session closed.
 
 === PY config.py ===
 CHUNK_SIZE = 1000
@@ -355,7 +315,136 @@ if __name__ == "__main__":
     asyncio.run(main())
 
 === PY test.py ===
+import asyncio
+import logging
+import os
+import sys
+import textwrap
+import aiohttp
+from unittest.mock import AsyncMock, patch
 
+# Add parent directory to path to allow imports from config and logger
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from config import API_URL, MAX_TOKENS, TEMPERATURE, STOP_SEQUENCES, REPETITION_PENALTY, TOP_P, API_TIMEOUT
+from logger import configure_logging
+
+# Configure logging for the test file
+configure_logging()
+logger = logging.getLogger(__name__)
+
+# Global session variable for aiohttp (mimicking ParseFile's session handling)
+# In a real test/dev scenario, you might pass this around or use a fixture.
+session = None
+
+async def formatchunk(chunktext: str) -> str:
+    """
+    Reformats a given chunk of text using an external LLM API.
+    This function is copied here from process.py for isolated debugging.
+    """
+    global session
+    if session is None:
+        logger.warning("aiohttp session not initialized. Creating a temporary one.")
+        session = aiohttp.ClientSession() # This will be closed in the main function
+
+    chunklength = len(chunktext)
+    logger.debug(f'Formatting chunk of {chunklength} chars')
+    prompt = textwrap.dedent(f"""\
+        Reformatted this text with proper sentence formatting:
+
+        {chunktext}
+
+        Rules:
+        1. Preserve all original words exactly
+        4. Maintain original word order
+        5. Do not add any new content
+        4. Identify all unformatted sentences.
+        6. Format all unformatted sentences and add a line break before and after each complete sentence.
+
+        Reformatted text:""")
+
+    try:
+        async with session.post(
+            API_URL,
+            json={
+                "prompt": prompt,
+                "max_tokens": MAX_TOKENS,
+                "temperature": TEMPERATURE,
+                "stop": STOP_SEQUENCES,
+                "repetition_penalty": REPETITION_PENALTY,
+                "top_p": TOP_P
+            },
+            timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+        ) as response:
+            if response.status != 200:
+                error = await response.text()
+                logger.warning(f"API error {response.status}: {error}")
+                return chunktext
+            
+            result = await response.json()
+            formatted_text = result.get("choices", [{}])[0].get("text", "").strip()
+            
+            if not formatted_text:
+                logger.warning("Received empty response from API")
+                return chunktext
+            
+            return formatted_text
+            
+    except asyncio.TimeoutError:
+        logger.warning("API request timed out")
+        return chunktext
+    except Exception as e:
+        logger.error(f"API call failed: {str(e)}")
+        return chunktext
+
+async def main():
+    """
+    Main function to orchestrate the formatchunk debugging.
+    Reads the first 250 words from transcript_preprocessed.txt
+    and passes them to the formatchunk function.
+    """
+    global session
+    session = aiohttp.ClientSession() # Initialize the session for formatchunk
+
+    try:
+        # Read the first 250 words from transcript_preprocessed.txt
+        preprocessed_file_path = 'files/transcript_preprocessed.txt' # Assuming it's in the same directory
+        first_250_words = ""
+        try:
+            with open(preprocessed_file_path, 'r', encoding='utf-8') as f:
+                full_text = f.read()
+                words = full_text.split()
+                first_250_words = ' '.join(words[:250])
+            logger.info(f"Loaded first 250 words from '{preprocessed_file_path}'.")
+            logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
+
+        except FileNotFoundError:
+            logger.error(f"Error: '{preprocessed_file_path}' not found. Please ensure it's in the correct directory.")
+            return
+        except Exception as e:
+            logger.error(f"Error reading '{preprocessed_file_path}': {e}")
+            return
+
+        # Call the formatchunk function with the loaded text
+        logger.info("Calling formatchunk with the extracted text...")
+        formatted_output = await formatchunk(first_250_words)
+
+        logger.info("\n--- Formatted Output ---")
+        logger.info(formatted_output)
+        logger.info("--- End Formatted Output ---\n")
+
+        # You can add more assertions or print statements here for debugging
+        # For example, save the output to a file or compare it against a known good output.
+
+    except Exception as e:
+        logger.error(f"An error occurred during testing: {str(e)}", exc_info=True)
+    finally:
+        if session:
+            await session.close() # Close the session when done
+            logger.info("aiohttp session closed.")
+
+if __name__ == "__main__":
+    asyncio.run(main())
 
 === PY transcript.txt ===
 alice warren sat beside a wide
@@ -506,5 +595,5 @@ ordinary moment
 alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 
 === PY transcript_processed.txt ===
-alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within In had been selected for its faithful representation of time, place, and character; there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions—tying shoelaces, pouring tea, gazing out toward a stormy horizon. Such attentiveness to detail formed a tapestry of everyday life, and it fascinated Alice how these small gestures could reveal so much about an individual's hopes, fears, and inner world. In one story, a young woman stood at the edge of a river, watching the current drift by as though it carried with it unspoken promises of a distant future. The description was simple: She lifted her hands transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
+alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among The wild clover, occasionally a butterfly—orange with black veined wings—fluttered past the aging glass. Alice followed its slow drifting flight for a moment before returning to her book; such ordinary spectacles, when observed with attention, held a profound beauty. It was a lesson she had learned early and often: the marvels of life are seldom grand or flashy, they are small, quiet, and easily overlooked. Her book, an anthology of short stories from the early twentieth century, lay open on her lap. The paper was slightly yellowed but sturdy, and the ink crisp. Each story contained within remained as captivating Alice opened the book again, lost in thought. She had found an old leather-bound volume on a dusty shelf in an antique store, drawn to its age and intrigued by the faded title written across the spine: "Whispers from Yesterday." The author's name was unknown, but Alice suspected they were someone from the Victorian era – perhaps even a contemporary of Charles Dickens or Jane Austen. As she read through the pages, she couldn't help but marvel at the beauty of the language; each word carefully chosen, crafted into vivid descriptions that painted pictures in her mind. There was a certain charm in the way authors of that era wove transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in The distance a lone streetlamp flickered to life, its orange glow rebounded off dewy leaves, turning them into luminous orbs. Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf. She sat for a moment longer, teacup in hand, simply being; it was a practice in mindfulness - in appreciating transition: the end of daylight and arrival of evening, the movement from narrative to reflection. She allowed herself this small pause before rising to begin the next phase of her evening routine: preparing a light supper, writing a few thoughtful entries in her journal, and perhaps stepping out world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 
