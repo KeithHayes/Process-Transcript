@@ -123,7 +123,7 @@ class ParseFile:
                     words_added += 1
                     i = space_pos + 1
                 except ValueError:
-                    additional_words.extend(self.input_array[i:]) # Handle lat word
+                    additional_words.extend(self.input_array[i:]) # Handle last word
                     break
                     
             self.chunk.extend(additional_words)
