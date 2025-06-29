@@ -3,18 +3,121 @@
 === DOCS instructions.txt ===
 The only file to be modified is process.py 
 
+There is a logical problem, the chunk should be processed seven times but it is processed more than that.  
+It appears that the input and output pointers are not both advancing by character counts as they should.
+One of the pointers ins being incremented incorrectly, possibly by a word count and not a character count.
+
+Current output:
+
 
 
 kdog@kdogsputer:~/pythonprojects/process_transcript$ python run.py
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 6, in <module>
-    from process import ParseFile
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 70
-    raise    def process(self):
-             ^^^
-SyntaxError: invalid syntax
-kdog@kdogsputer:~/pythonprojects/process_transcript$ 
-
+2025-06-28 23:20:02,437 - process - DEBUG - Files: input=files/transcript.txt, output=files/transcript_preprocessed.txt
+2025-06-28 23:20:02,437 - process - INFO - Preprocessing: files/transcript.txt
+2025-06-28 23:20:02,437 - process - DEBUG - Cleaned: files/transcript_preprocessed.txt
+2025-06-28 23:20:02,437 - process - DEBUG - Processing: files/transcript_preprocessed.txt
+2025-06-28 23:20:02,437 - process - DEBUG - Loaded 5055 characters.
+2025-06-28 23:20:02,437 - process - INFO - Loaded 250 words (total 1446 chars)
+2025-06-28 23:20:02,437 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,438 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
+2025-06-28 23:20:02,438 - process - DEBUG - Updated pointers - input: 2309, output: 426
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: and often that the marvels of life are seldom gran
+2025-06-28 23:20:02,438 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,438 - process - DEBUG - Saving chunk (input_pointer=2309, output_pointer=426)
+2025-06-28 23:20:02,438 - process - DEBUG - Updated pointers - input: 3144, output: 848
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: future the description was simple she lifted her h
+2025-06-28 23:20:02,438 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,438 - process - DEBUG - Saving chunk (input_pointer=3144, output_pointer=848)
+2025-06-28 23:20:02,439 - process - DEBUG - Updated pointers - input: 4004, output: 1271
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: she paused to inhale the warm steam allowing its g
+2025-06-28 23:20:02,439 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,439 - process - DEBUG - Saving chunk (input_pointer=4004, output_pointer=1271)
+2025-06-28 23:20:02,439 - process - DEBUG - Updated pointers - input: 4869, output: 1711
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: and narrator blurred by the time she finished the 
+2025-06-28 23:20:02,439 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,439 - process - DEBUG - Saving chunk (input_pointer=4869, output_pointer=1711)
+2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 2146
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: in her journal and perhaps stepping out onto the b
+2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,440 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=2146)
+2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 2555
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,440 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=2555)
+2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 2836
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,440 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=2836)
+2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 3123
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,440 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=3123)
+2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 3416
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,441 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=3416)
+2025-06-28 23:20:02,441 - process - DEBUG - Updated pointers - input: 5049, output: 3715
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,441 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,441 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=3715)
+2025-06-28 23:20:02,441 - process - DEBUG - Updated pointers - input: 5049, output: 4020
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,441 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,441 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=4020)
+2025-06-28 23:20:02,441 - process - DEBUG - Updated pointers - input: 5049, output: 4331
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,441 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,441 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=4331)
+2025-06-28 23:20:02,441 - process - DEBUG - Updated pointers - input: 5049, output: 4648
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,441 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,442 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=4648)
+2025-06-28 23:20:02,442 - process - DEBUG - Updated pointers - input: 5049, output: 4971
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,442 - process - DEBUG - Formatting chunk
+2025-06-28 23:20:02,442 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=4971)
+2025-06-28 23:20:02,442 - process - DEBUG - Updated pointers - input: 5049, output: 5300
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
+2025-06-28 23:20:02,442 - main - INFO - Starting transcript processing pipeline
+2025-06-28 23:20:02,442 - pipeline - INFO - Starting processing of files/transcript.txt
+2025-06-28 23:20:02,443 - pipeline - INFO - Processing chunk 1/7
+2025-06-28 23:20:02,443 - llm - INFO - Sending 999 characters to LLM for punctuation
+2025-06-28 23:20:19,178 - alignment - DEBUG - Extracting new content from 625 chars with 0 chars context
+2025-06-28 23:20:19,178 - pipeline - INFO - Processing chunk 2/7
+2025-06-28 23:20:19,178 - llm - INFO - Sending 1173 characters to LLM for punctuation
+2025-06-28 23:20:36,380 - alignment - DEBUG - Extracting new content from 631 chars with 177 chars context
+2025-06-28 23:20:36,380 - pipeline - INFO - Processing chunk 3/7
+2025-06-28 23:20:36,380 - llm - INFO - Sending 1068 characters to LLM for punctuation
+2025-06-28 23:20:37,330 - alignment - DEBUG - Extracting new content from 0 chars with 68 chars context
+2025-06-28 23:20:37,330 - pipeline - INFO - Processing chunk 4/7
+2025-06-28 23:20:37,330 - llm - INFO - Sending 1068 characters to LLM for punctuation
+2025-06-28 23:20:52,638 - alignment - DEBUG - Extracting new content from 555 chars with 68 chars context
+2025-06-28 23:20:52,638 - pipeline - INFO - Processing chunk 5/7
+2025-06-28 23:20:52,638 - llm - INFO - Sending 1258 characters to LLM for punctuation
+2025-06-28 23:20:58,324 - alignment - DEBUG - Extracting new content from 236 chars with 257 chars context
+2025-06-28 23:20:58,325 - pipeline - INFO - Processing chunk 6/7
+2025-06-28 23:20:58,325 - llm - INFO - Sending 1075 characters to LLM for punctuation
+2025-06-28 23:21:15,508 - alignment - DEBUG - Extracting new content from 655 chars with 74 chars context
+2025-06-28 23:21:15,509 - pipeline - INFO - Processing chunk 7/7
+2025-06-28 23:21:15,509 - llm - INFO - Sending 518 characters to LLM for punctuation
+2025-06-28 23:21:28,015 - alignment - DEBUG - Extracting new content from 517 chars with 69 chars context
+2025-06-28 23:21:28,016 - pipeline - INFO - Successfully saved formatted output to files/transcript_formatted.txt
+2025-06-28 23:21:28,016 - main - INFO - Processing completed successfully
 
 
 
