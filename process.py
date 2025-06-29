@@ -198,7 +198,8 @@ class ParseFile:
                     # Format current chunk
                     self.chunk = await self.formatchunk(self.chunk)
                     
-                    # Save formatted chunk
+                    self.logger.info("--- LLM's Raw Formatted Output (single-space separated sentences) ---")
+
                     self.savechunk()
                     
                     # Check if we're done
