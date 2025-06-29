@@ -1,12 +1,26 @@
 python test.py 
-2025-06-29 13:09:07,929 - processor_test - INFO - Starting sentence separation test...
-2025-06-29 13:09:07,929 - processor_test - INFO - Test text length: 1445 chars
-2025-06-29 13:09:07,929 - processor_test - INFO - Calling LLM to identify sentences...
-2025-06-29 13:09:49,151 - processor_test - ERROR - No sentence separation found in LLM output
-2025-06-29 13:09:49,151 - processor_test - ERROR - FAILURE: Sentence separation issues found
+2025-06-29 13:16:14,980 - asyncio - DEBUG - Using selector: EpollSelector
+2025-06-29 13:16:14,981 - processor_test - INFO - Starting sentence separation test...
+2025-06-29 13:16:14,981 - processor_test - INFO - Test text length: 1445 chars
+2025-06-29 13:16:14,981 - processor_test - DEBUG - Sample of test text: alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...
+2025-06-29 13:16:14,981 - processor_test - DEBUG - Sending this prompt to LLM:
+2025-06-29 13:16:14,981 - processor_test - DEBUG - IDENTIFY AND FORMAT SENTENCES IN THIS TEXT. FOLLOW THESE RULES EXACTLY:
+1. Preserve ALL original words exactly as they appear
+2. Maintain the EXACT original word order
+3. DO NOT add any new words or content
+4. Only add punctuation where sentences clearly end
+5. Replace the space BEFORE each sentence with a newline
+6. Replace the space AFTER each sentence with a newline
+7. Keep the space after the last word if present
+8. DO NOT modify any words - only add punctuation and newlines
+
+EXAMPLE INPUT: ...
+2025-06-29 13:16:14,981 - processor_test - INFO - Calling LLM to identify sentences...
+2025-06-29 13:16:15,236 - processor_test - ERROR - LLM processing failed - no output received
+2025-06-29 13:16:15,236 - processor_test - ERROR - FAILURE: Sentence separation test failed
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
-Add better error handling.  Show the output from the steps.
+
 
 This is a two step process and the processes are being debugged together because they are interdependent.
 
@@ -40,3 +54,5 @@ In a post processing step regular expressions will remove all sentence formattin
 
 if everything is correct the end string length will match the input length.  all that has happened is that the sentences
 identified by the llm are on separate lines.
+
+Currently ',' and ';' arttifactts remain as artifacts from LLM formatting and must be removed in the regular expression task.
