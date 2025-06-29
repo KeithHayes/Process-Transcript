@@ -1,46 +1,54 @@
-The only file to be modified is process.py and possibly run.py
+python run.py 
+2025-06-29 11:30:00,012 - process - DEBUG - Preprocessing: files/transcript.txt
+2025-06-29 11:30:00,012 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
+2025-06-29 11:30:00,012 - process - DEBUG - Processing to: files/transcript_processed.txt
+2025-06-29 11:30:00,012 - process - INFO - Loaded 5055 characters for processing
+2025-06-29 11:30:00,013 - process - INFO - Loaded 250 words (total 1446 chars)
+2025-06-29 11:30:00,013 - process - DEBUG - Formatting chunk of 1446 chars
+2025-06-29 11:30:00,722 - process - WARNING - Received empty response from API
+2025-06-29 11:30:00,722 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
+2025-06-29 11:30:00,723 - process - DEBUG - Updated pointers - input: 1446, output: 860
+2025-06-29 11:30:00,723 - process - DEBUG - Formatting chunk of 586 chars
+2025-06-29 11:30:01,211 - process - WARNING - Received empty response from API
+2025-06-29 11:30:01,211 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=860)
+2025-06-29 11:30:01,212 - process - DEBUG - Updated pointers - input: 1446, output: 1446
+2025-06-29 11:30:01,212 - process - INFO - Loaded 150 words (total 863 chars)
+2025-06-29 11:30:01,212 - process - DEBUG - Formatting chunk of 863 chars
+2025-06-29 11:30:01,925 - process - WARNING - Received empty response from API
+2025-06-29 11:30:01,925 - process - DEBUG - Saving chunk (input_pointer=2309, output_pointer=1446)
+2025-06-29 11:30:01,925 - process - DEBUG - Updated pointers - input: 2309, output: 2309
+2025-06-29 11:30:01,926 - process - INFO - Loaded 150 words (total 835 chars)
+2025-06-29 11:30:01,926 - process - DEBUG - Formatting chunk of 835 chars
+2025-06-29 11:30:02,675 - process - WARNING - Received empty response from API
+2025-06-29 11:30:02,675 - process - DEBUG - Saving chunk (input_pointer=3144, output_pointer=2309)
+2025-06-29 11:30:02,675 - process - DEBUG - Updated pointers - input: 3144, output: 3144
+2025-06-29 11:30:02,675 - process - INFO - Loaded 150 words (total 860 chars)
+2025-06-29 11:30:02,675 - process - DEBUG - Formatting chunk of 860 chars
+2025-06-29 11:30:03,428 - process - WARNING - Received empty response from API
+2025-06-29 11:30:03,428 - process - DEBUG - Saving chunk (input_pointer=4004, output_pointer=3144)
+2025-06-29 11:30:03,428 - process - DEBUG - Updated pointers - input: 4004, output: 4004
+2025-06-29 11:30:03,428 - process - INFO - Loaded 150 words (total 865 chars)
+2025-06-29 11:30:03,428 - process - DEBUG - Formatting chunk of 865 chars
+2025-06-29 11:30:04,062 - process - WARNING - Received empty response from API
+2025-06-29 11:30:04,062 - process - DEBUG - Saving chunk (input_pointer=4869, output_pointer=4004)
+2025-06-29 11:30:04,062 - process - DEBUG - Updated pointers - input: 4869, output: 4869
+2025-06-29 11:30:04,062 - process - INFO - Loaded 34 words (total 187 chars)
+2025-06-29 11:30:04,063 - process - DEBUG - Formatting chunk of 187 chars
+2025-06-29 11:30:04,383 - process - WARNING - Received empty response from API
+2025-06-29 11:30:04,384 - process - DEBUG - Saving chunk (input_pointer=5055, output_pointer=4869)
+2025-06-29 11:30:04,384 - process - DEBUG - Updated pointers - input: 5055, output: 5056
+2025-06-29 11:30:04,384 - process - INFO - Saved 5055 characters to files/transcript_processed.txt
+2025-06-29 11:30:04,384 - main - INFO - Processing completed successfully
 
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python run.py 
-2025-06-29 11:02:55,618 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-29 11:02:55,619 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-29 11:02:55,619 - process - DEBUG - Processing to: files/transcript_processed.txt
-2025-06-29 11:02:55,619 - process - INFO - Loaded 5055 characters for processing
-2025-06-29 11:02:55,619 - process - INFO - Loaded 250 words (total 1446 chars)
-2025-06-29 11:02:55,619 - process - DEBUG - Formatting chunk of 1446 chars
-2025-06-29 11:02:56,271 - process - WARNING - Received empty response from API
-2025-06-29 11:02:56,271 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
-2025-06-29 11:02:56,271 - process - DEBUG - Updated pointers - input: 1446, output: 860
-2025-06-29 11:02:56,271 - process - DEBUG - Formatting chunk of 586 chars
-2025-06-29 11:03:04,837 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=860)
-2025-06-29 11:03:04,837 - process - DEBUG - Updated pointers - input: 1446, output: 1457
-2025-06-29 11:03:04,838 - process - INFO - Loaded 150 words (total 863 chars)
-2025-06-29 11:03:04,838 - process - DEBUG - Formatting chunk of 863 chars
-2025-06-29 11:03:14,041 - process - DEBUG - Saving chunk (input_pointer=2309, output_pointer=1457)
-2025-06-29 11:03:14,041 - process - DEBUG - Updated pointers - input: 2309, output: 2110
-2025-06-29 11:03:14,042 - process - INFO - Loaded 150 words (total 835 chars)
-2025-06-29 11:03:14,042 - process - DEBUG - Formatting chunk of 835 chars
-2025-06-29 11:03:23,420 - process - DEBUG - Saving chunk (input_pointer=3144, output_pointer=2110)
-2025-06-29 11:03:23,420 - process - DEBUG - Updated pointers - input: 3144, output: 2702
-2025-06-29 11:03:23,421 - process - INFO - Loaded 150 words (total 860 chars)
-2025-06-29 11:03:23,421 - process - DEBUG - Formatting chunk of 860 chars
-2025-06-29 11:03:23,906 - process - WARNING - Received empty response from API
-2025-06-29 11:03:23,906 - process - DEBUG - Saving chunk (input_pointer=4004, output_pointer=2702)
-2025-06-29 11:03:23,906 - process - DEBUG - Updated pointers - input: 4004, output: 3562
-2025-06-29 11:03:23,906 - process - INFO - Loaded 150 words (total 865 chars)
-2025-06-29 11:03:23,906 - process - DEBUG - Formatting chunk of 865 chars
-2025-06-29 11:03:24,365 - process - WARNING - Received empty response from API
-2025-06-29 11:03:24,365 - process - DEBUG - Saving chunk (input_pointer=4869, output_pointer=3562)
-2025-06-29 11:03:24,366 - process - DEBUG - Updated pointers - input: 4869, output: 4427
-2025-06-29 11:03:24,366 - process - INFO - Loaded 34 words (total 187 chars)
-2025-06-29 11:03:24,366 - process - DEBUG - Formatting chunk of 187 chars
-2025-06-29 11:03:27,630 - process - DEBUG - Saving chunk (input_pointer=5055, output_pointer=4427)
-2025-06-29 11:03:27,630 - process - DEBUG - Updated pointers - input: 5055, output: 4618
-2025-06-29 11:03:27,630 - process - INFO - Saved 4617 characters to files/transcript_processed.txt
-2025-06-29 11:03:27,630 - main - INFO - Processing completed successfully
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
+
+The LLM is not processing data. the test.py file is old and it needs to be updated to reflect the changes now in formatchunk in 
+class ParseFile.
+
+At this time do not attempt to fix process.py.  The LLM will be debugged using test.py.  Maake the changes needed to test.py.
+
+Only after the test.py can identify the sentences in the first 250 words in transcript_preprocessed.txt and delineate them with newlines 
+instead of spaces will formatchunk in class ParseFile be changed.
 
 
-
-formatchunk had been an empty stub and it is being developed to mark sentences in a text string by delimiting identified 
-sentences with newlines instead of spaces which currently surround sentences.  The llm is loaded and waiting for input.  
-Correct whatever is wrong with self.chunk = self.formatchunk(self.chunk)
+test.py will check the error condition that the number of returned words does not match.  This can be done simply by comparing 
+total length which does not change since only spaces are replaced with newlines in certain places which mark sentences.

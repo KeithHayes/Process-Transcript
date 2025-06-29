@@ -85,10 +85,9 @@ class ParseFile:
             raise
 
     async def formatchunk(self, chunktext):
-        if not chunktext.strip():
-            return chunktext
 
-        self.logger.debug(f'Formatting chunk of {len(chunktext)} chars')
+        chunklength = len(chunktext)
+        self.logger.debug(f'Formatting chunk of {chunklength} chars')
         prompt = textwrap.dedent(f"""\
             Reformatted this text with proper sentence formatting:
 
@@ -96,10 +95,12 @@ class ParseFile:
 
             Rules:
             1. Preserve all original words exactly
-            2. Only modify spacing and punctuation
-            3. Ensure sentences end with proper punctuation (.!?)
-            4. Capitalize the first letter of each sentence
-            5. Maintain original word order
+            2. Only modify spacing characters
+            5. Separate sentences with newlines instead of spaces before sentence
+            5. Separate sentences with newlines instead of spaces aftter sentence
+            6. Maintain original word order
+            7. Do not add any new content
+            8. Ignore the space replacement rule for space after tthe last word
 
             Reformatted text:""")
 
@@ -107,7 +108,7 @@ class ParseFile:
             async with self.session.post(
                 self.api_url,
                 json={
-                    "prompt": prompt,
+                    "prompt": prompt,  # Note: Fix typo here ("prompt" -> "prompt")
                     "max_tokens": MAX_TOKENS,
                     "temperature": TEMPERATURE,
                     "stop": STOP_SEQUENCES,
