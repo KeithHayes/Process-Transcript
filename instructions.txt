@@ -1,12 +1,11 @@
 python test.py 
-2025-06-29 13:39:23,260 - llm - INFO - Formatting 130 character text
-2025-06-29 13:39:35,779 - llm - WARNING - Output does not match input text
-Original:
-alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor
-
-Formatted:
-alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor
+2025-06-29 13:50:41,257 - asyncio - DEBUG - Using selector: EpollSelector
+2025-06-29 13:50:41,257 - sentence_separator - INFO - Testing with first 250 words (1446 chars)
+2025-06-29 13:50:41,257 - llm_formatter - INFO - Formatting 1446 characters
+2025-06-29 13:50:42,235 - llm_formatter - WARNING - No newlines added - returning original
+2025-06-29 13:50:42,235 - sentence_separator - ERROR - FAILED: No formatting was applied
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
+
 
 
 
@@ -42,4 +41,6 @@ In a post processing step regular expressions will remove all sentence formattin
 if everything is correct the end string length will match the input length.  All that has happened is that the sentences
 identified by the LLM are on separate lines.  Processing by regular expression is to remove unwanted formatting that the LLm 
 may have added.
+
+current error test is not revealing the string differences well 
 
