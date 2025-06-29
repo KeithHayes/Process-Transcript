@@ -4,6 +4,7 @@ MIN_SENTENCE_LENGTH = 3
 MAX_FRAGMENT_LENGTH = 100
 INPUT_FILE = 'files/transcript.txt'
 CLEANED_FILE = 'files/transcript_preprocessed.txt'
+PROCESSED_FILE = 'files/transcript_processed.txt'
 OUTPUT_FILE = 'files/transcript_formatted.txt'
 API_URL = "http://0.0.0.0:5000/v1/completions"
 API_TIMEOUT = 60

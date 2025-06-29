@@ -3,123 +3,63 @@
 === DOCS instructions.txt ===
 The only file to be modified is process.py 
 
-There is a logical problem, the chunk should be processed seven times but it is processed more than that.  
-It appears that the input and output pointers are not both advancing by character counts as they should.
-One of the pointers ins being incremented incorrectly, possibly by a word count and not a character count.
-
 Current output:
 
+python run.py
+2025-06-29 02:54:29,647 - process - DEBUG - Files: input=files/transcript.txt
+2025-06-29 02:54:29,647 - process - DEBUG - Cleaned: files/transcript_preprocessed.txt
+2025-06-29 02:54:29,648 - process - DEBUG - Processing: files/transcript_processed.txt
+2025-06-29 02:54:29,648 - process - DEBUG - Loaded 5055 characters.
+2025-06-29 02:54:29,648 - process - INFO - Loaded 250 words (total 1445 chars)
+2025-06-29 02:54:29,648 - process - DEBUG - Formatting chunk
+2025-06-29 02:54:29,648 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
+2025-06-29 02:54:29,648 - process - DEBUG - Updated pointers - input: 1446, output: 860
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: the wild clover occasionally a butterfly orange wi
+2025-06-29 02:54:29,648 - process - INFO - Loaded 150 words (total 1447 chars)
+2025-06-29 02:54:29,648 - process - DEBUG - Formatting chunk
+2025-06-29 02:54:29,648 - process - DEBUG - Saving chunk (input_pointer=2309, output_pointer=860)
+2025-06-29 02:54:29,648 - process - DEBUG - Updated pointers - input: 2309, output: 1766
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: and it fascinated alice how these small gestures c
+2025-06-29 02:54:29,648 - process - INFO - Loaded 150 words (total 1375 chars)
+2025-06-29 02:54:29,648 - process - DEBUG - Formatting chunk
+2025-06-29 02:54:29,648 - process - DEBUG - Saving chunk (input_pointer=3144, output_pointer=1766)
+2025-06-29 02:54:29,648 - process - DEBUG - Updated pointers - input: 3144, output: 2589
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: silhouettes and the air would cool she reached for
+2025-06-29 02:54:29,648 - process - INFO - Loaded 150 words (total 1411 chars)
+2025-06-29 02:54:29,648 - process - DEBUG - Formatting chunk
+2025-06-29 02:54:29,648 - process - DEBUG - Saving chunk (input_pointer=4004, output_pointer=2589)
+2025-06-29 02:54:29,649 - process - DEBUG - Updated pointers - input: 4004, output: 3455
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: on her shoulder again she closed her eyes letting 
+2025-06-29 02:54:29,649 - process - INFO - Loaded 150 words (total 1409 chars)
+2025-06-29 02:54:29,649 - process - DEBUG - Formatting chunk
+2025-06-29 02:54:29,649 - process - DEBUG - Saving chunk (input_pointer=4869, output_pointer=3455)
+2025-06-29 02:54:29,649 - process - DEBUG - Updated pointers - input: 4869, output: 4296
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: practice in mindfulness in appreciating transition
+2025-06-29 02:54:29,649 - process - INFO - Loaded 34 words (total 754 chars)
+2025-06-29 02:54:29,649 - process - DEBUG - Formatting chunk
+2025-06-29 02:54:29,649 - process - DEBUG - Saving chunk (input_pointer=5055, output_pointer=4296)
+2025-06-29 02:54:29,649 - process - DEBUG - Updated pointers - input: 5055, output: 5051
+First 50 output chars: alice warren sat beside a wide window in the corne
+First 50 new chunk chars: 
+2025-06-29 02:54:29,649 - main - INFO - Starting transcript processing pipeline
+2025-06-29 02:54:29,649 - pipeline - INFO - Starting processing of files/transcript.txt
+2025-06-29 02:54:29,650 - pipeline - INFO - Processing chunk 1/7
+2025-06-29 02:54:29,650 - llm - INFO - Sending 999 characters to LLM for punctuation
+...
 
 
-kdog@kdogsputer:~/pythonprojects/process_transcript$ python run.py
-2025-06-28 23:20:02,437 - process - DEBUG - Files: input=files/transcript.txt, output=files/transcript_preprocessed.txt
-2025-06-28 23:20:02,437 - process - INFO - Preprocessing: files/transcript.txt
-2025-06-28 23:20:02,437 - process - DEBUG - Cleaned: files/transcript_preprocessed.txt
-2025-06-28 23:20:02,437 - process - DEBUG - Processing: files/transcript_preprocessed.txt
-2025-06-28 23:20:02,437 - process - DEBUG - Loaded 5055 characters.
-2025-06-28 23:20:02,437 - process - INFO - Loaded 250 words (total 1446 chars)
-2025-06-28 23:20:02,437 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,438 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
-2025-06-28 23:20:02,438 - process - DEBUG - Updated pointers - input: 2309, output: 426
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars: and often that the marvels of life are seldom gran
-2025-06-28 23:20:02,438 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,438 - process - DEBUG - Saving chunk (input_pointer=2309, output_pointer=426)
-2025-06-28 23:20:02,438 - process - DEBUG - Updated pointers - input: 3144, output: 848
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars: future the description was simple she lifted her h
-2025-06-28 23:20:02,438 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,438 - process - DEBUG - Saving chunk (input_pointer=3144, output_pointer=848)
-2025-06-28 23:20:02,439 - process - DEBUG - Updated pointers - input: 4004, output: 1271
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars: she paused to inhale the warm steam allowing its g
-2025-06-28 23:20:02,439 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,439 - process - DEBUG - Saving chunk (input_pointer=4004, output_pointer=1271)
-2025-06-28 23:20:02,439 - process - DEBUG - Updated pointers - input: 4869, output: 1711
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars: and narrator blurred by the time she finished the 
-2025-06-28 23:20:02,439 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,439 - process - DEBUG - Saving chunk (input_pointer=4869, output_pointer=1711)
-2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 2146
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars: in her journal and perhaps stepping out onto the b
-2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,440 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=2146)
-2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 2555
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,440 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=2555)
-2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 2836
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,440 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=2836)
-2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 3123
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,440 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=3123)
-2025-06-28 23:20:02,440 - process - DEBUG - Updated pointers - input: 5049, output: 3416
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,440 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,441 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=3416)
-2025-06-28 23:20:02,441 - process - DEBUG - Updated pointers - input: 5049, output: 3715
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,441 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,441 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=3715)
-2025-06-28 23:20:02,441 - process - DEBUG - Updated pointers - input: 5049, output: 4020
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,441 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,441 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=4020)
-2025-06-28 23:20:02,441 - process - DEBUG - Updated pointers - input: 5049, output: 4331
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,441 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,441 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=4331)
-2025-06-28 23:20:02,441 - process - DEBUG - Updated pointers - input: 5049, output: 4648
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,441 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,442 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=4648)
-2025-06-28 23:20:02,442 - process - DEBUG - Updated pointers - input: 5049, output: 4971
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,442 - process - DEBUG - Formatting chunk
-2025-06-28 23:20:02,442 - process - DEBUG - Saving chunk (input_pointer=5049, output_pointer=4971)
-2025-06-28 23:20:02,442 - process - DEBUG - Updated pointers - input: 5049, output: 5300
-First 50 output chars: alice warren sat beside a wide window in the corne
-First 50 new chunk chars:  the room alice felt a gentle contentment gratitud
-2025-06-28 23:20:02,442 - main - INFO - Starting transcript processing pipeline
-2025-06-28 23:20:02,442 - pipeline - INFO - Starting processing of files/transcript.txt
-2025-06-28 23:20:02,443 - pipeline - INFO - Processing chunk 1/7
-2025-06-28 23:20:02,443 - llm - INFO - Sending 999 characters to LLM for punctuation
-2025-06-28 23:20:19,178 - alignment - DEBUG - Extracting new content from 625 chars with 0 chars context
-2025-06-28 23:20:19,178 - pipeline - INFO - Processing chunk 2/7
-2025-06-28 23:20:19,178 - llm - INFO - Sending 1173 characters to LLM for punctuation
-2025-06-28 23:20:36,380 - alignment - DEBUG - Extracting new content from 631 chars with 177 chars context
-2025-06-28 23:20:36,380 - pipeline - INFO - Processing chunk 3/7
-2025-06-28 23:20:36,380 - llm - INFO - Sending 1068 characters to LLM for punctuation
-2025-06-28 23:20:37,330 - alignment - DEBUG - Extracting new content from 0 chars with 68 chars context
-2025-06-28 23:20:37,330 - pipeline - INFO - Processing chunk 4/7
-2025-06-28 23:20:37,330 - llm - INFO - Sending 1068 characters to LLM for punctuation
-2025-06-28 23:20:52,638 - alignment - DEBUG - Extracting new content from 555 chars with 68 chars context
-2025-06-28 23:20:52,638 - pipeline - INFO - Processing chunk 5/7
-2025-06-28 23:20:52,638 - llm - INFO - Sending 1258 characters to LLM for punctuation
-2025-06-28 23:20:58,324 - alignment - DEBUG - Extracting new content from 236 chars with 257 chars context
-2025-06-28 23:20:58,325 - pipeline - INFO - Processing chunk 6/7
-2025-06-28 23:20:58,325 - llm - INFO - Sending 1075 characters to LLM for punctuation
-2025-06-28 23:21:15,508 - alignment - DEBUG - Extracting new content from 655 chars with 74 chars context
-2025-06-28 23:21:15,509 - pipeline - INFO - Processing chunk 7/7
-2025-06-28 23:21:15,509 - llm - INFO - Sending 518 characters to LLM for punctuation
-2025-06-28 23:21:28,015 - alignment - DEBUG - Extracting new content from 517 chars with 69 chars context
-2025-06-28 23:21:28,016 - pipeline - INFO - Successfully saved formatted output to files/transcript_formatted.txt
-2025-06-28 23:21:28,016 - main - INFO - Processing completed successfully
+preprocessed : "alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary momentalice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment"
+processed:     "alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained withinhad been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felttransported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described anearly morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth inthe distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for theworld beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained withinhad been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felttransported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described anearly morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth inthe distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for theworld beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment"
+
+Because format() is currently an empty stub the processed string should match the preprocessed string.  It appears the chunks are not merged correctly.
 
 
+***********
 
 This is the algorithm to be implementted and if you examine the code in process.py you see it allmost 
 implements the algorithm, but the end condition is not being implemented correctly and 
@@ -237,6 +177,7 @@ MIN_SENTENCE_LENGTH = 3
 MAX_FRAGMENT_LENGTH = 100
 INPUT_FILE = 'files/transcript.txt'
 CLEANED_FILE = 'files/transcript_preprocessed.txt'
+PROCESSED_FILE = 'files/transcript_processed.txt'
 OUTPUT_FILE = 'files/transcript_formatted.txt'
 API_URL = "http://0.0.0.0:5000/v1/completions"
 API_TIMEOUT = 60
@@ -285,23 +226,22 @@ def configure_logging():
 import os
 import re
 import logging
+from config import CLEANED_FILE
 
 class ParseFile:
 
-    def __init__(self, input_file: str, output_file: str):
+    def __init__(self):
         self.input_pointer = 0
         self.output_pointer = 0
         self.input_array = ""
         self.chunk = ""
         self.output_array = ""
-        self.input_file = input_file
-        self.output_file = output_file
         self._cleaned = False
         self.logger = logging.getLogger(__name__)
-        self.logger.debug(f'Files: input={input_file}, output={output_file}')
 
-    def preprocess(self):
-        self.logger.info(f'Preprocessing: {self.input_file}')
+    def preprocess(self, input_file):
+        self.input_file = input_file
+        self.logger.debug(f'Files: input={self.input_file}')
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 f.seek(self.input_pointer)
@@ -309,41 +249,53 @@ class ParseFile:
                 text = text.replace('\n', ' ').strip()
                 text = re.sub(r' +', ' ', text)
                 self.textsize = len(text)
-            os.makedirs(os.path.dirname(self.output_file) or '.', exist_ok=True)
-            with open(self.output_file, 'w', encoding='utf-8') as f:
+            os.makedirs(os.path.dirname(CLEANED_FILE) or '.', exist_ok=True)
+            with open(CLEANED_FILE, 'w', encoding='utf-8') as f:
                 f.write(text)
             self._cleaned = True
-            self.logger.debug(f'Cleaned: {self.output_file}')
+            self.logger.debug(f'Cleaned: {CLEANED_FILE}')
             
         except Exception as e:
             self.logger.error(f'Preprocessing Error: {e}', exc_info=True)
             raise
 
-    def process(self):
+    def process(self, output_file: str):
+        self.output_file = output_file
         if not self._cleaned:
             raise RuntimeError("Call preprocess() before process()")
         self.logger.debug(f'Processing: {self.output_file}')
         try:
-            with open(self.output_file, 'r', encoding='utf-8') as f:
-                f.seek(self.input_pointer)
+            with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
                 self.input_array = f.read()
-                self.input_pointer = 0  # pointer for chunk loading
                 self.logger.debug(f'Loaded {len(self.input_array)} characters.')
-                self.loadchunk(250) # Load first 250 words
-                self.formatchunk()
-                self.savechunk()
-
+                
+                # Initialize pointers
+                self.input_pointer = 0
+                self.output_pointer = 0
+                
+                # Load first chunk (250 words)
+                self.loadchunk(250)
+                
                 while True:
-                    # Check if we've processed all input
-                    if self.input_pointer >= len(self.input_array) and len(self.chunk) <= 0:
-                        break
-                    
+                    # Format and save chunk
                     self.formatchunk()
                     self.savechunk()
                     
-                    # Additional termination condition if no progress is being made
-                    if self.output_pointer >= self.textsize:
+                    # Check termination conditions
+                    if self.input_pointer >= len(self.input_array) and len(self.chunk) == 0:
                         break
+                    
+                    # Load next chunk (100 remaining + 150 new words)
+                    remaining_words = self.count_words(self.chunk)
+                    if remaining_words > 0:
+                        # Only load new words if we have input remaining
+                        if self.input_pointer < len(self.input_array):
+                            self.loadchunk(150)
+                        else:
+                            # No more input, just process remaining words
+                            self.chunk = self.chunk.strip()
+                            if len(self.chunk) == 0:
+                                break
 
             # Write final output to file
             with open(self.output_file, 'w', encoding='utf-8') as f:
@@ -353,21 +305,31 @@ class ParseFile:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
             raise
 
+    def count_words(self, text):
+        return len(text.split()) if text.strip() else 0
+
     def loadchunk(self, word_count):
-        self.chunk = ""
         words_loaded = 0
+        words = []
         i = self.input_pointer
-        # Find first space after the current position
+        
         while i < len(self.input_array) and words_loaded < word_count:
             space_pos = self.input_array.find(' ', i)
-            if space_pos == -1:
-                self.chunk += self.input_array[i:] # last word
+            if space_pos == -1:  # Last word in input
+                word = self.input_array[i:]
+                words.append(word + ' ')
+                words_loaded += 1
+                i = len(self.input_array)
                 break
-            self.chunk += self.input_array[i:space_pos+1] # add word and space
-            words_loaded += 1
-            i = space_pos + 1  # Move past space
-            
-        self.input_pointer = i  # Update pointer to current position
+            else:
+                word = self.input_array[i:space_pos+1]
+                words.append(word)
+                words_loaded += 1
+                i = space_pos + 1  # Move past space
+        
+        self.input_pointer = i
+        new_chunk_part = ''.join(words)
+        self.chunk = (self.chunk + new_chunk_part).strip()
         self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
         return self.chunk
     
@@ -377,40 +339,19 @@ class ParseFile:
     def savechunk(self):
         self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
         try:
-            words = []
-            current_word = []
-            for char in self.chunk:
-                if char in (' ', '\n'):
-                    if current_word:  # Only add if we have a word
-                        words.append(''.join(current_word))
-                        current_word = []
-                    words.append(char)  # Keep the separator
-                else:
-                    current_word.append(char)
-            if current_word:
-                words.append(''.join(current_word))  # Add last word
-                
-            first_150 = ''.join(words[:150])  # Copy 150 words to output array
-            self.output_array += first_150
-            self.output_pointer += len(first_150)
-            last_100 = ''.join(words[-100:])
-            self.chunk = last_100  # move the last 100 words
+            words = self.chunk.split(' ')
+            # Filter out empty strings from split
+            words = [word for word in words if word]
             
-            additional_words = []
-            words_added = 0
-            i = self.input_pointer
-            # Add 150 more words from input array
-            while i < len(self.input_array) and words_added < 150:
-                space_pos = self.input_array.find(' ', i)
-                if space_pos == -1:
-                    additional_words.append(self.input_array[i:]) # Add last word
-                    break
-                    
-                additional_words.append(self.input_array[i:space_pos+1])
-                words_added += 1
-                i = space_pos + 1
-            self.chunk += ''.join(additional_words)
-            self.input_pointer = i
+            # Take first 150 words (or all if less than 150)
+            first_150 = words[:150]
+            first_150_text = ' '.join(first_150) + ' '
+            self.output_array += first_150_text
+            self.output_pointer += len(first_150_text)
+            
+            # Keep remaining words (should be 100 in normal case)
+            remaining_words = words[150:] if len(words) > 150 else []
+            self.chunk = ' '.join(remaining_words)
             
             self.logger.debug(
                 f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}\n'
@@ -619,14 +560,14 @@ import asyncio
 import logging
 from logger import configure_logging
 from pipeline import TextProcessingPipeline
-from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, CLEANED_FILE
+from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, PROCESSED_FILE
 from process import ParseFile
 
 def prepare_data():
     configure_logging()
-    filerunner = ParseFile(INPUT_FILE, CLEANED_FILE)
-    filerunner.preprocess()
-    filerunner.process()
+    filerunner = ParseFile()
+    filerunner.preprocess(INPUT_FILE)
+    filerunner.process(PROCESSED_FILE)
 
 async def main():
     configure_logging()
@@ -809,18 +750,21 @@ if __name__ == "__main__":
         test_chunk_processing()
 
 === PY transcript_formatted.txt ===
-Alice Warren sat beside a wide window in the corner of her study. The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence wasn't just an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside, the
+Alice Warren sat beside a wide window in the corner of her study; the late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside, the garden
 
-warmth of sunlight mixed with fragrant sweetness as a pair of robins hopped atop the low stone wall, pecking at small insects among the wild clover. Occasionally, an orange-veined butterfly would flutter past the aged glass. Alice followed its slow drifting flight for a moment before returning to her book—such ordinary spectacles when observed with attention held a profound beauty. It was a lesson she had learned early and often: The marvels of life
+'s fragrant sweetness enveloped Alice as she watched a pair of robins hop atop the low stone wall, pecking at small insects among the wild clover. Occasionally, an orange-and-black-veined butterfly would flutter past the aged glass pane beside her, drawing her eye away from the page of her beloved book. Such ordinary spectacles, when observed with attention, held a profound beauty—it was a lesson she had learned early and often that
 
-Alice sipped her chamomile tea, enjoying the soothing fragrance as she turned the page of her beloved anthology. She chose another tale - this time about an early morning bustle in a vibrant city filled with horses pulling carriages, vendors shouting their wares, and people chattering all around. As she read about the hustle and energy filling the streets, Alice couldn't help but feel grateful for moments like these; when she could escape into worlds far removed from her studies, even if only for a brief moment before returning once more to reality.
+place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions; tying shoelaces, pouring tea, gazing out toward a stormy horizon. 
+2. Such attentiveness to detail formed a tapestry of everyday life and it fascinated Alice how these small gestures could reveal so much about an individual's hopes, fears, and inner world in one story. In one tale, a young woman stood at the edge of a river, watching the current drift by as
 
-She carefully considered his suggestion, knowing how much he enjoyed playing chess together - they always spent hours discussing strategy over games like this one... However, she felt anxious about leaving their cozy living room behind.
+a moment she felt transported away from her study to that riverside scene... She opened her eyes again, setting the bookmark between the pages, and raised her gaze to the window. The sun had sunk lower; the sky had begun to shift to ethereal shades of lavender and gold. Soon, the garden would blur into silhouettes, and the air would cool. 
+She reached for the small porcelain teapot on the table beside her. It held a fragrant chamomile infusion with just a hint of honey. Alice poured the
 
-Alice sighed softly as she finished reading. The warmth of the fireplace enveloped her, but she also felt anxious about leaving their cozy living room behind. She closed the anthology, pressing a finger against the spine, and slid the book into its place on the shelf. Sitting there for another moment, tea cup in hand, became a practice in mindfulness—in appreciating the transition between daylight and evening, moving from narrative to reflection. 
-Finally standing up, Alice realized that the quiet had settled deeply over the room; the sound of the ticking clock seemed amplified. With an empty teacup and closed anthology, she felt a gentle sense of
+tea into her favorite china cup before returning to her anthology. She selected a different story - this one described an early morning in a busy city; horse-drawn carriages rattled over cobblestone streets, merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air. As she read, Alice imagined herself there. She could almost hear the clip-clop of hooves and feel the rough stone beneath
 
-and perhaps stepped out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
+cast a soft pool of light around her chair. Beyond the window, the garden was now a shadowy realm—defined only by silhouettes and the glimmer of a single landing moth in the distance. A lone streetlamp flickered to life; its orange glow reflected off dewy leaves, turning them into luminous orbs. Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf. She sat for a moment longer, tea cup in hand, simply being—a practice in
+
+and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty. The anthology was closed, and the quiet settled deeply over the room. Alice felt a gentle contentment; gratitude, even, for the stories... Yes, and for the world beyond them. For the tactile, living reality she inhabits. And so, at the close of day, she gave thanks for words, for solitude, and for the small wonders
 
 === PY desired_output.txt ===
 Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.

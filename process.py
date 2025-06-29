@@ -1,23 +1,22 @@
 import os
 import re
 import logging
+from config import CLEANED_FILE
 
 class ParseFile:
 
-    def __init__(self, input_file: str, output_file: str):
+    def __init__(self):
         self.input_pointer = 0
         self.output_pointer = 0
         self.input_array = ""
         self.chunk = ""
         self.output_array = ""
-        self.input_file = input_file
-        self.output_file = output_file
         self._cleaned = False
         self.logger = logging.getLogger(__name__)
-        self.logger.debug(f'Files: input={input_file}, output={output_file}')
 
-    def preprocess(self):
-        self.logger.info(f'Preprocessing: {self.input_file}')
+    def preprocess(self, input_file):
+        self.input_file = input_file
+        self.logger.debug(f'Files: input={self.input_file}')
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 f.seek(self.input_pointer)
@@ -25,22 +24,23 @@ class ParseFile:
                 text = text.replace('\n', ' ').strip()
                 text = re.sub(r' +', ' ', text)
                 self.textsize = len(text)
-            os.makedirs(os.path.dirname(self.output_file) or '.', exist_ok=True)
-            with open(self.output_file, 'w', encoding='utf-8') as f:
+            os.makedirs(os.path.dirname(CLEANED_FILE) or '.', exist_ok=True)
+            with open(CLEANED_FILE, 'w', encoding='utf-8') as f:
                 f.write(text)
             self._cleaned = True
-            self.logger.debug(f'Cleaned: {self.output_file}')
+            self.logger.debug(f'Cleaned: {CLEANED_FILE}')
             
         except Exception as e:
             self.logger.error(f'Preprocessing Error: {e}', exc_info=True)
             raise
 
-    def process(self):
+    def process(self, output_file: str):
+        self.output_file = output_file
         if not self._cleaned:
             raise RuntimeError("Call preprocess() before process()")
         self.logger.debug(f'Processing: {self.output_file}')
         try:
-            with open(self.output_file, 'r', encoding='utf-8') as f:
+            with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
                 self.input_array = f.read()
                 self.logger.debug(f'Loaded {len(self.input_array)} characters.')
                 

@@ -2,14 +2,14 @@ import asyncio
 import logging
 from logger import configure_logging
 from pipeline import TextProcessingPipeline
-from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, CLEANED_FILE
+from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, PROCESSED_FILE
 from process import ParseFile
 
 def prepare_data():
     configure_logging()
-    filerunner = ParseFile(INPUT_FILE, CLEANED_FILE)
-    filerunner.preprocess()
-    filerunner.process()
+    filerunner = ParseFile()
+    filerunner.preprocess(INPUT_FILE)
+    filerunner.process(PROCESSED_FILE)
 
 async def main():
     configure_logging()
