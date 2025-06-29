@@ -1,10 +1,107 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
+Consider a 1000 word document.
 
-logging.basicConfig
+Always add a terminating space when appending a word to the output.
 
-Seems to be defined more than it has to.
+As words define chunk size, all file operations will read and write entire words. This will require class methods to accomplish file operations, and these methods must handle the end of the input file correctly to ensure proper completion.
+
+Specifically, when reading words from the input file, if the requested number of words extends beyond the end of the file, the read 
+operation should return only the remaining words available until the end of the file. If no words are available, it should 
+return an empty set of words. Similarly, when writing words to the output file, the operation should only write the words actually 
+provided, irrespective of any pre-calculated chunk sizes that might exceed the available words. This robust handling of file boundaries 
+will ensure that the algorithm processes the entire input document accurately and completes without errors, even when dealing with 
+the last chunks that may be smaller than the defined chunk size.
+
+format is a function
+
+pointer1 = 0
+pointer2 = 0
+
+read the first 250 word chunk1 from the input file
+
+pointer1 = 250
+
+format chunk1 
+
+copy the first 150 words in chunk1 to the output file
+
+pointer2 = 150
+
+copy the remaining 100 words in chunk1 into the beginning of chunk 2, and fill the rest of chunk 2 
+with 150 words from the input file from pointer1
+
+pointer1 = 400
+
+format chunk2
+
+append the first 150 words in chunk2 to the output file
+
+pointer2 = 300
+
+copy the remaining 100 words in chunk2 into the beginning of chunk 3, and fill the rest of chunk 3 
+with 150 words from the input file from pointer1
+
+pointer1 = 550
+
+format chunk3
+
+append the first 150 words in chunk3 to the output file
+
+pointer2 = 450
+
+copy the remaining 100 words in chunk3 into the beginning of chunk 4, and fill the rest of chunk 4 
+with 150 words from the input file from pointer1
+
+pointer1 = 700
+
+format chunk4
+
+append the first 150 words in chunk4 to the output file
+
+pointer2 = 600
+
+copy the remaining 100 words in chunk4 into the beginning of chunk 5, and fill the rest of chunk 5 
+with 150 words from the input file from pointer1
+
+pointer1 = 850
+
+format chunk5
+
+append the first 150 words in chunk5 to the output file
+
+pointer2 = 750
+
+copy the remaining 100 words in chunk5 into the beginning of chunk 6, and fill the rest of chunk 6 
+with 150 words from the input file from pointer1
+
+pointer1 = 1000
+
+format chunk6
+
+append the first 150 words in chunk6 to the output file
+
+pointer2 = 900
+
+copy the remaining 100 words in chunk6 into the beginning of chunk 7, and fill the rest of chunk 7 
+with 150 words from the input file from pointer1
+
+pointer1 = 1150 <- over file size
+
+format chunk7
+
+append the first 150 words in chunk7 to the output file
+
+pointer2 = 1050  <- over file size to indicate end of algorithm
+
+
+
+
+
+
+
+
 
 === PY config.py ===
 CHUNK_SIZE = 1000
@@ -49,7 +146,7 @@ def configure_logging():
     if log_path.exists():
         log_path.unlink()
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler(log_path),
@@ -62,32 +159,143 @@ import os
 import re
 import logging
 
-class TextCleaner:
+class ParseFile:
+    input_pointer = 0
+    output_pointer = 0
+    input_array = []
+    chunk = []
+    output_array = []
+
     def __init__(self, input_file: str, output_file: str):
         self.input_file = input_file
         self.output_file = output_file
         self.logger = logging.getLogger(__name__)
-        self.logger.info(f'Initialized TextCleaner for input: {input_file}, output: {output_file}')
+        self.logger.debug(f'Files: input={input_file}, output={output_file}')
+        self._cleaned = False
 
     def preprocess(self):
-        self.logger.info(f'Beginning of file processing {self.input_file}')
+        self.logger.info(f'Preprocessing: {self.input_file}')
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
+                f.seek(ParseFile.input_pointer)
                 text = f.read()
-                text = text.replace('\n', ' ')
-                text = re.sub(r' +', ' ', text).strip()
-
-
-
-
+                text = text.replace('\n', ' ').strip()
+                text = re.sub(r' +', ' ', text)
             os.makedirs(os.path.dirname(self.output_file) or '.', exist_ok=True)
             with open(self.output_file, 'w', encoding='utf-8') as f:
                 f.write(text)
-
-
-            self.logger.info(f'End of the line {self.output_file}')
+            self._cleaned = True
+            self.logger.debug(f'Output: {self.output_file}')
+            
         except Exception as e:
-            self.logger.error(f'A fucking error: {e}', exc_info=True)
+            self.logger.error(f'Preprocessing Error: {e}', exc_info=True)
+            raise
+
+    def process(self):
+        if not self._cleaned:
+            raise RuntimeError("Call preprocess() before process()")
+        self.logger.debug(f'Processing: {self.output_file}')
+        try:
+            with open(self.output_file, 'r', encoding='utf-8') as f:
+                f.seek(ParseFile.input_pointer)
+                ParseFile.input_array = list(f.read())
+                ParseFile.input_pointer = 0  # Reset pointer for chunk loading
+                self.logger.info(f'Loaded {len(ParseFile.input_array)} characters.')
+                self.logger.debug(f'First 20 chars: {ParseFile.input_array[:20]}')
+                # Load first 250 words
+                self.loadchunk(250)
+                self.formatchunk()
+                self.savechunk()
+
+                
+                
+        except Exception as e:
+            self.logger.error(f'Processing failed: {e}', exc_info=True)
+            raise
+
+    def loadchunk(self, word_count):
+        self.chunk = []
+        words_loaded = 0
+        i = ParseFile.input_pointer
+        
+        while i < len(ParseFile.input_array) and words_loaded < word_count:
+            # Find next space starting from current position
+            try:
+                space_pos = ParseFile.input_array.index(' ', i)
+            except ValueError:
+                # No more spaces, take remaining characters as last word
+                self.chunk.extend(ParseFile.input_array[i:])
+                break
+                
+            # Include the word and its trailing space
+            self.chunk.extend(ParseFile.input_array[i:space_pos+1])
+            words_loaded += 1
+            i = space_pos + 1  # Move past this space
+            
+        ParseFile.input_pointer = i  # Update pointer to current position
+        self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
+        #self.logger.debug(f'Chunk preview: {"".join(self.chunk[:50])}...')
+        #self.logger.debug(f'Chunk tail: ...{"".join(self.chunk[-50:])}')
+        return self.chunk
+    
+    def formatchunk(self):
+        self.logger.debug(f'Formatting chunk')
+        # as a result of formatting linefeeds have been added to the content of the chunk
+
+    def savechunk(self):
+        self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
+        try:
+            chunk_text = ''.join(self.chunk) # Convert chunk to string
+            words = []
+            current_word = []
+            for char in self.chunk:
+                if char in (' ', '\n'):
+                    if current_word:  # Only add if we have a word
+                        words.append(''.join(current_word))
+                        current_word = []
+                    words.append(char)  # Keep the separator
+                else:
+                    current_word.append(char)
+            if current_word:  # Add last word if exists
+                words.append(''.join(current_word))
+                
+            # Copy first 150 words to output array
+            first_150 = words[:150]
+            self.output_array.extend(first_150)
+            self.output_pointer += len(''.join(first_150))
+            
+            # Copy last 100 words to beginning of chunk (simple array operation)
+            last_100 = words[-100:]
+            self.chunk = last_100
+            
+            # Add 150 more words from input array
+            additional_words = []
+            words_added = 0
+            i = self.input_pointer
+            
+            while i < len(self.input_array) and words_added < 150:
+                try:
+                    space_pos = self.input_array.index(' ', i)
+                    additional_words.extend(self.input_array[i:space_pos+1])
+                    words_added += 1
+                    i = space_pos + 1
+                except ValueError:
+                    additional_words.extend(self.input_array[i:]) # Handle lat word
+                    break
+                    
+            self.chunk.extend(additional_words)
+            self.input_pointer = i
+            
+            self.logger.debug(
+                f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}\n'
+                f'First 3 output words: {self.output_array[:3]}\n'
+                f'First 3 new chunk words: {self.chunk[:3]}'
+            )
+            
+        except Exception as e:
+            self.logger.error(f'Save chunk failed: {e}', exc_info=True)
+            raise
+
 
 
 === PY alignment.py ===
@@ -288,12 +496,13 @@ import logging
 from logger import configure_logging
 from pipeline import TextProcessingPipeline
 from config import CHUNK_SIZE, CHUNK_OVERLAP, INPUT_FILE, CLEANED_FILE
-from process import TextCleaner
+from process import ParseFile
 
 def prepare_data():
     configure_logging()
-    cleaner = TextCleaner(INPUT_FILE, CLEANED_FILE)
-    cleaner.preprocess()
+    filerunner = ParseFile(INPUT_FILE, CLEANED_FILE)
+    filerunner.preprocess()
+    filerunner.process()
 
 async def main():
     configure_logging()
@@ -476,20 +685,19 @@ if __name__ == "__main__":
         test_chunk_processing()
 
 === PY transcript_formatted.txt ===
-Alice Warren sat beside a wide window in the corner of her study; the late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains—the silence was not merely an absence of noise, but rather a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside the garden
+Alice Warren sat beside a wide window, in the corner of her study. The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence wasn't merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside,
 
-Outside, the garden - fragrant with sweetness - a pair of robins hopped atop the low stone wall, pecking at small insects amidst the wild clover. Occasionally, an orange-winged butterfly with black-veined wings fluttered past the aged glass. Alice followed its slow, drifting flight for a moment before returning to her book. Such ordinary spectacles, when observed with attention, held a profound beauty; it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy—they're small, quiet, and easily overlooked. Her book, an anthology of short stories from
+with fragrant sweetness, a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover. Occasionally, a butterfly—orange with black-veined wings—fluttered past the aged glass. Alice followed its slow drifting flight for a moment before returning to her book, such ordinary spectacles when observed with attention held a profound beauty. It was a lesson she had learned early and often that the marvels of life are
 
-Her book, an anthology of short stories from different eras, held a special charm in the way authors weaved descriptive passages around ordinary actions like tying shoelaces, pouring tea, or simply gazing out towards a stormy horizon. These meticulous details painted vivid pictures of daily life and its hidden intricacies - dreams, fears, and inner worlds were all captured within those seemingly mundane scenes.
-In one particular story, Alice found herself captivated by a young woman standing by a river's edge; her emotions stirred up by the simplicity of the described action. With nothing more than a mention of lifting her arms to let the wind play through
+It was a lesson she had learned early and often, that the marvels of life are found in both the big moments and the little details—the way authors of that era wove descriptive passages around otherwise trivial actions like tying shoelaces or pouring tea; even gazing out towards a stormy horizon held significance. Such attention to detail created a rich tapestry of everyday life, revealing so much about an individual's hopes, fears, and inner world within just one story. In one passage, a young woman stands at the edge of a river, watching the current drift by as if carrying unspoken promises of a distant future. The description is simple: She lifts her hands
 
-1. Alice, With nothing more than a mention of lifting her arms to let the wind play through, she felt transported away from her study to that riverside scene. Then she opened her eyes again, setting the bookmark between the pages. Raising her gaze to the window, the sun had sunk lower; the sky had begun to shift to ethereal shades of lavender and gold. Soon, the garden would blur into silhouettes, and the air would cool. Reaching for the small porcelain teapot on the table beside her, it held a fragrant chamomile infusion with just a hint of honey. 
-Alice carefully poured the
+In one passage, a young woman stood at the edge of a river, watching the current drift by as if carrying unspoken promises of a distant future. The description was simple: She lifted her hands a moment—felt transported away from her studies to that riverside scene. Then she set the bookmark between the pages, reached for the small porcelain teapot on the table beside her, filled it with freshly brewed chamomile infusion sweetened lightly with honey, and returned to her reading spot in the garden where dusk was fast approaching. With each sip of tea, she could almost hear the echoes of another era, when horses clopped down paved streets instead of
 
-tea into her delicate china cup before returning to her anthology. She selected a different story; this one described an early morning in a busy city - horse-drawn carriages rattled over cobblestone streets, merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air. As she read, Alice imagined herself there, feeling the rough stone underfoot, hearing the clip-clop of hooves, and. She cast a soft pool of light around her chair as she continued reading outside the window. The garden was now a shadowy realm—defined only by silhouettes and the glimmer of a single landing moth in the distance. A lone streetlamp flickered to life; its orange glow reflected off the dewy leaves, turning them into luminescent orbs. 
-Alice carefully closed the anthology, pressing a finger against the spine, and then sliding the book into its proper place on the shelf. Sitting still for another moment, tea
+"With each sip of tea," she said, "she could almost hear the echoes of another era; when horses clopped down paved streets instead of cars." Turning back to her anthology, she selected a different story—this one described an early morning in a busy city. Horse-drawn carriages rattled over cobblestone streets, merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air. As Alice read, she imagined herself there. She could almost hear the clip-clop of hooves and feel the rough stone beneath her feet. The weight of her satchel on her
 
-—and perhaps stepping out onto the back porch to breathe beneath a sky of stars—when she finally stood the teacup empty. The anthology was closed, and the quiet settled deeply over the room. Alice felt a gentle contentment; gratitude, even for the stories—yes, and for the world beyond them. For the tactile, living reality she inhabited, and so at the close of day, she gave thanks for words, for solitude, and for the small wonders that attend each ordinary moment.
+Alice read and imagined herself there. She could almost hear the clip-clop of hooves and feel the rough stone beneath her feet. With the weight of her satchel casting a soft pool of light around her chair, beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance - a lone streetlamp flickering to life, its orange glow reflecting off dewy leaves and turning them into luminous orbs. Alice closed the anthology, pressing a finger against its spine as she slid the book into its place on the shelf. Sitting for a moment longer with her tea
+
+and perhaps stepping out onto the back porch to breathe beneath a sky of stars; when she finally stood the teacup empty, the anthology closed and the quiet settled deeply over the room. Alice felt a gentle contentment—gratitude, even for the stories—yes, and for the world beyond them. For the tactile living reality she inhabited and so at the close of day, she gave thanks for words, for solitude, and for the small wonders that attend each ordinary moment.
 
 === PY desired_output.txt ===
 Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.

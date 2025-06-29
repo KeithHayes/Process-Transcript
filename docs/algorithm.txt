@@ -1,0 +1,19 @@
+flowchart TD
+    A[Start] --> B[__init__]
+    B -->|Set paths| C[preprocess]
+    C --> D[Open input_file]
+    D --> E[Clean text]
+    E --> F[Write output_file]
+    F --> G[process]
+    G --> H{_cleaned?}
+    H -->|Yes| I[Read output_file]
+    H -->|No| J[Error]
+    I --> K[Store chars in input_array]
+    K --> L[Log results]
+    
+    D -.-> M[Preprocess Error]
+    I -.-> N[Process Error]
+    M --> O[End]
+    N --> O
+    J --> O
+    L --> O

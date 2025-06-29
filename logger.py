@@ -11,7 +11,7 @@ def configure_logging():
     if log_path.exists():
         log_path.unlink()
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
         handlers=[
             logging.FileHandler(log_path),
