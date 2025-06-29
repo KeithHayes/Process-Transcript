@@ -1,46 +1,64 @@
-python test.py 
-2025-06-29 13:50:41,257 - asyncio - DEBUG - Using selector: EpollSelector
-2025-06-29 13:50:41,257 - sentence_separator - INFO - Testing with first 250 words (1446 chars)
-2025-06-29 13:50:41,257 - llm_formatter - INFO - Formatting 1446 characters
-2025-06-29 13:50:42,235 - llm_formatter - WARNING - No newlines added - returning original
-2025-06-29 13:50:42,235 - sentence_separator - ERROR - FAILED: No formatting was applied
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
-
-
-
-
-
-This is a two step process and the processes are being debugged together because they are interdependent.
-
 
 The test.py file is needs to be rewritten.  Only file to be changed is test.py.  The LLM will be debugged using test.py only.  
-Only after the test.py can identify the sentences in the first 250 words in transcript_preprocessed.txt and delineate them 
-with newlines instead of the spaces used now.
 
-First the LLM will identify existing sentences in the test text which is the first chunk of 250 words 
-which ends with a space.  The test code will read the input from preprocessed.txt
+The test code will read the first 250 words from preprocessed.txt
 
-Preserve all original words exactly
-Maintain original word order
-Do not add any new content
-A newline replaces the space in front of a sentence that was originally a word separator.
-A newline replaces the space at the end of a sentence that was originally a word separator.
+test.py will test the LLM starting with this.  Add all the imports and extra code to put this functionality into test.py
 
-This is the end of step one.  Sentences are identified, and where they are identified as complete they are 
-punctuated with newline characters replacing the spaces before and after the sentence unless the space is 
-after the last word in which case the space remains.
 
-This puts each identified sentence on a separate line.
+ async def formatchunk(self, chunktext):
 
-End of the first step.
+        chunklength = len(chunktext)
+        self.logger.debug(f'Formatting chunk of {chunklength} chars')
+        prompt = textwrap.dedent(f"""\
+            Reformatted this text with proper sentence formatting:
 
-Next step:
+            {chunktext}
 
-In a post processing step regular expressions will remove all sentence formatting artifacts retaining only newlines.
+            Rules:
+            1. Preserve all original words exactly
+            2. Only modify spacing characters
+            5. Separate sentences with newlines instead of spaces before sentence
+            5. Separate sentences with newlines instead of spaces aftter sentence
+            6. Maintain original word order
+            7. Do not add any new content
+            8. Ignore the space replacement rule for space after tthe last word
 
-if everything is correct the end string length will match the input length.  All that has happened is that the sentences
-identified by the LLM are on separate lines.  Processing by regular expression is to remove unwanted formatting that the LLm 
-may have added.
+            Reformatted text:""")
 
-current error test is not revealing the string differences well 
+        try:
+            async with self.session.post(
+                self.api_url,
+                json={
+                    "prompt": prompt,  # Note: Fix typo here ("prompt" -> "prompt")
+                    "max_tokens": MAX_TOKENS,
+                    "temperature": TEMPERATURE,
+                    "stop": STOP_SEQUENCES,
+                    "repetition_penalty": REPETITION_PENALTY,
+                    "top_p": TOP_P
+                },
+                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
+                if response.status != 200:
+                    error = await response.text()
+                    self.logger.warning(f"API error {response.status}: {error}")
+                    return chunktext
+                
+                result = await response.json()
+                formatted_text = result.get("choices", [{}])[0].get("text", "").strip()
+                
+                if not formatted_text:
+                    self.logger.warning("Received empty response from API")
+                    return chunktext
+                
+                return formatted_text
+                
+        except asyncio.TimeoutError:
+            self.logger.warning("API request timed out")
+            return chunktext
+        except Exception as e:
+            self.logger.error(f"API call failed: {str(e)}")
+            return chunktext
+
+
 
