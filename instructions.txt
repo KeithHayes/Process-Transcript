@@ -1,33 +1,27 @@
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-29 11:42:36,158 - sentence_test - INFO - Starting sentence formatting tests...
-2025-06-29 11:42:36,158 - sentence_test - INFO - Testing sentence formatting on first 250 words (250 words)
-2025-06-29 11:42:36,158 - sentence_test - ERROR - No sentence boundaries found - no newlines added
+2025-06-29 12:09:32,572 - processor_test - INFO - Testing post-processor...
+2025-06-29 12:09:32,572 - processor_test - ERROR - Post-processing failed to restore original text
+2025-06-29 12:09:32,572 - processor_test - ERROR - FAILURE: Post-processor needs fixes
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
 
 
-The LLM is not processing data. the test.py file is needs to be corrected.
 
-At this time the only file changed is test.py.  The LLM will be debugged using test.py.
+The LLM is not processing data correctly. the test.py file is needs to be corrected.
 
-Only after the test.py can identify the sentences in the first 250 words in transcript_preprocessed.txt and delineate them with newlines 
+At this time the only file to be changed is test.py.  The LLM will be debugged using test.py only.  Only after the test.py can 
+identify the sentences in the first 250 words in transcript_preprocessed.txt and delineate them with newlines 
 instead of the spaces used now will formatchunk in class ParseFile be changed to reflect lessons not yet learned.
 
 
-test.py will check the error condition that the number of returned words does not match those sent.  This can be done simply by comparing 
-the total length of the total length which does not change since only spaces are replaced with newlines in certain places which 
-mark sentences in the algorithm.
+There current Lesson learned is that the LLM cannot refrain from puncuating sentences as it identifies them.
 
-verify the model.  the loaded model does not have to match but there must be a model loaded.  Here is some sample code.
+Therefore the LLM will be encouraged to identify and punctuate sentences and in the process the newlines will be added 
+before the capital letter of a sentence and after the period or question mark or exclamation point terminator.
 
-import requests
+Then regular expressions will remove all sentence formatting retaining only any added newlines in a post processing step
 
-url = "http://0.0.0.0:5000/v1/completions"
-payload = {
-    "model": "TheBloke_Mistral-7B-Instruct-v0.2-AWQ",
-    "prompt": "[INST] What is the capital of France? [/INST]",
-    "max_tokens": 20
-}
+Enhancing the identification of sentences and then removing the unwanted formatting from them, but retaining the newlines using 
+regular expressions will be a more robust solution.
 
-response = requests.post(url, json=payload)
-print("Status Code:", response.status_code)
-print("Response:", response.json())
+if everything is correct the end string length will match the input length.

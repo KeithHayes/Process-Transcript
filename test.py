@@ -1,70 +1,56 @@
 import re
 import logging
-from pathlib import Path
 from config import CLEANED_FILE
 
-logger = logging.getLogger('sentence_test')
+logger = logging.getLogger('processor_test')
 
-def count_words(text):
-    """Count words in text (split on whitespace)"""
-    return len(text.split()) if text.strip() else 0
-
-def identify_sentences(text):
+def clean_llm_output(llm_output, original_text):
     """
-    Identify sentence boundaries and replace spaces with newlines.
-    Returns formatted text and original word count for verification.
+    Revert unwanted LLM modifications while preserving newlines
+    1. Restore original capitalization
+    2. Remove added punctuation
+    3. Preserve newlines between sentences
     """
-    # Basic sentence boundary detection (period followed by space and capital letter)
-    sentence_pattern = re.compile(r'(?<=[.!?])\s+(?=[A-Z])')
+    # Split both texts into words
+    original_words = original_text.split()
+    llm_words = llm_output.replace('\n', ' ').split()
     
-    # Split into sentences
-    sentences = re.split(sentence_pattern, text)
+    # Reconstruct text with original words but LLM newlines
+    clean_lines = []
+    original_index = 0
     
-    # Join with newlines and ensure proper spacing
-    formatted_text = '\n'.join(s.strip() for s in sentences if s.strip())
+    for line in llm_output.split('\n'):
+        line_words = line.split()
+        line_length = len(line_words)
+        
+        # Get corresponding original words
+        original_segment = original_words[original_index:original_index+line_length]
+        clean_lines.append(' '.join(original_segment))
+        original_index += line_length
     
-    return formatted_text, count_words(text)
+    return '\n'.join(clean_lines)
 
-def test_sentence_formatting():
-    """Test sentence identification and formatting in first 250 words"""
-    try:
-        # Load preprocessed text
-        with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
-            full_text = f.read()
-        
-        # Extract first 250 words
-        words = full_text.split()[:250]
-        test_text = ' '.join(words)
-        original_word_count = len(words)
-        
-        logger.info(f"Testing sentence formatting on first 250 words ({original_word_count} words)")
-        
-        # Process the text
-        formatted_text, verified_word_count = identify_sentences(test_text)
-        
-        # Verify word count remains the same
-        if original_word_count != verified_word_count:
-            logger.error(f"Word count mismatch! Original: {original_word_count}, Verified: {verified_word_count}")
-            return False
-        
-        # Verify newlines were added
-        if '\n' not in formatted_text:
-            logger.error("No sentence boundaries found - no newlines added")
-            return False
-            
-        # Verify no content was changed
-        formatted_words = formatted_text.replace('\n', ' ').split()
-        if formatted_words != words:
-            logger.error("Content was modified during formatting")
-            return False
-            
-        logger.info("Sentence formatting test passed successfully!")
-        logger.debug(f"Formatted text sample:\n{formatted_text[:500]}...")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Sentence formatting test failed: {str(e)}")
+def test_post_processor():
+    """Test the post-processing cleanup"""
+    with open(CLEANED_FILE, 'r') as f:
+        original_text = ' '.join(f.read().split()[:50])
+    
+    # Simulate LLM output with unwanted changes
+    llm_output = """alice warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the"""
+    
+    cleaned = clean_llm_output(llm_output, original_text)
+    
+    # Verify
+    if cleaned.replace('\n', ' ') != original_text:
+        logger.error("Post-processing failed to restore original text")
         return False
+    
+    if '\n' not in cleaned:
+        logger.error("Post-processing removed all newlines")
+        return False
+    
+    logger.info("Post-processing successfully cleaned LLM output")
+    return True
 
 if __name__ == "__main__":
     logging.basicConfig(
@@ -72,5 +58,8 @@ if __name__ == "__main__":
         format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
     )
     
-    logger.info("Starting sentence formatting tests...")
-    test_sentence_formatting()
+    logger.info("Testing post-processor...")
+    if test_post_processor():
+        logger.info("SUCCESS: Post-processor works correctly")
+    else:
+        logger.error("FAILURE: Post-processor needs fixes")
