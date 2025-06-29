@@ -84,7 +84,6 @@ class ParseFile:
             self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
-    # Corrected formatchunk method
     async def formatchunk(self, chunktext: str) -> str: # Added 'self' as the first parameter
         # Remove global session. Access session via self.session
         # if session is None: -> if self.session is None:
@@ -111,7 +110,7 @@ class ParseFile:
             2. Maintain the original word order.
             3. Ensure proper capitalization for the start of each sentence.
             4. Add necessary punctuation (periods, question marks, exclamation points) to end each sentence.
-            5. Separate each complete sentence with a single space. Do NOT use newlines.
+            5. Separate each complete sentence on it's own line using '\n'.
             6. Do not add or remove any content beyond essential punctuation.
 
             Reformatted text:""")
