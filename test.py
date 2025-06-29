@@ -4,11 +4,12 @@ import os
 import sys
 import textwrap
 import aiohttp
+import re # Import re for post-processing demonstration
 
 # Add parent directory to path to allow imports from config and logger
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from config import API_URL, MAX_TOKENS, TEMPERATURE, STOP_SEQUENCES, REPETITION_PENALTY, TOP_P, API_TIMEOUT
+from config import API_URL, TEMPERATURE, STOP_SEQUENCES, REPETITION_PENALTY, TOP_P, API_TIMEOUT
 from logger import configure_logging
 
 configure_logging()
@@ -25,9 +26,9 @@ async def formatchunk(chunktext: str) -> str:
     chunklength = len(chunktext)
     logger.debug(f'Formatting chunk of {chunklength} chars')
     
-    # --- UPDATED PROMPT FOR BETTER SENTENCE SEPARATION ---
+    # --- PROMPT: Complete sentences, single space separation ---
     prompt = textwrap.dedent(f"""\
-        Reformat the following text. Each complete sentence must be on its own separate line.
+        Reformat the following text into grammatically correct and complete sentences.
 
         Text to reformat:
         {chunktext}
@@ -35,20 +36,20 @@ async def formatchunk(chunktext: str) -> str:
         Rules for reformatting:
         1. Preserve all original words exactly.
         2. Maintain the original word order.
-        3. Do not add or remove any content (words, numbers, symbols) beyond essential punctuation and newlines.
-        4. Every complete sentence MUST end with appropriate punctuation (. ! ?) and be immediately followed by a single newline character.
-        5. DO NOT include any blank lines between sentences. Each sentence should start on the line directly following the previous one.
-        6. Ensure capitalization is correct for the start of each sentence.
+        3. Ensure proper capitalization for the start of each sentence.
+        4. Add necessary punctuation (periods, question marks, exclamation points) to end each sentence.
+        5. Single space each complete sentence using newlines.
+        6. Do not add or remove any content beyond essential punctuation.
 
         Reformatted text:""")
-    # --- END UPDATED PROMPT ---
+    # --- END PROMPT ---
 
     try:
         async with session.post(
             API_URL,
             json={
                 "prompt": prompt,
-                "max_tokens": MAX_TOKENS,
+                "max_tokens": 500, # Keep increased max_tokens to avoid empty responses
                 "temperature": TEMPERATURE,
                 "stop": STOP_SEQUENCES,
                 "repetition_penalty": REPETITION_PENALTY,
@@ -62,13 +63,11 @@ async def formatchunk(chunktext: str) -> str:
                 return chunktext
             
             result = await response.json()
-            # It's crucial here that the LLM's output is directly used or minimally stripped.
-            # .strip() could remove the final newline if the LLM correctly adds it,
-            # but usually, LLMs produce some trailing whitespace which .strip() handles well.
             formatted_text = result.get("choices", [{}])[0].get("text", "").strip()
             
             if not formatted_text:
                 logger.warning("Received empty response from API")
+                logger.debug(f"Full API response for empty text: {result}") 
                 return chunktext
             
             return formatted_text
@@ -103,11 +102,25 @@ async def main():
             return
 
         logger.info("Calling formatchunk with the extracted text...")
-        formatted_output = await formatchunk(first_250_words)
+        formatted_output_from_llm = await formatchunk(first_250_words)
 
-        logger.info("\n--- Formatted Output ---")
-        logger.info(formatted_output) 
-        logger.info("--- End Formatted Output ---\n")
+        logger.info("\n--- LLM's Raw Formatted Output (single-space separated sentences) ---")
+        logger.info(formatted_output_from_llm) 
+        logger.info("--- End LLM's Raw Formatted Output ---\n")
+
+        # --- POST-PROCESSING STEP: Adding newlines for display ---
+        logger.info("\n--- Post-Processed Output (each sentence on new line) ---")
+        # Regex to split by sentence-ending punctuation followed by a space
+        # (?<=[.!?]) is a positive lookbehind assertion, ensuring the split happens AFTER the punctuation
+        sentences = re.split(r'(?<=[.!?])\s+', formatted_output_from_llm)
+        # Filter out any empty strings that might result from the split and strip whitespace
+        sentences = [s.strip() for s in sentences if s.strip()]
+        
+        # Join with newlines
+        post_processed_output = "\n".join(sentences)
+        logger.info(post_processed_output)
+        logger.info("--- End Post-Processed Output ---\n")
+        # --- END POST-PROCESSING STEP ---
 
     except Exception as e:
         logger.error(f"An error occurred during testing: {str(e)}", exc_info=True)

@@ -84,32 +84,45 @@ class ParseFile:
             self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
-    async def formatchunk(self, chunktext):
+    # Corrected formatchunk method
+    async def formatchunk(self, chunktext: str) -> str: # Added 'self' as the first parameter
+        # Remove global session. Access session via self.session
+        # if session is None: -> if self.session is None:
+        if self.session is None: 
+            self.logger.warning("aiohttp session not initialized. This should be handled by __aenter__.")
+            # If session is truly not initialized here, it indicates an issue with __aenter__ usage.
+            # For robustness, we can initialize it, but it implies ParseFile isn't always used as an async context manager.
+            # Given your current run.py and test.py, it should be initialized.
+            self.session = aiohttp.ClientSession() 
+
 
         chunklength = len(chunktext)
         self.logger.debug(f'Formatting chunk of {chunklength} chars')
+        
+        # --- PROMPT: Complete sentences, single space separation ---
         prompt = textwrap.dedent(f"""\
-            Reformatted this text with proper sentence formatting:
+            Reformat the following text into grammatically correct and complete sentences.
 
+            Text to reformat:
             {chunktext}
 
-            Rules:
-            1. Preserve all original words exactly
-            2. Only modify spacing characters
-            5. Separate sentences with newlines instead of spaces before sentence
-            5. Separate sentences with newlines instead of spaces aftter sentence
-            6. Maintain original word order
-            7. Do not add any new content
-            8. Ignore the space replacement rule for space after tthe last word
+            Rules for reformatting:
+            1. Preserve all original words exactly.
+            2. Maintain the original word order.
+            3. Ensure proper capitalization for the start of each sentence.
+            4. Add necessary punctuation (periods, question marks, exclamation points) to end each sentence.
+            5. Single space each complete sentence using newlines.
+            6. Do not add or remove any content beyond essential punctuation.
 
             Reformatted text:""")
+        # --- END PROMPT ---
 
         try:
-            async with self.session.post(
-                self.api_url,
+            async with self.session.post( # Use self.session
+                API_URL,
                 json={
-                    "prompt": prompt,  # Note: Fix typo here ("prompt" -> "prompt")
-                    "max_tokens": MAX_TOKENS,
+                    "prompt": prompt,
+                    "max_tokens": 500, 
                     "temperature": TEMPERATURE,
                     "stop": STOP_SEQUENCES,
                     "repetition_penalty": REPETITION_PENALTY,
@@ -119,24 +132,26 @@ class ParseFile:
             ) as response:
                 if response.status != 200:
                     error = await response.text()
-                    self.logger.warning(f"API error {response.status}: {error}")
+                    self.logger.warning(f"API error {response.status}: {error}") # Use self.logger
                     return chunktext
                 
                 result = await response.json()
                 formatted_text = result.get("choices", [{}])[0].get("text", "").strip()
                 
                 if not formatted_text:
-                    self.logger.warning("Received empty response from API")
+                    self.logger.warning("Received empty response from API") # Use self.logger
+                    self.logger.debug(f"Full API response for empty text: {result}") # Use self.logger
                     return chunktext
                 
                 return formatted_text
                 
         except asyncio.TimeoutError:
-            self.logger.warning("API request timed out")
+            self.logger.warning("API request timed out") # Use self.logger
             return chunktext
         except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}")
+            self.logger.error(f"API call failed: {str(e)}") # Use self.logger
             return chunktext
+
 
     def preprocess(self, input_file):
         self.input_file = input_file
