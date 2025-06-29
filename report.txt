@@ -3,51 +3,58 @@
 === DOCS instructions.txt ===
 The only file to be modified is process.py 
 
-    def formatchunk(self):
-        self.logger.debug(f'Formatting chunk')
-        # Currently just a stub, no actual formatting
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python run.py 
+2025-06-29 10:51:30,775 - process - DEBUG - Files: input=files/transcript.txt
+2025-06-29 10:51:30,775 - process - DEBUG - Cleaned: files/transcript_preprocessed.txt
+2025-06-29 10:51:30,775 - process - DEBUG - Processing: files/transcript_processed.txt
+2025-06-29 10:51:30,775 - process - DEBUG - Loaded 5055 characters.
+2025-06-29 10:51:30,775 - process - INFO - Loaded 250 words (total 1446 chars)
+2025-06-29 10:51:30,776 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
+2025-06-29 10:51:30,776 - process - ERROR - Save chunk failed: 'coroutine' object has no attribute 'split'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
+    words = self.chunk.split(' ')
+AttributeError: 'coroutine' object has no attribute 'split'
+2025-06-29 10:51:30,776 - process - ERROR - Processing failed: 'coroutine' object has no attribute 'split'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
+    self.savechunk()
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
+    words = self.chunk.split(' ')
+AttributeError: 'coroutine' object has no attribute 'split'
+2025-06-29 10:51:30,776 - main - ERROR - Processing failed: 'coroutine' object has no attribute 'split'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 18, in main
+    prepare_data()
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 12, in prepare_data
+    filerunner.process(PROCESSED_FILE)
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
+    self.savechunk()
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
+    words = self.chunk.split(' ')
+AttributeError: 'coroutine' object has no attribute 'split'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 31, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 18, in main
+    prepare_data()
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 12, in prepare_data
+    filerunner.process(PROCESSED_FILE)
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
+    self.savechunk()
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
+    words = self.chunk.split(' ')
+AttributeError: 'coroutine' object has no attribute 'split'
+sys:1: RuntimeWarning: coroutine 'ParseFile.formatchunk' was never awaited
 
-is to be completed.
 
-The following code is from another project and is for reference only.  We will be doing something similar, but not exacly the same.  
-In our case the chunk will be searched for sentences and the leading and trailing spaces in front of and behind of the sentence will be 
-replaced by '\n' for each sentence found.  This changesthe chunk by selectively replacing spaces with '\n'  
-, 
-
-async def formatchunk(self):
-    complete with revised rules.
-
-RULES:
-1. PRESERVE ALL original words exactly in order
-2. Add a newline after before each sentence replacing the space
-3. Add a newline after each sentence replacing the space
-4. Do not change or remove any words
-5. Do not add any new words or change word order
-
-Formatted version:"""
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                API_URL,
-                json={
-                    "prompt": prompt,
-                    "max_tokens": MAX_TOKENS,
-                    "temperature": TEMPERATURE,
-                    "stop": STOP_SEQUENCES,
-                    "repetition_penalty": REPETITION_PENALTY,
-                    "top_p": TOP_P
-                },
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-            ) as response:
-                if response.status != 200:
-                    self.logger.warning(f"API returned status {response.status}")
-                    return
-                result = await response.json()
-                self.chunk = result.get("choices", [{}])[0].get("text", self.chunk).strip()
-                
-    except Exception as e:
-        self.logger.error(f"API call failed: {str(e)}")
-
+formatchunk had been an empty stub and it is being developed to mark sentences in a text string by delimiting them with 
+newlines instead of the spaces which currently surround them.  The llm is loaded and waiting for input.  correct whatever 
+is wrong with self.chunk = self.formatchunk(self.chunk)
 
 
 === PY config.py ===
@@ -105,8 +112,11 @@ def configure_logging():
 === PY process.py ===
 import os
 import re
+import asyncio
 import logging
-from config import CLEANED_FILE
+import textwrap
+from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, 
+                    REPETITION_PENALTY, TEMPERATURE, TOP_P)
 
 class ParseFile:
 
@@ -117,7 +127,113 @@ class ParseFile:
         self.chunk = ""
         self.output_array = ""
         self._cleaned = False
+        self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
+
+    def count_words(self, text):
+        return len(text.split()) if text.strip() else 0
+
+    def loadchunk(self, word_count):
+        words_loaded = 0
+        words = []
+        i = self.input_pointer
+        
+        while i < len(self.input_array) and words_loaded < word_count:
+            space_pos = self.input_array.find(' ', i)
+            if space_pos == -1:  # Last word in input
+                word = self.input_array[i:]
+                words.append(word + ' ')
+                words_loaded += 1
+                i = len(self.input_array)
+                break
+            else:
+                word = self.input_array[i:space_pos+1]
+                words.append(word)
+                words_loaded += 1
+                i = space_pos + 1  # Move past space
+        
+        self.input_pointer = i
+        new_chunk_part = ''.join(words)
+        self.chunk = (self.chunk + new_chunk_part).strip()
+        if self.chunk:
+            self.chunk += ' '  # Ensure space at end for proper word splitting
+        self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
+        return self.chunk
+    
+    def savechunk(self):
+        self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
+        try:
+            words = self.chunk.split(' ')
+            # Filter out empty strings from split
+            words = [word for word in words if word]
+            
+            # Take first 150 words (or all if less than 150)
+            first_150 = words[:150]
+            first_150_text = ' '.join(first_150)
+            if first_150_text:
+                first_150_text += ' '  # Add space after each chunk
+                self.output_array += first_150_text
+                self.output_pointer += len(first_150_text)
+            
+            # Keep remaining words (should be 100 in normal case)
+            remaining_words = words[150:] if len(words) > 150 else []
+            self.chunk = ' '.join(remaining_words)
+            if self.chunk:
+                self.chunk += ' '  # Maintain space for next iteration
+            
+            self.logger.debug(
+                f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}\n'
+                f'First 50 output chars: {self.output_array[:50]}\n'
+                f'First 50 new chunk chars: {self.chunk[:50]}'
+            )
+            
+        except Exception as e:
+            self.logger.error(f'Save chunk failed: {e}', exc_info=True)
+            raise
+
+    async def formatchunk(self, chunktext):
+        self.logger.debug(f'Formatting chunk')
+        # Currently just a stub, no actual formatting
+        prompt = textwrap.dedent(f"""\
+            Change ONLY spaces in this string while preserving ALL other original content:
+
+            {chunktext}
+
+            RULES:
+            1. ONLY replace spaces around sentences with linefeed missing punctuation (.!?) and capitalization
+            2. PRESERVE ALL original words exactly in order
+            3. Do not change or remove any words
+            4. Do not add any new words or change word order
+            5. If the last character in the string is a space do not change it
+
+            Corrected version:""")
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self.api_url,
+                    json={
+                        "prompt": prompt,
+                        "max_tokens": MAX_TOKENS,
+                        "temperature": TEMPERATURE,
+                        "stop": STOP_SEQUENCES,
+                        "repetition_penalty": REPETITION_PENALTY,
+                        "top_p": TOP_P
+                    },
+                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+                ) as response:
+                    if response.status != 200:
+                        self.logger.warning(f"API returned status {response.status}")
+                        return chunktext
+                    result = await response.json()
+                    return result.get("choices", [{}])[0].get("chunktext", chunktext).strip()
+        except Exception as e:
+            self.logger.error(f"API call failed: {str(e)}")
+            return chunktext
+        
+
+
+        
 
     def preprocess(self, input_file):
         self.input_file = input_file
@@ -159,7 +275,8 @@ class ParseFile:
                 
                 while True:
                     # Format and save chunk
-                    self.formatchunk()
+
+                    self.chunk = self.formatchunk(self.chunk)
                     self.savechunk()
                     
                     # Check termination conditions
@@ -185,71 +302,6 @@ class ParseFile:
                 
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
-            raise
-
-    def count_words(self, text):
-        return len(text.split()) if text.strip() else 0
-
-    def loadchunk(self, word_count):
-        words_loaded = 0
-        words = []
-        i = self.input_pointer
-        
-        while i < len(self.input_array) and words_loaded < word_count:
-            space_pos = self.input_array.find(' ', i)
-            if space_pos == -1:  # Last word in input
-                word = self.input_array[i:]
-                words.append(word + ' ')
-                words_loaded += 1
-                i = len(self.input_array)
-                break
-            else:
-                word = self.input_array[i:space_pos+1]
-                words.append(word)
-                words_loaded += 1
-                i = space_pos + 1  # Move past space
-        
-        self.input_pointer = i
-        new_chunk_part = ''.join(words)
-        self.chunk = (self.chunk + new_chunk_part).strip()
-        if self.chunk:
-            self.chunk += ' '  # Ensure space at end for proper word splitting
-        self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
-        return self.chunk
-    
-    def formatchunk(self):
-        self.logger.debug(f'Formatting chunk')
-        # Currently just a stub, no actual formatting
-
-    def savechunk(self):
-        self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
-        try:
-            words = self.chunk.split(' ')
-            # Filter out empty strings from split
-            words = [word for word in words if word]
-            
-            # Take first 150 words (or all if less than 150)
-            first_150 = words[:150]
-            first_150_text = ' '.join(first_150)
-            if first_150_text:
-                first_150_text += ' '  # Add space after each chunk
-                self.output_array += first_150_text
-                self.output_pointer += len(first_150_text)
-            
-            # Keep remaining words (should be 100 in normal case)
-            remaining_words = words[150:] if len(words) > 150 else []
-            self.chunk = ' '.join(remaining_words)
-            if self.chunk:
-                self.chunk += ' '  # Maintain space for next iteration
-            
-            self.logger.debug(
-                f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}\n'
-                f'First 50 output chars: {self.output_array[:50]}\n'
-                f'First 50 new chunk chars: {self.chunk[:50]}'
-            )
-            
-        except Exception as e:
-            self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
 === PY alignment.py ===
@@ -463,13 +515,13 @@ async def main():
     logger = logging.getLogger('main')
     try:
         prepare_data()
-        logger.info("Starting transcript processing pipeline")
-        pipeline = TextProcessingPipeline(
-            chunk_size=CHUNK_SIZE,
-            chunk_overlap=CHUNK_OVERLAP
-        )
-        await pipeline.process_file()
-        logger.info("Processing completed successfully")
+        #logger.info("Starting transcript processing pipeline")
+        #pipeline = TextProcessingPipeline(
+        #    chunk_size=CHUNK_SIZE,
+        #    chunk_overlap=CHUNK_OVERLAP
+        #)
+        #await pipeline.process_file()
+        logger.info("Processing completed")
     except Exception as e:
         logger.error(f"Processing failed: {str(e)}", exc_info=True)
         raise
@@ -639,17 +691,11 @@ if __name__ == "__main__":
         test_chunk_processing()
 
 === PY transcript_formatted.txt ===
-Alice Warren sat beside a wide window in the corner of her study; the late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise—it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside, the garden
+Alice Warren sat beside a wide window in the corner of her study. The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered. Outside, the garden
 
-exuded fragrant sweetness; a pair of robins hopped atop the low stone wall, pecking at small insects among the wild clover. Occasionally, an orange-with-black-veined-wings butterfly flitted past the aged glass, and Alice followed its slow, drifting flight for a moment before returning to her book. Such ordinary spectacles, when observed with attention, held a profound beauty; it was a lesson she had learned early and often,. Place and character—there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions like tying shoelaces or pouring tea, gazing out towards a stormy horizon. Such attentiveness to detail formed a tapestry of everyday life, and it fascinated Alice how these small gestures could reveal so much about an individual's hopes, fears, and inner world in just one story. In one scene, a young woman stood at the edge of a river, watching the current drift by as if it carried with
+'s peacefulness and serenity were palpable, enveloping everything within its calming grasp. Alice marveled at the author's ability to capture such vivid details of daily routines - like tying shoelaces or pouring tea - which when narrated together created a beautiful symphony of simplicity. In another passage describing a young woman standing by a river, Alice found herself lost in thought as well, feeling the cool breeze against her skin and dreaming of faraway places where promises
 
-it a moment she felt transported away from her studies to that riverside scene. She opened her eyes again, setting the bookmark between the pages, and raised her gaze to the window—the sun had sunk lower; the sky had begun to shift to ethereal shades of lavender and gold. Soon, the garden would blur into silhouettes, and the air would cool. Reaching for the small porcelain teapot on the table beside her, it held a fragrant chamomile infusion with just a hint of honey. Alice poured the
-
-tea into her delicate bone china cup before settling back into her armchair. Turning to her anthology, she selected a different story - this one described an early morning in a busy city; horse-drawn carriages rattled over cobblestone streets, merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air. As she read, Alice imagined herself there; she could almost hear the clip-clop
-
-- cast a soft pool of light around her chair. Beyond the window, the garden was now a shadowy realm, defined only by silhouettes and the glimmer of a single landing moth in the distance. A lone streetlamp flickered to life, its orange glow rebounding off dewy leaves, turning them into luminous orbs. Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf. She sat for a moment longer, tea cup in hand, simply being—it was a practice in mindful
-
-ness and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty; the anthology closed and the quiet settled deeply over the room. Alice felt a gentle contentment, gratitude even for the stories—yes—and for the world beyond them. For the tactile, living reality she inhabited, and so at the close of day, she gave thanks for words, for solitude, and for the small wonders
+and rest were waiting for her. Turning back to her anthology, she selected a different story—this one described an early morning in a busy city; horse-drawn carriages rattled over cobblestone streets, merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air. As she read, Alice imagined herself there—she could almost hear the clip-clop of hooves and feel the rough stone underfoot, the
 
 === PY desired_output.txt ===
 Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence was not merely an absence of noise; it was a presence in itself, a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.

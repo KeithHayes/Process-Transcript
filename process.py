@@ -1,7 +1,10 @@
 import os
 import re
+import asyncio
 import logging
-from config import CLEANED_FILE
+import textwrap
+from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, 
+                    REPETITION_PENALTY, TEMPERATURE, TOP_P)
 
 class ParseFile:
 
@@ -12,6 +15,7 @@ class ParseFile:
         self.chunk = ""
         self.output_array = ""
         self._cleaned = False
+        self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
 
     def count_words(self, text):
@@ -75,10 +79,46 @@ class ParseFile:
             self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
-    def formatchunk(self):
+    async def formatchunk(self, chunktext):
         self.logger.debug(f'Formatting chunk')
         # Currently just a stub, no actual formatting
+        prompt = textwrap.dedent(f"""\
+            Change ONLY spaces in this string while preserving ALL other original content:
 
+            {chunktext}
+
+            RULES:
+            1. ONLY replace spaces around sentences with linefeed missing punctuation (.!?) and capitalization
+            2. PRESERVE ALL original words exactly in order
+            3. Do not change or remove any words
+            4. Do not add any new words or change word order
+            5. If the last character in the string is a space do not change it
+
+            Corrected version:""")
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    self.api_url,
+                    json={
+                        "prompt": prompt,
+                        "max_tokens": MAX_TOKENS,
+                        "temperature": TEMPERATURE,
+                        "stop": STOP_SEQUENCES,
+                        "repetition_penalty": REPETITION_PENALTY,
+                        "top_p": TOP_P
+                    },
+                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+                ) as response:
+                    if response.status != 200:
+                        self.logger.warning(f"API returned status {response.status}")
+                        return chunktext
+                    result = await response.json()
+                    return result.get("choices", [{}])[0].get("chunktext", chunktext).strip()
+        except Exception as e:
+            self.logger.error(f"API call failed: {str(e)}")
+            return chunktext
+        
 
 
         
@@ -123,7 +163,8 @@ class ParseFile:
                 
                 while True:
                     # Format and save chunk
-                    self.formatchunk()
+
+                    self.chunk = self.formatchunk(self.chunk)
                     self.savechunk()
                     
                     # Check termination conditions

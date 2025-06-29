@@ -1,47 +1,54 @@
 The only file to be modified is process.py 
 
-    def formatchunk(self):
-        self.logger.debug(f'Formatting chunk')
-        # Currently just a stub, no actual formatting
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python run.py 
+2025-06-29 10:51:30,775 - process - DEBUG - Files: input=files/transcript.txt
+2025-06-29 10:51:30,775 - process - DEBUG - Cleaned: files/transcript_preprocessed.txt
+2025-06-29 10:51:30,775 - process - DEBUG - Processing: files/transcript_processed.txt
+2025-06-29 10:51:30,775 - process - DEBUG - Loaded 5055 characters.
+2025-06-29 10:51:30,775 - process - INFO - Loaded 250 words (total 1446 chars)
+2025-06-29 10:51:30,776 - process - DEBUG - Saving chunk (input_pointer=1446, output_pointer=0)
+2025-06-29 10:51:30,776 - process - ERROR - Save chunk failed: 'coroutine' object has no attribute 'split'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
+    words = self.chunk.split(' ')
+AttributeError: 'coroutine' object has no attribute 'split'
+2025-06-29 10:51:30,776 - process - ERROR - Processing failed: 'coroutine' object has no attribute 'split'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
+    self.savechunk()
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
+    words = self.chunk.split(' ')
+AttributeError: 'coroutine' object has no attribute 'split'
+2025-06-29 10:51:30,776 - main - ERROR - Processing failed: 'coroutine' object has no attribute 'split'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 18, in main
+    prepare_data()
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 12, in prepare_data
+    filerunner.process(PROCESSED_FILE)
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
+    self.savechunk()
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
+    words = self.chunk.split(' ')
+AttributeError: 'coroutine' object has no attribute 'split'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 31, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 18, in main
+    prepare_data()
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 12, in prepare_data
+    filerunner.process(PROCESSED_FILE)
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 168, in process
+    self.savechunk()
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 54, in savechunk
+    words = self.chunk.split(' ')
+AttributeError: 'coroutine' object has no attribute 'split'
+sys:1: RuntimeWarning: coroutine 'ParseFile.formatchunk' was never awaited
 
-is to be completed.
 
-The following code is from another project and is for reference only.  We will be doing something similar, but not exacly the same.  
-In our case the chunk will be searched for sentences and the leading and trailing spaces in front of and behind of the sentence will be 
-replaced by '\n' for each sentence found.  This changesthe chunk by selectively replacing spaces with '\n'  
-, 
-
-async def formatchunk(self):
-    complete with revised rules.
-
-RULES:
-1. PRESERVE ALL original words exactly in order
-2. Add a newline after before each sentence replacing the space
-3. Add a newline after each sentence replacing the space
-4. Do not change or remove any words
-5. Do not add any new words or change word order
-
-Formatted version:"""
-
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                API_URL,
-                json={
-                    "prompt": prompt,
-                    "max_tokens": MAX_TOKENS,
-                    "temperature": TEMPERATURE,
-                    "stop": STOP_SEQUENCES,
-                    "repetition_penalty": REPETITION_PENALTY,
-                    "top_p": TOP_P
-                },
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-            ) as response:
-                if response.status != 200:
-                    self.logger.warning(f"API returned status {response.status}")
-                    return
-                result = await response.json()
-                self.chunk = result.get("choices", [{}])[0].get("text", self.chunk).strip()
-                
-    except Exception as e:
-        self.logger.error(f"API call failed: {str(e)}")
-
+formatchunk had been an empty stub and it is being developed to mark sentences in a text string by delimiting them with 
+newlines instead of the spaces which currently surround them.  The llm is loaded and waiting for input.  correct whatever 
+is wrong with self.chunk = self.formatchunk(self.chunk)
