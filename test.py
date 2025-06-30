@@ -5,7 +5,7 @@ import sys
 import re
 
 # Add parent directory to path to allow imports from config and logger
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from process import ParseFile 
 from logger import configure_logging
@@ -13,14 +13,6 @@ from config import CLEANED_FILE
 
 configure_logging()
 logger = logging.getLogger(__name__)
-
-def deformatchunk(formatted_output):
-    # Only split sentences, don't remove punctuation
-    split_output = re.sub(r'(?<=[.!?])\s+(?=[A-Z])', '\n', formatted_output)
-    # Just normalize whitespace
-    cleaned_output = re.sub(r'\s{2,}', ' ', split_output)
-    cleaned_output = re.sub(r'\s*$', ' ', cleaned_output)
-    return cleaned_output
 
 async def main():
     async with ParseFile() as parser_instance:
@@ -40,7 +32,8 @@ async def main():
             with open(preprocessed_file_path, 'r', encoding='utf-8') as f:
                 full_text = f.read()
                 words = full_text.split()
-                first_250_words = ' '.join(words[:250])
+                first_250_words = words[:250]
+                first_250_words = parser_instance.deformat(first_250_words)
 
             logger.info(f"Loaded first {len(words[:250])} words from '{preprocessed_file_path}'.")
             logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
@@ -52,7 +45,7 @@ async def main():
             formatted_output = await parser_instance.formatchunk(first_250_words)
 
             # Post-process
-            deformatted_output = deformatchunk(formatted_output)
+            deformatted_output = parser_instance.deformat(formatted_output)
             deformatted_length = len(deformatted_output)
 
             # Save outputs

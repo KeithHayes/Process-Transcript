@@ -7,19 +7,18 @@ Only file to be changed is test.py.  The LLM will be debugged using test.py only
 The test code reads the first 250 words from preprocessed.txt
 
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-29 20:23:29,120 - asyncio - DEBUG - Using selector: EpollSelector
-2025-06-29 20:23:29,121 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-29 20:23:29,121 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-29 20:23:29,121 - __main__ - INFO - Loaded first 250 words from 'files/transcript_preprocessed.txt'.
-2025-06-29 20:23:29,121 - __main__ - DEBUG - Input text for formatchunk: 'alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...'
-2025-06-29 20:23:29,121 - __main__ - INFO - Calling formatchunk with the extracted text...
-2025-06-29 20:23:29,121 - process - DEBUG - Formatting chunk of 1445 chars
-2025-06-29 20:23:42,327 - __main__ - ERROR - Error: Length mismatch. Expected 1448, got 438. Delta = 1010
-2025-06-29 20:23:42,327 - __main__ - INFO - Saved 'unformattedtext.txt' and 'deformattedtext.txt' successfully.
+2025-06-29 21:53:39,196 - asyncio - DEBUG - Using selector: EpollSelector
+2025-06-29 21:53:39,196 - process - DEBUG - Preprocessing: files/transcript.txt
+2025-06-29 21:53:39,197 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
+2025-06-29 21:53:39,197 - __main__ - ERROR - Test failed: ParseFile.deformat() takes 1 positional argument but 2 were given
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/test.py", line 36, in main
+    first_250_words = parser_instance.deformat(first_250_words)
+TypeError: ParseFile.deformat() takes 1 positional argument but 2 were given
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
-unformattedtext.txt deformattedtext.txt should be the same length something is being unexpectedly truncated.
 
+unformattedtext.txt deformattedtext.txt should be the same length 
 
 === PY config.py ===
 CHUNK_SIZE = 1000
@@ -226,6 +225,13 @@ class ParseFile:
             self.logger.error(f"API call failed: {str(e)}") # Use self.logger
             return chunktext
 
+    def deformat(formatted_output):
+        # Only split sentences, don't remove punctuation
+        split_output = re.sub(r'(?<=[.!?])\s+(?=[A-Z])', '\n', formatted_output)
+        # Just normalize whitespace
+        cleaned_output = re.sub(r'\s{2,}', ' ', split_output)
+        cleaned_output = re.sub(r'\s*$', ' ', cleaned_output)
+        return cleaned_output
 
     def preprocess(self, input_file):
         self.input_file = input_file
@@ -330,7 +336,7 @@ import sys
 import re
 
 # Add parent directory to path to allow imports from config and logger
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from process import ParseFile 
 from logger import configure_logging
@@ -338,14 +344,6 @@ from config import CLEANED_FILE
 
 configure_logging()
 logger = logging.getLogger(__name__)
-
-def deformatchunk(formatted_output):
-    # Only split sentences, don't remove punctuation
-    split_output = re.sub(r'(?<=[.!?])\s+(?=[A-Z])', '\n', formatted_output)
-    # Just normalize whitespace
-    cleaned_output = re.sub(r'\s{2,}', ' ', split_output)
-    cleaned_output = re.sub(r'\s*$', ' ', cleaned_output)
-    return cleaned_output
 
 async def main():
     async with ParseFile() as parser_instance:
@@ -365,7 +363,8 @@ async def main():
             with open(preprocessed_file_path, 'r', encoding='utf-8') as f:
                 full_text = f.read()
                 words = full_text.split()
-                first_250_words = ' '.join(words[:250])
+                first_250_words = words[:250]
+                first_250_words = parser_instance.deformat(first_250_words)
 
             logger.info(f"Loaded first {len(words[:250])} words from '{preprocessed_file_path}'.")
             logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
@@ -377,7 +376,7 @@ async def main():
             formatted_output = await parser_instance.formatchunk(first_250_words)
 
             # Post-process
-            deformatted_output = deformatchunk(formatted_output)
+            deformatted_output = parser_instance.deformat(formatted_output)
             deformatted_length = len(deformatted_output)
 
             # Save outputs
