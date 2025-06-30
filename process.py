@@ -85,55 +85,61 @@ class ParseFile:
             raise
 
     async def formatchunk(self, chunktext: str) -> str:
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
+            if self.session is None:
+                self.session = aiohttp.ClientSession()
 
-        # Store original words for verification
-        original_words = chunktext.split()
-        
-        prompt = textwrap.dedent(f"""\
-            Identify complete sentences in this text and add punctuation ONLY.
-            Preserve ALL original words exactly in original order.
-            Do NOT complete partial sentences or modify words.
-            Rules:
-            1. No added, deleted or modified words
-            2. Only add punctuation to complete sentences
-            3. Capitalize only first word of complete sentences
-            4. Leave incomplete fragments unchanged
+            # Store original words for verification, converting to lowercase for a more lenient comparison
+            original_words = [word.lower() for word in chunktext.split()]
+            
+            prompt = textwrap.dedent(f"""\
+                Your task is to identify and complete sentences in the provided text by adding necessary punctuation (periods, question marks, exclamation points).
+                Crucially, you must preserve ALL original words and their order exactly as they appear in the input text.
+                Do NOT add, delete, or modify any words. Do NOT complete partial sentences or rephrase anything.
+                Capitalize the first letter of the first word of each complete sentence.
+                Leave incomplete sentence fragments exactly as they are, without adding punctuation or capitalization.
 
-            Text: {chunktext}
+                Example:
+                Input: "this is a sentence this is another one an incomplete thought"
+                Output: "This is a sentence. This is another one. an incomplete thought"
 
-            Processed text:""")
+                Text: {chunktext}
 
-        try:
-            async with self.session.post(
-                API_URL,
-                json={
-                    "prompt": prompt,
-                    "max_tokens": 500,
-                    "temperature": 0.2,  # Lower temperature for more consistency
-                    "stop": STOP_SEQUENCES,
-                    "repetition_penalty": 1.05,  # Minimal penalty to prevent changes
-                    "top_p": 0.3
-                },
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-            ) as response:
-                if response.status != 200:
-                    return chunktext
-                result = await response.json()
-                formatted = result.get("choices", [{}])[0].get("text", "").strip()
-                
-                # Verify no words were changed
-                formatted_words = re.sub(r'[.!?]', '', formatted).split()
-                if formatted_words != original_words:
-                    self.logger.warning("Word mismatch detected, returning original")
-                    return chunktext
+                Processed text:""")
+
+            try:
+                async with self.session.post(
+                    API_URL,
+                    json={
+                        "prompt": prompt,
+                        "max_tokens": 500,
+                        "temperature": 0.1,  # Further lower temperature for even more consistency
+                        "stop": STOP_SEQUENCES,
+                        "repetition_penalty": 1.0,  # Remove penalty as it can encourage slight deviations
+                        "top_p": 0.1 # Lower top_p to focus on higher probability tokens
+                    },
+                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+                ) as response:
+                    if response.status != 200:
+                        self.logger.error(f"API returned non-200 status: {response.status}")
+                        return chunktext
+                    result = await response.json()
+                    formatted = result.get("choices", [{}])[0].get("text", "").strip()
                     
-                return formatted
-                
-        except Exception as e:
-            self.logger.error(f"API error: {str(e)}")
-            return chunktext
+                    # Normalize formatted output for comparison: remove punctuation and convert to lowercase
+                    # This makes the word-by-word comparison more robust against capitalization/punctuation differences
+                    normalized_formatted_words = re.sub(r'[^\w\s]', '', formatted).lower().split()
+                    
+                    if normalized_formatted_words != original_words:
+                        self.logger.warning("Word mismatch detected after formatting. Returning original text.")
+                        self.logger.debug(f"Original words (normalized): {original_words}")
+                        self.logger.debug(f"Formatted words (normalized): {normalized_formatted_words}")
+                        return chunktext
+                    
+                    return formatted
+                    
+            except Exception as e:
+                self.logger.error(f"API error during formatchunk: {str(e)}", exc_info=True)
+                return chunktext
 
     def deformat(self, formatted_output):
         # Split at sentence boundaries while preserving original words
