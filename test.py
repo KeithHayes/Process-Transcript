@@ -55,52 +55,48 @@ async def main():
             logger.info(f"Loaded first {len(words[:250])} words from '{CLEANED_FILE}'.")
             logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
 
-            # Format the chunk
-            formatted_output = await parser_instance.formatchunk(first_250_words)
+            formatted_output = await parser_instance.formatchunk(first_250_words)           # Format the chunk
+            sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', chr(0x1e), formatted_output)    # Mark sentence ends
+            marked_output = re.sub(r'\s+(?=[A-Z])', chr(0x1e), sentence_ends_marked)        # Mark sentence starts
 
-            # Verify formatting actually occurred
-            if formatted_output == first_250_words:
-                logger.error("Formatting failed - formattting failed")
+            # Post-process
+            deformatted_output = parser_instance.deformat(formatted_output)
+
+            # Save outputs
+            with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:
+                f.write(first_250_words)
+            with open('files/deformattedtext.txt', 'w', encoding='utf-8') as f:
+                f.write(deformatted_output)
+
+            # Compare word counts
+            unformatted_word_count = len(first_250_words.split())
+            deformatted_word_count = len(deformatted_output.split())
+                
+            if unformatted_word_count != deformatted_word_count:
+                logger.error(f"Word count mismatch. Original: {unformatted_word_count}, Deformatted: {deformatted_word_count}")
                 test_failed = True
             else:
-                # Post-process
-                deformatted_output = parser_instance.deformat(formatted_output)
+                logger.info("Word count matches")
 
-                # Save outputs
-                with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:
-                    f.write(first_250_words)
-                with open('files/deformattedtext.txt', 'w', encoding='utf-8') as f:
-                    f.write(deformatted_output)
-
-                # Compare word counts
-                unformatted_word_count = len(first_250_words.split())
-                deformatted_word_count = len(deformatted_output.split())
+            # Run detailed diff
+            with open('files/unformattedtext.txt', 'r', encoding='utf-8') as f:
+                original = f.read()
+            with open('files/deformattedtext.txt', 'r', encoding='utf-8') as f:
+                processed = f.read()
                 
-                if unformatted_word_count != deformatted_word_count:
-                    logger.error(f"Word count mismatch. Original: {unformatted_word_count}, Deformatted: {deformatted_word_count}")
-                    test_failed = True
-                else:
-                    logger.info("Word count matches")
+            diffs = diff_texts(original, processed)
+            if diffs:
+                logger.error("Differences found:")
+                for diff in diffs:
+                    logger.error(diff)
+                test_failed = True
+            else:
+                logger.info("No differences found - words preserved perfectly")
 
-                # Run detailed diff
-                with open('files/unformattedtext.txt', 'r', encoding='utf-8') as f:
-                    original = f.read()
-                with open('files/deformattedtext.txt', 'r', encoding='utf-8') as f:
-                    processed = f.read()
-                
-                diffs = diff_texts(original, processed)
-                if diffs:
-                    logger.error("Differences found:")
-                    for diff in diffs:
-                        logger.error(diff)
-                    test_failed = True
-                else:
-                    logger.info("No differences found - words preserved perfectly")
-
-                # Verify newlines were added
-                if '\n' not in deformatted_output:
-                    logger.error("No sentence breaks found in output")
-                    test_failed = True
+            # Verify newlines were added
+            if chr(0x1e) not in deformatted_output:
+                logger.error("No sentence breaks found in output")
+                test_failed = True
 
         except Exception as e:
             logger.error(f"Test failed: {str(e)}", exc_info=True)

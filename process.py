@@ -5,7 +5,7 @@ import logging
 import textwrap
 import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
-                    REPETITION_PENALTY, TEMPERATURE, TOP_P)
+                    REPETITION_PENALTY, TEMPERATURE, TOP_P, SENTENCE_MARKER)
 
 class ParseFile:
     def __init__(self):
@@ -91,13 +91,13 @@ class ParseFile:
         original_words = re.findall(r'\b\w+\b', chunktext.lower())
         
         prompt = textwrap.dedent(f"""\
-            Your ONLY task is to correctly punctuate and capitalize the provided text.
-            You MUST maintain the EXACT original words and their order.
-            You MUST NOT add, delete, or change any words.
-            You MUST NOT rephrase or summarize.
-            Add periods, question marks, or exclamation points to end sentences.
+            MUST maintain the EXACT original words and their order.
+            MUST NOT add, delete, or change any words.
+            MUST NOT rephrase or summarize.
+            Add periods, question marks, or exclamation points to puntuate complete sentences.
             Capitalize the first letter of the first word of each complete sentence.
-            Incomplete sentence fragments should remain as they are, without added punctuation or capitalization.
+            Incomplete sentence fragments must remain as they are, without any added punctuation or capitalization change.
+            No puntuation capitalization or word changes after the first word or before the last word in a sentence. 
 
             Text: {chunktext}
 
@@ -117,55 +117,33 @@ class ParseFile:
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:
                 if response.status != 200:
-                    self.logger.error(f"API returned non-200 status: {response.status}")
-                    # Even on API error, we will return the original chunktext
-                    # The instruction is to NEVER discard the LLM's output IF we get one.
-                    # If the API itself fails, we fallback to input, but log clearly.
-                    return chunktext 
+                    error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
+                    self.logger.error(error_message)
+                    raise Exception(error_message) # Error: API response incorrect
                 
                 result = await response.json()
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
                 
-                # Check for empty response from LLM, indicating a potential issue with the model itself
-                # We still return 'formatted' (which would be empty) but log a warning.
                 if not formatted:
-                    self.logger.warning("LLM returned an empty string. Subsequent processing will handle this.")
-
-                normalized_formatted_words = re.findall(r'\b\w+\b', formatted.lower())
+                    error_message = "An empty string is returned."
+                    self.logger.error(error_message)
+                    raise ValueError(error_message) # Error: LLM returned empty string
+                return formatted
                 
-                # Log warning if words mismatch, but *still return the formatted output*
-                if len(normalized_formatted_words) != len(original_words) or \
-                   any(normalized_formatted_words[i] != original_words[i] for i in range(len(original_words))):
-                    self.logger.warning("Word mismatch detected after formatting. Processing LLM output as received.")
-                    self.logger.debug(f"Original words (normalized): {original_words}")
-                    self.logger.debug(f"Formatted words (normalized): {normalized_formatted_words}")
-                
-                return formatted # This is the key change: ALWAYS return what the LLM gives us (or an empty string if it's empty)
-                
+        except aiohttp.ClientError as e:
+            error_message = f"Network or API client error during formatchunk: {str(e)}"
+            self.logger.error(error_message, exc_info=True)
+            raise ConnectionError(error_message) from e # Error: Cannot connect to LLM API
         except Exception as e:
-            self.logger.error(f"API error during formatchunk: {str(e)}", exc_info=True)
-            # If there's an exception contacting the API, we can't get an LLM output,
-            # so we must fall back to the original chunktext.
-            return chunktext
+            error_message = f"An unexpected error occurred during formatchunk: {str(e)}"
+            self.logger.error(error_message, exc_info=True)
+            raise Exception(error_message) from e # Catch any other unexpected errors
 
     def deformat(self, formatted_output):
-        # Split at sentence boundaries while preserving original words
-        sentences = re.split(r'(?<=[.!?])\s*', formatted_output)
-        
-        # Join with newlines and clean up
-        lines = []
-        for sent in sentences:
-            cleaned_line = re.sub(r'[.!?]$', '', sent).lower().strip()
-            if cleaned_line:
-                lines.append(cleaned_line)
-        
-        output = '\n'.join(lines)
-        
-        # Normalize spaces within each line and ensure single newlines
-        output = re.sub(r'\s+', ' ', output) # Normalize all internal whitespace to single spaces
-        output = re.sub(r'\n ', '\n', output) # Remove space after newline if it occurs
-        
-        return output.strip()
+        # remove all special characters.  Only lowercase letters, spaces, and the special character will remain.
+        output = formatted_output.lower()
+        output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
+        return output
 
     def preprocess(self, input_file):
         self.input_file = input_file
