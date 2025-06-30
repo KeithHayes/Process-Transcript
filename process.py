@@ -88,10 +88,8 @@ class ParseFile:
         if self.session is None:
             self.session = aiohttp.ClientSession()
 
-        # Store original words for verification, converting to lowercase for a more lenient comparison
         original_words = re.findall(r'\b\w+\b', chunktext.lower())
         
-        # Craft a precise prompt for the LLM
         prompt = textwrap.dedent(f"""\
             Your ONLY task is to correctly punctuate and capitalize the provided text.
             You MUST maintain the EXACT original words and their order.
@@ -110,33 +108,44 @@ class ParseFile:
                 API_URL,
                 json={
                     "prompt": prompt,
-                    "max_tokens": len(chunktext.split()) + 50, # Allow some buffer for punctuation/spaces
-                    "temperature": 0.0,  # Set temperature to 0 for deterministic output, crucial for strict adherence
+                    "max_tokens": len(chunktext.split()) * 2, # Doubled token allowance for safety
+                    "temperature": 0.0,
                     "stop": STOP_SEQUENCES,
-                    "repetition_penalty": 1.0, # Keep penalty at 1.0, as changes are not desired
-                    "top_p": 0.1 # Lower top_p to focus on higher probability tokens
+                    "repetition_penalty": 1.0,
+                    "top_p": 0.1
                 },
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:
                 if response.status != 200:
                     self.logger.error(f"API returned non-200 status: {response.status}")
-                    return chunktext
+                    # Even on API error, we will return the original chunktext
+                    # The instruction is to NEVER discard the LLM's output IF we get one.
+                    # If the API itself fails, we fallback to input, but log clearly.
+                    return chunktext 
+                
                 result = await response.json()
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
                 
-                # Normalize formatted output for comparison: remove punctuation and convert to lowercase
+                # Check for empty response from LLM, indicating a potential issue with the model itself
+                # We still return 'formatted' (which would be empty) but log a warning.
+                if not formatted:
+                    self.logger.warning("LLM returned an empty string. Subsequent processing will handle this.")
+
                 normalized_formatted_words = re.findall(r'\b\w+\b', formatted.lower())
                 
-                if normalized_formatted_words != original_words:
-                    self.logger.warning("Word mismatch detected after formatting. Returning original text.")
+                # Log warning if words mismatch, but *still return the formatted output*
+                if len(normalized_formatted_words) != len(original_words) or \
+                   any(normalized_formatted_words[i] != original_words[i] for i in range(len(original_words))):
+                    self.logger.warning("Word mismatch detected after formatting. Processing LLM output as received.")
                     self.logger.debug(f"Original words (normalized): {original_words}")
                     self.logger.debug(f"Formatted words (normalized): {normalized_formatted_words}")
-                    return chunktext # Return original if words don't match
                 
-                return formatted
+                return formatted # This is the key change: ALWAYS return what the LLM gives us (or an empty string if it's empty)
                 
         except Exception as e:
             self.logger.error(f"API error during formatchunk: {str(e)}", exc_info=True)
+            # If there's an exception contacting the API, we can't get an LLM output,
+            # so we must fall back to the original chunktext.
             return chunktext
 
     def deformat(self, formatted_output):

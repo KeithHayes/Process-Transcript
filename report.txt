@@ -1,25 +1,45 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-30 11:37:18,661 - asyncio - DEBUG - Using selector: EpollSelector
-2025-06-30 11:37:18,661 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-30 11:37:18,662 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-30 11:37:18,662 - __main__ - INFO - Loaded first 250 words from 'files/transcript_preprocessed.txt'.
-2025-06-30 11:37:18,662 - __main__ - DEBUG - Input text for formatchunk: 'alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...'
-2025-06-30 11:37:19,626 - process - WARNING - Word mismatch detected after formatting. Returning original text.
-2025-06-30 11:37:19,626 - process - DEBUG - Original words (normalized): ['alice', 'warren', 'sat', 'beside', 'a', 'wide', 'window', 'in', 'the', 'corner', 'of', 'her', 'study', 'the', 'late', 'afternoon', 'light', 'slanted', 'gently', 'across', 'the', 'hardwood', 'floor', 'illuminating', 'endless', 'rows', 'of', 'books', 'that', 'lined', 'the', 'walls', 'she', 'loved', 'the', 'hush', 'of', 'quiet', 'contemplation', 'the', 'soft', 'rustle', 'of', 'turning', 'pages', 'and', 'the', 'subtle', 'comfort', 'of', 'stories', 'held', 'within', 'paper', 'and', 'ink', 'it', 'was', 'in', 'this', 'exact', 'space', 'that', 'she', 'found', 'solace', 'after', 'a', 'long', 'day', 'of', 'meetings', 'presentations', 'and', 'endless', 'email', 'chains', 'the', 'silence', 'was', 'not', 'merely', 'an', 'absence', 'of', 'noise', 'it', 'was', 'a', 'presence', 'in', 'itself', 'a', 'companion', 'that', 'whispered', 'in', 'comfortable', 'tones', 'and', 'allowed', 'thoughts', 'to', 'drift', 'unencumbered', 'outside', 'the', 'garden', 'lay', 'in', 'gentle', 'bloom', 'roses', 'of', 'deep', 'crimson', 'and', 'pale', 'pink', 'nodded', 'in', 'the', 'early', 'breeze', 'while', 'lavender', 'and', 'thyme', 'filled', 'the', 'afternoon', 'air', 'with', 'fragrant', 'sweetness', 'a', 'pair', 'of', 'robins', 'hopped', 'atop', 'the', 'low', 'stone', 'wall', 'pecking', 'at', 'small', 'insects', 'among', 'the', 'wild', 'clover', 'occasionally', 'a', 'butterfly', 'orange', 'with', 'black', 'veined', 'wings', 'fluttered', 'past', 'the', 'aging', 'glass', 'and', 'alice', 'followed', 'its', 'slow', 'drifting', 'flight', 'for', 'a', 'moment', 'before', 'returning', 'to', 'her', 'book', 'such', 'ordinary', 'spectacles', 'when', 'observed', 'with', 'attention', 'held', 'a', 'profound', 'beauty', 'it', 'was', 'a', 'lesson', 'she', 'had', 'learned', 'early', 'and', 'often', 'that', 'the', 'marvels', 'of', 'life', 'are', 'seldom', 'grand', 'or', 'flashy', 'they', 'are', 'small', 'quiet', 'and', 'easily', 'overlooked', 'her', 'book', 'an', 'anthology', 'of', 'short', 'stories', 'from', 'the', 'early', 'twentieth', 'century', 'lay', 'open', 'on', 'her', 'lap', 'the', 'paper', 'was', 'slightly', 'yellowed', 'but', 'sturdy', 'the', 'ink', 'crisp', 'each', 'story', 'contained', 'within']
-2025-06-30 11:37:19,626 - process - DEBUG - Formatted words (normalized): []
-2025-06-30 11:37:19,627 - __main__ - ERROR - Formatting failed - output identical to input
-2025-06-30 11:37:19,627 - __main__ - ERROR - TEST FAILED - One or more checks failed
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
-
-
 
 The LLM should not change any words except for changing case.  The goal is to format sentences so they can be placed on 
 separate lines.  After the line breads are placed all sentence formatting is then removed leaving only the line breaks.
 
 Words should only be shown by the test script if they differ because the test output is overwhelming.
+
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$  /usr/bin/env /home/kdog/pythonprojects/process_transcript/venv/bin/python /home/kdog/.vscode/extensions/ms-python.debugpy-2025.8.0-linux-x64/bundled/libs/debugpy/adapter/../../debugpy/launcher 57453 -- /home/kdog/pythonprojects/process_transcript/test.py 
+2025-06-30 12:02:28,407 - asyncio - DEBUG - Using selector: EpollSelector
+2025-06-30 12:02:28,408 - process - DEBUG - Preprocessing: files/transcript.txt
+2025-06-30 12:02:28,408 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
+2025-06-30 12:02:28,408 - __main__ - INFO - Loaded first 250 words from 'files/transcript_preprocessed.txt'.
+2025-06-30 12:02:28,409 - __main__ - DEBUG - Input text for formatchunk: 'alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...'
+2025-06-30 12:03:29,047 - process - ERROR - API error during formatchunk: 
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client_reqrep.py", line 532, in start
+    message, payload = await protocol.read()  # type: ignore[union-attr]
+  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/streams.py", line 672, in read
+    await self._waiter
+asyncio.exceptions.CancelledError
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 107, in formatchunk
+    async with self.session.post(
+  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client.py", line 1482, in __aenter__
+    self._resp: _RetType = await self._coro
+  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client.py", line 770, in _request
+    resp = await handler(req)
+  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client.py", line 748, in _connect_and_send_request
+    await resp.start(conn)
+  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client_reqrep.py", line 527, in start
+    with self._timer:
+  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/helpers.py", line 685, in __exit__
+    raise asyncio.TimeoutError from exc_val
+asyncio.exceptions.TimeoutError
+2025-06-30 12:03:29,049 - __main__ - ERROR - Formatting failed - formattting failed
+2025-06-30 12:03:29,049 - __main__ - ERROR - TEST FAILED - One or more checks failed
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
 
 
@@ -269,10 +289,8 @@ class ParseFile:
         if self.session is None:
             self.session = aiohttp.ClientSession()
 
-        # Store original words for verification, converting to lowercase for a more lenient comparison
         original_words = re.findall(r'\b\w+\b', chunktext.lower())
         
-        # Craft a precise prompt for the LLM
         prompt = textwrap.dedent(f"""\
             Your ONLY task is to correctly punctuate and capitalize the provided text.
             You MUST maintain the EXACT original words and their order.
@@ -291,33 +309,44 @@ class ParseFile:
                 API_URL,
                 json={
                     "prompt": prompt,
-                    "max_tokens": len(chunktext.split()) + 50, # Allow some buffer for punctuation/spaces
-                    "temperature": 0.0,  # Set temperature to 0 for deterministic output, crucial for strict adherence
+                    "max_tokens": len(chunktext.split()) * 2, # Doubled token allowance for safety
+                    "temperature": 0.0,
                     "stop": STOP_SEQUENCES,
-                    "repetition_penalty": 1.0, # Keep penalty at 1.0, as changes are not desired
-                    "top_p": 0.1 # Lower top_p to focus on higher probability tokens
+                    "repetition_penalty": 1.0,
+                    "top_p": 0.1
                 },
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:
                 if response.status != 200:
                     self.logger.error(f"API returned non-200 status: {response.status}")
-                    return chunktext
+                    # Even on API error, we will return the original chunktext
+                    # The instruction is to NEVER discard the LLM's output IF we get one.
+                    # If the API itself fails, we fallback to input, but log clearly.
+                    return chunktext 
+                
                 result = await response.json()
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
                 
-                # Normalize formatted output for comparison: remove punctuation and convert to lowercase
+                # Check for empty response from LLM, indicating a potential issue with the model itself
+                # We still return 'formatted' (which would be empty) but log a warning.
+                if not formatted:
+                    self.logger.warning("LLM returned an empty string. Subsequent processing will handle this.")
+
                 normalized_formatted_words = re.findall(r'\b\w+\b', formatted.lower())
                 
-                if normalized_formatted_words != original_words:
-                    self.logger.warning("Word mismatch detected after formatting. Returning original text.")
+                # Log warning if words mismatch, but *still return the formatted output*
+                if len(normalized_formatted_words) != len(original_words) or \
+                   any(normalized_formatted_words[i] != original_words[i] for i in range(len(original_words))):
+                    self.logger.warning("Word mismatch detected after formatting. Processing LLM output as received.")
                     self.logger.debug(f"Original words (normalized): {original_words}")
                     self.logger.debug(f"Formatted words (normalized): {normalized_formatted_words}")
-                    return chunktext # Return original if words don't match
                 
-                return formatted
+                return formatted # This is the key change: ALWAYS return what the LLM gives us (or an empty string if it's empty)
                 
         except Exception as e:
             self.logger.error(f"API error during formatchunk: {str(e)}", exc_info=True)
+            # If there's an exception contacting the API, we can't get an LLM output,
+            # so we must fall back to the original chunktext.
             return chunktext
 
     def deformat(self, formatted_output):
@@ -501,7 +530,7 @@ async def main():
 
             # Verify formatting actually occurred
             if formatted_output == first_250_words:
-                logger.error("Formatting failed - output identical to input")
+                logger.error("Formatting failed - formattting failed")
                 test_failed = True
             else:
                 # Post-process

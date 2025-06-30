@@ -60,7 +60,7 @@ async def main():
 
             # Verify formatting actually occurred
             if formatted_output == first_250_words:
-                logger.error("Formatting failed - output identical to input")
+                logger.error("Formatting failed - formattting failed")
                 test_failed = True
             else:
                 # Post-process
