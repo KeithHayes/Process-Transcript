@@ -15,17 +15,18 @@ from config import CLEANED_FILE # Import CLEANED_FILE from config
 configure_logging()
 logger = logging.getLogger(__name__)
 
+def deformatchunk(formatted_output):
+    split_output = re.sub(r'(?<=[.!?])\s+(?=[A-Z])', '\n', formatted_output)
+    cleaned_output = re.sub(r'[.!?,;-]', '', split_output)
+    cleaned_output = re.sub(r'\s{2,}', ' ', cleaned_output)
+    cleaned_output = re.sub(r'\s*$', ' ', cleaned_output)
+    return cleaned_output
+
 async def main():
-    # Instantiate ParseFile, which initializes self.session and self.logger
-    # Use it as an async context manager to ensure the session is properly closed
     async with ParseFile() as parser_instance: 
-        preprocessed_file_path = CLEANED_FILE # Use CLEANED_FILE from config
+        preprocessed_file_path = CLEANED_FILE 
         
-        # Ensure the preprocessed file exists and has content for testing
         try:
-            # First, run preprocess to ensure CLEANED_FILE exists
-            # This is crucial because test.py might run without a full run.py execution.
-            # We'll create a dummy 'transcript.txt' if it doesn't exist for preprocess.
             dummy_input_file = 'files/transcript.txt'
             if not os.path.exists(dummy_input_file):
                 os.makedirs(os.path.dirname(dummy_input_file) or '.', exist_ok=True)
@@ -43,33 +44,26 @@ async def main():
             logger.info(f"Loaded first {len(words[:250])} words from '{preprocessed_file_path}'.")
             logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
 
-        except FileNotFoundError:
-            logger.error(f"Error: '{preprocessed_file_path}' not found even after preprocessing attempt. Please ensure file paths are correct.")
-            return
-        except Exception as e:
-            logger.error(f"Error reading or preprocessing '{preprocessed_file_path}': {e}")
-            return
-
         logger.info("Calling formatchunk with the extracted text...")
+
+        unformatted_length = len(first_250_words)
         # Call the formatchunk method on the parser_instance
-        formatted_output_from_llm = await parser_instance.formatchunk(first_250_words)
+        formatted_output = await parser_instance.formatchunk(first_250_words)
 
-        logger.info("\n--- LLM's Raw Formatted Output (single-space separated sentences) ---")
-        logger.info(formatted_output_from_llm) 
-        logger.info("--- End LLM's Raw Formatted Output ---\n")
 
-        # --- POST-PROCESSING STEP: Adding newlines for display ---
-        logger.info("\n--- Post-Processed Output (each sentence on new line) ---")
-        # Regex to split by sentence-ending punctuation followed by a space
-        # (?<=[.!?]) is a positive lookbehind assertion, ensuring the split happens AFTER the punctuation
-        sentences = re.split(r'(?<=[.!?])\s+', formatted_output_from_llm)
-        # Filter out any empty strings that might result from the split and strip whitespace
-        sentences = [s.strip() for s in sentences if s.strip()]
-        
-        # Join with newlines
-        post_processed_output = "\n".join(sentences)
-        logger.info(post_processed_output)
-        logger.info("--- End Post-Processed Output ---\n")
+        deformatted_output = deformatchunk(formatted_output)
+        deformatted_length = len(deformatted_output)
+
+        if((unformatted_length + deformatted_output.count('\n')) != deformatted_length):
+            logger.error(f"{ unformatted_length + deformatted_output.count - deformatted_length }Error: Length mismatch.")
+
+
+
+        # save the unformatted text to files/unformattedtext.txt
+        # save the deformatted_output text to files/deformattedtext.txt
+
+
+
         # --- END POST-PROCESSING STEP ---
 
 if __name__ == "__main__":

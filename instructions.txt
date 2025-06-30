@@ -3,6 +3,4 @@ Only file to be changed is test.py.  The LLM will be debugged using test.py only
 
 The test code reads the first 250 words from preprocessed.txt
 
-The format function refined in test.py has been added to process.py  in the ParseFile class
-
-verify the move was correct and modify test.py to use the code in the ParseFile class
+complete the unfinished test code in test.py
