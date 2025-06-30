@@ -1,13 +1,17 @@
+debugging test.py
+
+
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-30 00:04:02,747 - asyncio - DEBUG - Using selector: EpollSelector
-2025-06-30 00:04:02,748 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-30 00:04:02,748 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-30 00:04:02,748 - __main__ - INFO - Loaded first 250 words from 'files/transcript_preprocessed.txt'.
-2025-06-30 00:04:02,748 - __main__ - DEBUG - Input text for formatchunk: 'alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...'
-2025-06-30 00:04:42,390 - process - WARNING - Word mismatch detected, returning original
-2025-06-30 00:04:42,390 - __main__ - ERROR - Formatting failed - output identical to input
-2025-06-30 00:04:42,390 - __main__ - ERROR - TEST FAILED - One or more checks failed
+2025-06-30 00:15:31,380 - asyncio - DEBUG - Using selector: EpollSelector
+2025-06-30 00:15:31,381 - process - DEBUG - Preprocessing: files/transcript.txt
+2025-06-30 00:15:31,381 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
+2025-06-30 00:15:31,381 - __main__ - INFO - Loaded first 250 words from 'files/transcript_preprocessed.txt'.
+2025-06-30 00:15:31,381 - __main__ - DEBUG - Input text for formatchunk: 'alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...'
+2025-06-30 00:16:11,107 - process - WARNING - Word mismatch detected, returning original
+2025-06-30 00:16:11,107 - __main__ - ERROR - Formatting failed - output identical to input
+2025-06-30 00:16:11,107 - __main__ - ERROR - TEST FAILED - One or more checks failed
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
 
+improve prompt to stop words mismatching
 
