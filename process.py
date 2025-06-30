@@ -84,78 +84,52 @@ class ParseFile:
             self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
-    async def formatchunk(self, chunktext: str) -> str: # Added 'self' as the first parameter
-        # Remove global session. Access session via self.session
-        # if session is None: -> if self.session is None:
-        if self.session is None: 
-            self.logger.warning("aiohttp session not initialized. This should be handled by __aenter__.")
-            # If session is truly not initialized here, it indicates an issue with __aenter__ usage.
-            # For robustness, we can initialize it, but it implies ParseFile isn't always used as an async context manager.
-            # Given your current run.py and test.py, it should be initialized.
-            self.session = aiohttp.ClientSession() 
+    async def formatchunk(self, chunktext: str) -> str:
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
 
-
-        chunklength = len(chunktext)
-        self.logger.debug(f'Formatting chunk of {chunklength} chars')
-        
-        # --- PROMPT: Complete sentences, single space separation ---
         prompt = textwrap.dedent(f"""\
-            Reformat the following text into grammatically correct and complete sentences.
+            Identify complete sentences in the following text and add proper punctuation.
+            Leave incomplete sentence fragments unchanged.
 
-            Text to reformat:
+            Rules:
+            1. Preserve ALL original words exactly
+            2. Maintain EXACT original word order
+            3. Only add punctuation to complete sentences
+            4. Never add or remove any words
+            5. Capitalize only the first word of complete sentences
+
+            Text to process:
             {chunktext}
 
-            Rules for reformatting:
-            1. Preserve all original words exactly.
-            2. Maintain the original word order.
-            3. Ensure proper capitalization for the start of each sentence.
-            4. Add necessary punctuation (periods, question marks, exclamation points) to end each sentence.
-            5. Do not add or remove any content beyond essential punctuation.
-
-            Reformatted text:""")
-        # --- END PROMPT ---
+            Processed text:""")
 
         try:
-            async with self.session.post( # Use self.session
+            async with self.session.post(
                 API_URL,
                 json={
                     "prompt": prompt,
                     "max_tokens": 500,
-                    "temperature": TEMPERATURE,
+                    "temperature": 0.3,
                     "stop": STOP_SEQUENCES,
-                    "repetition_penalty": REPETITION_PENALTY,
-                    "top_p": TOP_P
+                    "repetition_penalty": 1.1,
+                    "top_p": 0.5
                 },
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:
                 if response.status != 200:
-                    error = await response.text()
-                    self.logger.warning(f"API error {response.status}: {error}") # Use self.logger
                     return chunktext
-                
                 result = await response.json()
-                formatted_text = result.get("choices", [{}])[0].get("text", "").strip()
-                
-                if not formatted_text:
-                    self.logger.warning("Received empty response from API") # Use self.logger
-                    self.logger.debug(f"Full API response for empty text: {result}") # Use self.logger
-                    return chunktext
-                
-                return formatted_text
-                
-        except asyncio.TimeoutError:
-            self.logger.warning("API request timed out") # Use self.logger
-            return chunktext
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}") # Use self.logger
+                return result.get("choices", [{}])[0].get("text", "").strip()
+        except Exception:
             return chunktext
 
     def deformat(self, formatted_output):
-        split_output = re.sub(r'(?<=[.!?])\s+(?=[A-Z])', '\n', formatted_output)
-        cleaned_output = re.sub(r'[.!?,;-]', '', split_output)
-        cleaned_output = re.sub(r'\s{2,}', ' ', cleaned_output)
-        cleaned_output = re.sub(r'\s*$', ' ', cleaned_output)
-        return cleaned_output
+        sentences = re.split(r'(?<=[.!?])\s+', formatted_output)
+        output = '\n'.join(sentences)
+        output = re.sub(r'[.!?]', '', output)
+        output = re.sub(r'\s{2,}', ' ', output)
+        return output.strip()
 
     def preprocess(self, input_file):
         self.input_file = input_file

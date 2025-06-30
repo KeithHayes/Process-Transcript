@@ -1,24 +1,23 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-The test.py reads the first 250 words from preprocessed.txt
 
-The 250 words are formatted into sentences where complete sentences can be identified in the text.
-Text that is not part of a complete sentence is unchanged
 
-The formatted sentences are then used to identify where sentence breaks are.  These are filled with \n
 
-Sentence breaks identified the sentences are deformatted
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
+2025-06-29 23:23:41,440 - asyncio - DEBUG - Using selector: EpollSelector
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/test.py", line 65, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/kdog/pythonprojects/process_transcript/test.py", line 21, in main
+    with open(preprocessed_file_path, 'r', encoding='utf-8') as f:
+NameError: name 'preprocessed_file_path' is not defined
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
-words, word order, and number of words do not change, temporary formatting is added but then removed after 
-sentence breaks are marked.
-
-The total length in characters of the final result will have increased the character count of the input by 
-the number of line breaks because \n is two bytes.
-
-Current code changed a couple of words and completed the partial sentence at the end of the input which 
-should not have been done as text outside of a complete sentence is not changed and witin a sentence words also do
-not change.
 
 === PY config.py ===
 CHUNK_SIZE = 1000
@@ -159,78 +158,52 @@ class ParseFile:
             self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
-    async def formatchunk(self, chunktext: str) -> str: # Added 'self' as the first parameter
-        # Remove global session. Access session via self.session
-        # if session is None: -> if self.session is None:
-        if self.session is None: 
-            self.logger.warning("aiohttp session not initialized. This should be handled by __aenter__.")
-            # If session is truly not initialized here, it indicates an issue with __aenter__ usage.
-            # For robustness, we can initialize it, but it implies ParseFile isn't always used as an async context manager.
-            # Given your current run.py and test.py, it should be initialized.
-            self.session = aiohttp.ClientSession() 
+    async def formatchunk(self, chunktext: str) -> str:
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
 
-
-        chunklength = len(chunktext)
-        self.logger.debug(f'Formatting chunk of {chunklength} chars')
-        
-        # --- PROMPT: Complete sentences, single space separation ---
         prompt = textwrap.dedent(f"""\
-            Reformat the following text into grammatically correct and complete sentences.
+            Identify complete sentences in the following text and add proper punctuation.
+            Leave incomplete sentence fragments unchanged.
 
-            Text to reformat:
+            Rules:
+            1. Preserve ALL original words exactly
+            2. Maintain EXACT original word order
+            3. Only add punctuation to complete sentences
+            4. Never add or remove any words
+            5. Capitalize only the first word of complete sentences
+
+            Text to process:
             {chunktext}
 
-            Rules for reformatting:
-            1. Preserve all original words exactly.
-            2. Maintain the original word order.
-            3. Ensure proper capitalization for the start of each sentence.
-            4. Add necessary punctuation (periods, question marks, exclamation points) to end each sentence.
-            5. Do not add or remove any content beyond essential punctuation.
-
-            Reformatted text:""")
-        # --- END PROMPT ---
+            Processed text:""")
 
         try:
-            async with self.session.post( # Use self.session
+            async with self.session.post(
                 API_URL,
                 json={
                     "prompt": prompt,
                     "max_tokens": 500,
-                    "temperature": TEMPERATURE,
+                    "temperature": 0.3,
                     "stop": STOP_SEQUENCES,
-                    "repetition_penalty": REPETITION_PENALTY,
-                    "top_p": TOP_P
+                    "repetition_penalty": 1.1,
+                    "top_p": 0.5
                 },
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:
                 if response.status != 200:
-                    error = await response.text()
-                    self.logger.warning(f"API error {response.status}: {error}") # Use self.logger
                     return chunktext
-                
                 result = await response.json()
-                formatted_text = result.get("choices", [{}])[0].get("text", "").strip()
-                
-                if not formatted_text:
-                    self.logger.warning("Received empty response from API") # Use self.logger
-                    self.logger.debug(f"Full API response for empty text: {result}") # Use self.logger
-                    return chunktext
-                
-                return formatted_text
-                
-        except asyncio.TimeoutError:
-            self.logger.warning("API request timed out") # Use self.logger
-            return chunktext
-        except Exception as e:
-            self.logger.error(f"API call failed: {str(e)}") # Use self.logger
+                return result.get("choices", [{}])[0].get("text", "").strip()
+        except Exception:
             return chunktext
 
     def deformat(self, formatted_output):
-        split_output = re.sub(r'(?<=[.!?])\s+(?=[A-Z])', '\n', formatted_output)
-        cleaned_output = re.sub(r'[.!?,;-]', '', split_output)
-        cleaned_output = re.sub(r'\s{2,}', ' ', cleaned_output)
-        cleaned_output = re.sub(r'\s*$', ' ', cleaned_output)
-        return cleaned_output
+        sentences = re.split(r'(?<=[.!?])\s+', formatted_output)
+        output = '\n'.join(sentences)
+        output = re.sub(r'[.!?]', '', output)
+        output = re.sub(r'\s{2,}', ' ', output)
+        return output.strip()
 
     def preprocess(self, input_file):
         self.input_file = input_file
@@ -346,60 +319,50 @@ logger = logging.getLogger(__name__)
 
 async def main():
     async with ParseFile() as parser_instance:
-        preprocessed_file_path = CLEANED_FILE
-        dummy_input_file = 'files/transcript.txt'
+        # ... [previous setup code remains the same]
 
-        try:
-            # Ensure transcript.txt exists for preprocess
-            if not os.path.exists(dummy_input_file):
-                os.makedirs(os.path.dirname(dummy_input_file) or '.', exist_ok=True)
-                with open(dummy_input_file, 'w', encoding='utf-8') as f:
-                    f.write("This is a test sentence. This is another one. This helps preprocess create the file.")
-                logger.info(f"Created a dummy '{dummy_input_file}' for preprocessing.")
+        with open(preprocessed_file_path, 'r', encoding='utf-8') as f:
+            full_text = f.read()
+            words = full_text.split()
+            first_250_words = ' '.join(words[:250])
 
-            parser_instance.preprocess(dummy_input_file)
+        original_words = first_250_words.split()
+        
+        # Format the chunk
+        formatted_output = await parser_instance.formatchunk(first_250_words)
+        
+        # Verify no words were changed
+        formatted_words = re.sub(r'[.!?,;]', '', formatted_output).split()
+        if original_words != formatted_words:
+            logger.error("Word mismatch between original and formatted text")
+            for i, (orig, fmt) in enumerate(zip(original_words, formatted_words)):
+                if orig != fmt:
+                    logger.error(f"Difference at word {i}: Original='{orig}' vs Formatted='{fmt}'")
 
-            with open(preprocessed_file_path, 'r', encoding='utf-8') as f:
-                full_text = f.read()
-                words = full_text.split()
-                first_250_words = ' '.join(words[:250])  # Join words back into a string
+        # Post-process
+        deformatted_output = parser_instance.deformat(formatted_output)
+        
+        # Verify word count and order
+        deformatted_words = deformatted_output.split()
+        if len(original_words) != len(deformatted_words):
+            logger.error("Word count changed during processing")
+        elif original_words != deformatted_words:
+            logger.error("Word order changed during processing")
 
-            logger.info(f"Loaded first {len(words[:250])} words from '{preprocessed_file_path}'.")
-            logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
+        # Save outputs
+        with open('files/unformattedtext.txt', 'w') as f:
+            f.write(first_250_words)
+        with open('files/deformattedtext.txt', 'w') as f:
+            f.write(deformatted_output)
 
-            unformatted_length = len(first_250_words)
-
-            # Format the chunk
-            formatted_output = await parser_instance.formatchunk(first_250_words)
-
-            # Post-process
-            deformatted_output = parser_instance.deformat(formatted_output)
-            deformatted_length = len(deformatted_output)
-
-            # Save outputs
-            os.makedirs('files', exist_ok=True)
-            with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:
-                f.write(first_250_words)
-            with open('files/deformattedtext.txt', 'w', encoding='utf-8') as f:
-                f.write(deformatted_output)
-
-            # Compare word counts instead of exact lengths since formatting changes punctuation
-            unformatted_word_count = len(first_250_words.split())
-            deformatted_word_count = len(deformatted_output.split())
-            
-            if unformatted_word_count != deformatted_word_count:
-                logger.error(
-                    f"Error: Word count mismatch. Original: {unformatted_word_count}, "
-                    f"Deformatted: {deformatted_word_count}"
-                )
-            else:
-                logger.info("Word count match check passed.")
-                logger.info(f"Original length: {unformatted_length}, Formatted length: {len(formatted_output)}, Deformatted length: {deformatted_length}")
-
-            logger.info("Saved 'unformattedtext.txt' and 'deformattedtext.txt' successfully.")
-
-        except Exception as e:
-            logger.error(f"Test failed: {str(e)}", exc_info=True)
+        # Calculate expected length increase
+        newline_count = deformatted_output.count('\n')
+        expected_length = len(first_250_words) + newline_count
+        
+        if len(deformatted_output) != expected_length:
+            logger.error(f"Length mismatch. Expected {expected_length}, got {len(deformatted_output)}")
+        else:
+            logger.info("Output length matches expectations")
 
 if __name__ == "__main__":
     asyncio.run(main())
