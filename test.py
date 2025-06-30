@@ -32,13 +32,11 @@ async def main():
             with open(preprocessed_file_path, 'r', encoding='utf-8') as f:
                 full_text = f.read()
                 words = full_text.split()
-                first_250_words = words[:250]
-                first_250_words = parser_instance.deformat(first_250_words)
+                first_250_words = ' '.join(words[:250])  # Join words back into a string
 
             logger.info(f"Loaded first {len(words[:250])} words from '{preprocessed_file_path}'.")
             logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
 
-            logger.info("Calling formatchunk with the extracted text...")
             unformatted_length = len(first_250_words)
 
             # Format the chunk

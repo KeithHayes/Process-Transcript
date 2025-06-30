@@ -120,7 +120,7 @@ class ParseFile:
                 API_URL,
                 json={
                     "prompt": prompt,
-                    "max_tokens": 500, 
+                    "max_tokens": 500,
                     "temperature": TEMPERATURE,
                     "stop": STOP_SEQUENCES,
                     "repetition_penalty": REPETITION_PENALTY,
@@ -150,11 +150,10 @@ class ParseFile:
             self.logger.error(f"API call failed: {str(e)}") # Use self.logger
             return chunktext
 
-    def deformat(formatted_output):
-        # Only split sentences, don't remove punctuation
+    def deformat(self, formatted_output):
         split_output = re.sub(r'(?<=[.!?])\s+(?=[A-Z])', '\n', formatted_output)
-        # Just normalize whitespace
-        cleaned_output = re.sub(r'\s{2,}', ' ', split_output)
+        cleaned_output = re.sub(r'[.!?,;-]', '', split_output)
+        cleaned_output = re.sub(r'\s{2,}', ' ', cleaned_output)
         cleaned_output = re.sub(r'\s*$', ' ', cleaned_output)
         return cleaned_output
 

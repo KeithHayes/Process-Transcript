@@ -1,24 +1,24 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
+The test.py reads the first 250 words from preprocessed.txt
 
-Only file to be changed is test.py.  The LLM will be debugged using test.py only.  
+The 250 words are formatted into sentences where complete sentences can be identified in the text.
+Text that is not part of a complete sentence is unchanged
 
-The test code reads the first 250 words from preprocessed.txt
+The formatted sentences are then used to identify where sentence breaks are.  These are filled with \n
 
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-29 21:53:39,196 - asyncio - DEBUG - Using selector: EpollSelector
-2025-06-29 21:53:39,196 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-29 21:53:39,197 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-29 21:53:39,197 - __main__ - ERROR - Test failed: ParseFile.deformat() takes 1 positional argument but 2 were given
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/test.py", line 36, in main
-    first_250_words = parser_instance.deformat(first_250_words)
-TypeError: ParseFile.deformat() takes 1 positional argument but 2 were given
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
+Sentence breaks identified the sentences are deformatted
 
+words, word order, and number of words do not change, temporary formatting is added but then removed after 
+sentence breaks are marked.
 
-unformattedtext.txt deformattedtext.txt should be the same length 
+The total length in characters of the final result will have increased the character count of the input by 
+the number of line breaks because \n is two bytes.
+
+Current code changed a couple of words and completed the partial sentence at the end of the input which 
+should not have been done as text outside of a complete sentence is not changed and witin a sentence words also do
+not change.
 
 === PY config.py ===
 CHUNK_SIZE = 1000
@@ -195,7 +195,7 @@ class ParseFile:
                 API_URL,
                 json={
                     "prompt": prompt,
-                    "max_tokens": 500, 
+                    "max_tokens": 500,
                     "temperature": TEMPERATURE,
                     "stop": STOP_SEQUENCES,
                     "repetition_penalty": REPETITION_PENALTY,
@@ -225,11 +225,10 @@ class ParseFile:
             self.logger.error(f"API call failed: {str(e)}") # Use self.logger
             return chunktext
 
-    def deformat(formatted_output):
-        # Only split sentences, don't remove punctuation
+    def deformat(self, formatted_output):
         split_output = re.sub(r'(?<=[.!?])\s+(?=[A-Z])', '\n', formatted_output)
-        # Just normalize whitespace
-        cleaned_output = re.sub(r'\s{2,}', ' ', split_output)
+        cleaned_output = re.sub(r'[.!?,;-]', '', split_output)
+        cleaned_output = re.sub(r'\s{2,}', ' ', cleaned_output)
         cleaned_output = re.sub(r'\s*$', ' ', cleaned_output)
         return cleaned_output
 
@@ -363,13 +362,11 @@ async def main():
             with open(preprocessed_file_path, 'r', encoding='utf-8') as f:
                 full_text = f.read()
                 words = full_text.split()
-                first_250_words = words[:250]
-                first_250_words = parser_instance.deformat(first_250_words)
+                first_250_words = ' '.join(words[:250])  # Join words back into a string
 
             logger.info(f"Loaded first {len(words[:250])} words from '{preprocessed_file_path}'.")
             logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
 
-            logger.info("Calling formatchunk with the extracted text...")
             unformatted_length = len(first_250_words)
 
             # Format the chunk
