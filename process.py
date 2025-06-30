@@ -11,9 +11,9 @@ class ParseFile:
     def __init__(self):
         self.input_pointer = 0
         self.output_pointer = 0
-        self.input_array = ""
+        self.input_string = ""
         self.chunk = ""
-        self.output_array = ""
+        self.output_string = ""
         self._cleaned = False
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
@@ -35,16 +35,16 @@ class ParseFile:
         words = []
         i = self.input_pointer
         
-        while i < len(self.input_array) and words_loaded < word_count:
-            space_pos = self.input_array.find(' ', i)
+        while i < len(self.input_string) and words_loaded < word_count:
+            space_pos = self.input_string.find(' ', i-1)
             if space_pos == -1:  # Last word in input
-                word = self.input_array[i:]
+                word = self.input_string[i:]
                 words.append(word + ' ')
                 words_loaded += 1
-                i = len(self.input_array)
+                i = len(self.input_string)
                 break
             else:
-                word = self.input_array[i:space_pos+1]
+                word = self.input_string[i:space_pos+1]
                 words.append(word)
                 words_loaded += 1
                 i = space_pos + 1
@@ -58,30 +58,27 @@ class ParseFile:
         return self.chunk
     
     def savechunk(self):
-        self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
         try:
             if not self.chunk:
                 return
-
+            self.logger.debug(f'Saving chunk')
+            target_pointer = self.output_pointer
             words = [word for word in self.chunk.split(' ') if word]
             
-            # Process first 150 words
-            first_150 = words[:150]
+            first_150 = words[:150]                             # Save first 150 words of chunk of chunk or fewer
             if first_150:
-                first_150_text = ' '.join(first_150) + ' '
-                self.output_array += first_150_text
+                first_150_text = ' '.join(first_150) + ' '      # Join with spaces, add space at end
+                self.output_string += first_150_text
                 self.output_pointer += len(first_150_text)
             
-            # Keep remaining words
             remaining_words = words[150:] if len(words) > 150 else []
             self.chunk = ' '.join(remaining_words)
             if self.chunk:
                 self.chunk += ' '
             
-            self.logger.debug(f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}')
-            
+            self.logger.debug(f'Saving chunk at: {target_pointer}, length: {self.output_pointer - target_pointer} characters')
         except Exception as e:
-            self.logger.error(f'Save chunk failed: {e}', exc_info=True)
+            self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
             raise
 
     async def formatchunk(self, chunktext: str) -> str:
@@ -97,7 +94,8 @@ class ParseFile:
             Add periods, question marks, or exclamation points to puntuate complete sentences.
             Capitalize the first letter of the first word of each complete sentence.
             Incomplete sentence fragments must remain as they are, without any added punctuation or capitalization change.
-            No puntuation capitalization or word changes after the first word or before the last word in a sentence. 
+            No puntuation capitalization or word changes after the first word or before the last word in a sentence.
+            Only the first letteer in a sentence can be uppercase.
 
             Text: {chunktext}
 
@@ -174,46 +172,33 @@ class ParseFile:
         
         try:
             with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
-                self.input_array = f.read()
-                self.logger.info(f'Loaded {len(self.input_array)} characters for processing')
+                self.input_string = f.read()
+                self.logger.info(f'Loaded {len(self.input_string)} character string')
                 
-                # Initialize processing state
+                self.chunk = ""
+                self.output_string = ""
                 self.input_pointer = 0
                 self.output_pointer = 0
-                self.chunk = ""
-                self.output_array = ""
                 
-                # Initial chunk load
-                self.loadchunk(250)
-                
-                # Main processing loop
+                self.loadchunk(250)     # first chunk
+
                 while True:
-                    # Format current chunk
-                    formatted_chunk = await self.formatchunk(self.chunk)
-                    
-                    # Log the raw formatted output from LLM for debugging purposes
-                    self.logger.info(f"--- LLM's Raw Formatted Output (single-space separated sentences) ---\n{formatted_chunk}\n--- End Raw Output ---")
-
-                    # Deformat the chunk immediately after formatting
-                    self.chunk = self.deformat(formatted_chunk)
-
+                    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
+                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', chr(0x1e), formatted_chunk)         # Mark sentence ends
+                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', chr(0x1e), sentence_ends_marked)   # Mark sentence starts
+                    self.chunk = self.deformat(sentence_starts_marked)
                     self.savechunk()
-                    
-                    # Check if we're done
-                    if self.input_pointer >= len(self.input_array) and not self.chunk.strip():
+                    if self.input_pointer >= len(self.input_string) and not self.chunk.strip():         # Check end condition
                         break
-                    
-                    # Load next chunk if needed
                     remaining_words = self.count_words(self.chunk)
-                    if remaining_words < 100 and self.input_pointer < len(self.input_array):
-                        self.loadchunk(150)
+                    if remaining_words < 100 and self.input_pointer < len(self.input_string):
+                        self.loadchunk(150)                                                             # Load next chunk
             
-            # Write final output
             with open(self.output_file, 'w', encoding='utf-8') as f:
-                final_output = self.output_array.rstrip()
+                final_output = self.output_string.rstrip()                                              # Write output
                 f.write(final_output)
                 self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
                 
         except Exception as e:
-            self.logger.error(f'Processing failed: {e}', exc_info=True)
+            self.logger.error(f'File not marked: {e}', exc_info=True)
             raise

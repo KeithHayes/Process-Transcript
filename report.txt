@@ -2,44 +2,79 @@
 
 === DOCS instructions.txt ===
 
-The LLM should not change any words except for changing case.  The goal is to format sentences so they can be placed on 
-separate lines.  After the line breads are placed all sentence formatting is then removed leaving only the line breaks.
+The LLM should not change any words except for changing sentense case.  The goal is to format sentences so they can be placed on 
+separate lines.  After the line breaks (special character) are placed, all sentence formatting is then removed leaving only the 
+special character replacing whitespace between sentences.
 
-Words should only be shown by the test script if they differ because the test output is overwhelming.
-
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$  /usr/bin/env /home/kdog/pythonprojects/process_transcript/venv/bin/python /home/kdog/.vscode/extensions/ms-python.debugpy-2025.8.0-linux-x64/bundled/libs/debugpy/adapter/../../debugpy/launcher 57453 -- /home/kdog/pythonprojects/process_transcript/test.py 
-2025-06-30 12:02:28,407 - asyncio - DEBUG - Using selector: EpollSelector
-2025-06-30 12:02:28,408 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-30 12:02:28,408 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-30 12:02:28,408 - __main__ - INFO - Loaded first 250 words from 'files/transcript_preprocessed.txt'.
-2025-06-30 12:02:28,409 - __main__ - DEBUG - Input text for formatchunk: 'alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...'
-2025-06-30 12:03:29,047 - process - ERROR - API error during formatchunk: 
+python run.py 
+2025-06-30 16:02:07,645 - process - DEBUG - Preprocessing: files/transcript.txt
+2025-06-30 16:02:07,645 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
+2025-06-30 16:02:07,645 - process - DEBUG - Processing to: files/transcript_processed.txt
+2025-06-30 16:02:07,646 - process - INFO - Loaded 5055 character string
+2025-06-30 16:02:07,646 - process - INFO - Loaded 1 words (total 5056 chars)
+2025-06-30 16:02:08,722 - process - ERROR - An empty string is returned.
+2025-06-30 16:02:08,722 - process - ERROR - An unexpected error occurred during formatchunk: An empty string is returned.
 Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client_reqrep.py", line 532, in start
-    message, payload = await protocol.read()  # type: ignore[union-attr]
-  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/streams.py", line 672, in read
-    await self._waiter
-asyncio.exceptions.CancelledError
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 128, in formatchunk
+    raise ValueError(error_message) # Error: LLM returned empty string
+ValueError: An empty string is returned.
+2025-06-30 16:02:08,722 - process - ERROR - File not marked: An unexpected error occurred during formatchunk: An empty string is returned.
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 128, in formatchunk
+    raise ValueError(error_message) # Error: LLM returned empty string
+ValueError: An empty string is returned.
 
 The above exception was the direct cause of the following exception:
 
 Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 107, in formatchunk
-    async with self.session.post(
-  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client.py", line 1482, in __aenter__
-    self._resp: _RetType = await self._coro
-  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client.py", line 770, in _request
-    resp = await handler(req)
-  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client.py", line 748, in _connect_and_send_request
-    await resp.start(conn)
-  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/client_reqrep.py", line 527, in start
-    with self._timer:
-  File "/home/kdog/pythonprojects/process_transcript/venv/lib/python3.10/site-packages/aiohttp/helpers.py", line 685, in __exit__
-    raise asyncio.TimeoutError from exc_val
-asyncio.exceptions.TimeoutError
-2025-06-30 12:03:29,049 - __main__ - ERROR - Formatting failed - formattting failed
-2025-06-30 12:03:29,049 - __main__ - ERROR - TEST FAILED - One or more checks failed
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 186, in process
+    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 138, in formatchunk
+    raise Exception(error_message) from e # Catch any other unexpected errors
+Exception: An unexpected error occurred during formatchunk: An empty string is returned.
+2025-06-30 16:02:08,722 - main - ERROR - Processing failed: An unexpected error occurred during formatchunk: An empty string is returned.
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 128, in formatchunk
+    raise ValueError(error_message) # Error: LLM returned empty string
+ValueError: An empty string is returned.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 17, in main
+    await prepare_data()
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 11, in prepare_data
+    await filerunner.process(PROCESSED_FILE)
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 186, in process
+    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 138, in formatchunk
+    raise Exception(error_message) from e # Catch any other unexpected errors
+Exception: An unexpected error occurred during formatchunk: An empty string is returned.
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 128, in formatchunk
+    raise ValueError(error_message) # Error: LLM returned empty string
+ValueError: An empty string is returned.
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 24, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 17, in main
+    await prepare_data()
+  File "/home/kdog/pythonprojects/process_transcript/run.py", line 11, in prepare_data
+    await filerunner.process(PROCESSED_FILE)
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 186, in process
+    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
+  File "/home/kdog/pythonprojects/process_transcript/process.py", line 138, in formatchunk
+    raise Exception(error_message) from e # Catch any other unexpected errors
+Exception: An unexpected error occurred during formatchunk: An empty string is returned.
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
+
 
 
 
@@ -166,6 +201,7 @@ TOP_P = 0.9
 MAX_SENTENCE_VALIDATION_ERRORS = 5
 LOG_DIR = 'logs'
 LOG_FILE = 'runlog.log'
+SENTENCE_MARKER = chr(0x1e)
 
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'API_URL', 'API_TIMEOUT',
@@ -173,7 +209,7 @@ __all__ = [
     'TEMPERATURE', 'TOP_P', 'MIN_SENTENCE_LENGTH',
     'MAX_FRAGMENT_LENGTH', 'SPEAKER_FORMAT',
     'MAX_SENTENCE_VALIDATION_ERRORS', 'INPUT_FILE', 'OUTPUT_FILE',
-    'LOG_DIR', 'LOG_FILE'
+    'LOG_DIR', 'LOG_FILE', 'SENTENCE_MARKER'
 ]
 
 === PY logger.py ===
@@ -206,15 +242,15 @@ import logging
 import textwrap
 import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
-                    REPETITION_PENALTY, TEMPERATURE, TOP_P)
+                    REPETITION_PENALTY, TEMPERATURE, TOP_P, SENTENCE_MARKER)
 
 class ParseFile:
     def __init__(self):
         self.input_pointer = 0
         self.output_pointer = 0
-        self.input_array = ""
+        self.input_string = ""
         self.chunk = ""
-        self.output_array = ""
+        self.output_string = ""
         self._cleaned = False
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
@@ -236,16 +272,16 @@ class ParseFile:
         words = []
         i = self.input_pointer
         
-        while i < len(self.input_array) and words_loaded < word_count:
-            space_pos = self.input_array.find(' ', i)
+        while i < len(self.input_string) and words_loaded < word_count:
+            space_pos = self.input_string.find(' ', i-1)
             if space_pos == -1:  # Last word in input
-                word = self.input_array[i:]
+                word = self.input_string[i:]
                 words.append(word + ' ')
                 words_loaded += 1
-                i = len(self.input_array)
+                i = len(self.input_string)
                 break
             else:
-                word = self.input_array[i:space_pos+1]
+                word = self.input_string[i:space_pos+1]
                 words.append(word)
                 words_loaded += 1
                 i = space_pos + 1
@@ -259,30 +295,27 @@ class ParseFile:
         return self.chunk
     
     def savechunk(self):
-        self.logger.debug(f'Saving chunk (input_pointer={self.input_pointer}, output_pointer={self.output_pointer})')
         try:
             if not self.chunk:
                 return
-
+            self.logger.debug(f'Saving chunk')
+            target_pointer = self.output_pointer
             words = [word for word in self.chunk.split(' ') if word]
             
-            # Process first 150 words
-            first_150 = words[:150]
+            first_150 = words[:150]                             # Save first 150 words of chunk of chunk or fewer
             if first_150:
-                first_150_text = ' '.join(first_150) + ' '
-                self.output_array += first_150_text
+                first_150_text = ' '.join(first_150) + ' '      # Join with spaces, add space at end
+                self.output_string += first_150_text
                 self.output_pointer += len(first_150_text)
             
-            # Keep remaining words
             remaining_words = words[150:] if len(words) > 150 else []
             self.chunk = ' '.join(remaining_words)
             if self.chunk:
                 self.chunk += ' '
             
-            self.logger.debug(f'Updated pointers - input: {self.input_pointer}, output: {self.output_pointer}')
-            
+            self.logger.debug(f'Saving chunk at: {target_pointer}, length: {self.output_pointer - target_pointer} characters')
         except Exception as e:
-            self.logger.error(f'Save chunk failed: {e}', exc_info=True)
+            self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
             raise
 
     async def formatchunk(self, chunktext: str) -> str:
@@ -292,13 +325,14 @@ class ParseFile:
         original_words = re.findall(r'\b\w+\b', chunktext.lower())
         
         prompt = textwrap.dedent(f"""\
-            Your ONLY task is to correctly punctuate and capitalize the provided text.
-            You MUST maintain the EXACT original words and their order.
-            You MUST NOT add, delete, or change any words.
-            You MUST NOT rephrase or summarize.
-            Add periods, question marks, or exclamation points to end sentences.
+            MUST maintain the EXACT original words and their order.
+            MUST NOT add, delete, or change any words.
+            MUST NOT rephrase or summarize.
+            Add periods, question marks, or exclamation points to puntuate complete sentences.
             Capitalize the first letter of the first word of each complete sentence.
-            Incomplete sentence fragments should remain as they are, without added punctuation or capitalization.
+            Incomplete sentence fragments must remain as they are, without any added punctuation or capitalization change.
+            No puntuation capitalization or word changes after the first word or before the last word in a sentence.
+            Only the first letteer in a sentence can be uppercase.
 
             Text: {chunktext}
 
@@ -318,55 +352,33 @@ class ParseFile:
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:
                 if response.status != 200:
-                    self.logger.error(f"API returned non-200 status: {response.status}")
-                    # Even on API error, we will return the original chunktext
-                    # The instruction is to NEVER discard the LLM's output IF we get one.
-                    # If the API itself fails, we fallback to input, but log clearly.
-                    return chunktext 
+                    error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
+                    self.logger.error(error_message)
+                    raise Exception(error_message) # Error: API response incorrect
                 
                 result = await response.json()
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
                 
-                # Check for empty response from LLM, indicating a potential issue with the model itself
-                # We still return 'formatted' (which would be empty) but log a warning.
                 if not formatted:
-                    self.logger.warning("LLM returned an empty string. Subsequent processing will handle this.")
-
-                normalized_formatted_words = re.findall(r'\b\w+\b', formatted.lower())
+                    error_message = "An empty string is returned."
+                    self.logger.error(error_message)
+                    raise ValueError(error_message) # Error: LLM returned empty string
+                return formatted
                 
-                # Log warning if words mismatch, but *still return the formatted output*
-                if len(normalized_formatted_words) != len(original_words) or \
-                   any(normalized_formatted_words[i] != original_words[i] for i in range(len(original_words))):
-                    self.logger.warning("Word mismatch detected after formatting. Processing LLM output as received.")
-                    self.logger.debug(f"Original words (normalized): {original_words}")
-                    self.logger.debug(f"Formatted words (normalized): {normalized_formatted_words}")
-                
-                return formatted # This is the key change: ALWAYS return what the LLM gives us (or an empty string if it's empty)
-                
+        except aiohttp.ClientError as e:
+            error_message = f"Network or API client error during formatchunk: {str(e)}"
+            self.logger.error(error_message, exc_info=True)
+            raise ConnectionError(error_message) from e # Error: Cannot connect to LLM API
         except Exception as e:
-            self.logger.error(f"API error during formatchunk: {str(e)}", exc_info=True)
-            # If there's an exception contacting the API, we can't get an LLM output,
-            # so we must fall back to the original chunktext.
-            return chunktext
+            error_message = f"An unexpected error occurred during formatchunk: {str(e)}"
+            self.logger.error(error_message, exc_info=True)
+            raise Exception(error_message) from e # Catch any other unexpected errors
 
     def deformat(self, formatted_output):
-        # Split at sentence boundaries while preserving original words
-        sentences = re.split(r'(?<=[.!?])\s*', formatted_output)
-        
-        # Join with newlines and clean up
-        lines = []
-        for sent in sentences:
-            cleaned_line = re.sub(r'[.!?]$', '', sent).lower().strip()
-            if cleaned_line:
-                lines.append(cleaned_line)
-        
-        output = '\n'.join(lines)
-        
-        # Normalize spaces within each line and ensure single newlines
-        output = re.sub(r'\s+', ' ', output) # Normalize all internal whitespace to single spaces
-        output = re.sub(r'\n ', '\n', output) # Remove space after newline if it occurs
-        
-        return output.strip()
+        # remove all special characters.  Only lowercase letters, spaces, and the special character will remain.
+        output = formatted_output.lower()
+        output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
+        return output
 
     def preprocess(self, input_file):
         self.input_file = input_file
@@ -397,48 +409,35 @@ class ParseFile:
         
         try:
             with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
-                self.input_array = f.read()
-                self.logger.info(f'Loaded {len(self.input_array)} characters for processing')
+                self.input_string = f.read()
+                self.logger.info(f'Loaded {len(self.input_string)} character string')
                 
-                # Initialize processing state
+                self.chunk = ""
+                self.output_string = ""
                 self.input_pointer = 0
                 self.output_pointer = 0
-                self.chunk = ""
-                self.output_array = ""
                 
-                # Initial chunk load
-                self.loadchunk(250)
-                
-                # Main processing loop
+                self.loadchunk(250)     # first chunk
+
                 while True:
-                    # Format current chunk
-                    formatted_chunk = await self.formatchunk(self.chunk)
-                    
-                    # Log the raw formatted output from LLM for debugging purposes
-                    self.logger.info(f"--- LLM's Raw Formatted Output (single-space separated sentences) ---\n{formatted_chunk}\n--- End Raw Output ---")
-
-                    # Deformat the chunk immediately after formatting
-                    self.chunk = self.deformat(formatted_chunk)
-
+                    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
+                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', chr(0x1e), formatted_chunk)         # Mark sentence ends
+                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', chr(0x1e), sentence_ends_marked)   # Mark sentence starts
+                    self.chunk = self.deformat(sentence_starts_marked)
                     self.savechunk()
-                    
-                    # Check if we're done
-                    if self.input_pointer >= len(self.input_array) and not self.chunk.strip():
+                    if self.input_pointer >= len(self.input_string) and not self.chunk.strip():         # Check end condition
                         break
-                    
-                    # Load next chunk if needed
                     remaining_words = self.count_words(self.chunk)
-                    if remaining_words < 100 and self.input_pointer < len(self.input_array):
-                        self.loadchunk(150)
+                    if remaining_words < 100 and self.input_pointer < len(self.input_string):
+                        self.loadchunk(150)                                                             # Load next chunk
             
-            # Write final output
             with open(self.output_file, 'w', encoding='utf-8') as f:
-                final_output = self.output_array.rstrip()
+                final_output = self.output_string.rstrip()                                              # Write output
                 f.write(final_output)
                 self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
                 
         except Exception as e:
-            self.logger.error(f'Processing failed: {e}', exc_info=True)
+            self.logger.error(f'File not marked: {e}', exc_info=True)
             raise
 
 === PY run.py ===
@@ -521,56 +520,51 @@ async def main():
                 full_text = f.read()
                 words = full_text.split()
                 first_250_words = ' '.join(words[:250])
+                first_250_words = parser_instance.deformat(first_250_words)                 # Pre-process
 
             logger.info(f"Loaded first {len(words[:250])} words from '{CLEANED_FILE}'.")
             logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
 
-            # Format the chunk
-            formatted_output = await parser_instance.formatchunk(first_250_words)
+            formatted_output = await parser_instance.formatchunk(first_250_words)           # Format the chunk
+            sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', chr(0x1e), formatted_output)    # Mark sentence ends
+            marked_output = re.sub(r'\s+(?=[A-Z])', chr(0x1e), sentence_ends_marked)        # Mark sentence starts
 
-            # Verify formatting actually occurred
-            if formatted_output == first_250_words:
-                logger.error("Formatting failed - formattting failed")
+            deformatted_output = parser_instance.deformat(marked_output)                    # Post-process
+
+            with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:             # Save outputs
+                f.write(first_250_words)
+            with open('files/deformattedtext.txt', 'w', encoding='utf-8') as f:
+                f.write(deformatted_output)
+
+            # Compare word counts
+            unformatted_word_count = len(first_250_words.split())
+            deformatted_word_count = len(deformatted_output.split())
+                
+            if unformatted_word_count != deformatted_word_count:
+                logger.error(f"Word count mismatch. Original: {unformatted_word_count}, Deformatted: {deformatted_word_count}")
                 test_failed = True
             else:
-                # Post-process
-                deformatted_output = parser_instance.deformat(formatted_output)
+                logger.info("Word count matches")
 
-                # Save outputs
-                with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:
-                    f.write(first_250_words)
-                with open('files/deformattedtext.txt', 'w', encoding='utf-8') as f:
-                    f.write(deformatted_output)
-
-                # Compare word counts
-                unformatted_word_count = len(first_250_words.split())
-                deformatted_word_count = len(deformatted_output.split())
+            # Run detailed diff
+            with open('files/unformattedtext.txt', 'r', encoding='utf-8') as f:
+                original = f.read()
+            with open('files/deformattedtext.txt', 'r', encoding='utf-8') as f:
+                processed = f.read()
                 
-                if unformatted_word_count != deformatted_word_count:
-                    logger.error(f"Word count mismatch. Original: {unformatted_word_count}, Deformatted: {deformatted_word_count}")
-                    test_failed = True
-                else:
-                    logger.info("Word count matches")
+            diffs = diff_texts(original, processed)
+            if diffs:
+                logger.error("Differences found:")
+                for diff in diffs:
+                    logger.error(diff)
+                test_failed = True
+            else:
+                logger.info("Word match")
 
-                # Run detailed diff
-                with open('files/unformattedtext.txt', 'r', encoding='utf-8') as f:
-                    original = f.read()
-                with open('files/deformattedtext.txt', 'r', encoding='utf-8') as f:
-                    processed = f.read()
-                
-                diffs = diff_texts(original, processed)
-                if diffs:
-                    logger.error("Differences found:")
-                    for diff in diffs:
-                        logger.error(diff)
-                    test_failed = True
-                else:
-                    logger.info("No differences found - words preserved perfectly")
-
-                # Verify newlines were added
-                if '\n' not in deformatted_output:
-                    logger.error("No sentence breaks found in output")
-                    test_failed = True
+            # Verify newlines were added
+            if chr(0x1e) not in deformatted_output:
+                logger.error("No sentence breaks found in output")
+                test_failed = True
 
         except Exception as e:
             logger.error(f"Test failed: {str(e)}", exc_info=True)
