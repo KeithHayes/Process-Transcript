@@ -85,77 +85,110 @@ class ParseFile:
             raise
 
     async def formatchunk(self, chunktext: str) -> str:
-            if self.session is None:
-                self.session = aiohttp.ClientSession()
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
 
-            # Store original words for verification, converting to lowercase for a more lenient comparison
-            original_words = [word.lower() for word in chunktext.split()]
+        # Store original words and whitespace for exact comparison
+        original_words = chunktext.split()
+        original_whitespace = re.findall(r'\s+', chunktext)
+        
+        prompt = textwrap.dedent(f"""\
+            STRICT TEXT PROCESSING RULES:
+            1. PRESERVE ALL original words exactly as they appear
+            2. MAINTAIN original word order precisely
+            3. KEEP original whitespace between words
+            4. DO NOT combine or merge words under any circumstances
+            5. ONLY add ending punctuation (.?!) to complete sentences
+            6. CAPITALIZE only the first word of complete sentences
+            7. LEAVE incomplete sentence fragments unchanged
+            8. DO NOT modify words mid-sentence with punctuation
+            9. DO NOT change any word's spelling or form
+            10. DO NOT add or remove any words
+
+            FAILURE EXAMPLES:
+            Bad: "butterflyorange" (merged words)
+            Bad: "window, in" (added mid-sentence punctuation)
+            Bad: "Alice's" (modified word form)
+            Bad: "the  end" (changed whitespace)
+
+            Input Text:
+            {chunktext}
+
+            Properly Formatted Output:""")
+
+        try:
+            async with self.session.post(
+                API_URL,
+                json={
+                    "prompt": prompt,
+                    "max_tokens": 500,
+                    "temperature": 0.01,  # Minimal creativity
+                    "stop": STOP_SEQUENCES,
+                    "repetition_penalty": 1.0,
+                    "top_p": 0.01  # Only most probable tokens
+                },
+                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
+                if response.status != 200:
+                    self.logger.error(f"API request failed: {response.status}")
+                    return chunktext
+                
+                result = await response.json()
+                formatted = result.get("choices", [{}])[0].get("text", "").strip()
+                
+                # Strict validation
+                formatted_words = []
+                formatted_whitespace = []
+                
+                # Split while preserving whitespace
+                parts = re.split(r'(\s+)', formatted)
+                for part in parts:
+                    if part.strip():
+                        # Remove only trailing punctuation for comparison
+                        clean_word = re.sub(r'[.!?]$', '', part)
+                        formatted_words.append(clean_word)
+                    else:
+                        formatted_whitespace.append(part)
+                
+                # Verify words match exactly
+                if formatted_words != original_words:
+                    self.logger.error("WORD MISMATCH DETECTED")
+                    for i, (orig, fmt) in enumerate(zip(original_words, formatted_words)):
+                        if orig != fmt:
+                            self.logger.error(f"Position {i}: Original='{orig}' vs Formatted='{fmt}'")
+                    return chunktext
+                    
+                # Verify whitespace is preserved
+                if len(formatted_whitespace) != len(original_whitespace):
+                    self.logger.error("WHITESPACE COUNT MISMATCH")
+                    return chunktext
+                    
+                for orig_ws, fmt_ws in zip(original_whitespace, formatted_whitespace):
+                    if orig_ws != fmt_ws:
+                        self.logger.error("WHITESPACE MODIFIED")
+                        return chunktext
+                
+                return formatted
+                
+        except Exception as e:
+            self.logger.error(f"API processing failed: {str(e)}")
+            return chunktext
+
+        def deformat(self, formatted_output):
+            # Split at sentence boundaries while preserving original words
+            sentences = re.split(r'(?<=[.!?])\s+', formatted_output)
             
-            prompt = textwrap.dedent(f"""\
-                Your task is to identify and complete sentences in the provided text by adding necessary punctuation (periods, question marks, exclamation points).
-                Crucially, you must preserve ALL original words and their order exactly as they appear in the input text.
-                Do NOT add, delete, or modify any words. Do NOT complete partial sentences or rephrase anything.
-                Capitalize the first letter of the first word of each complete sentence.
-                Leave incomplete sentence fragments exactly as they are, without adding punctuation or capitalization.
-
-                Example:
-                Input: "this is a sentence this is another one an incomplete thought"
-                Output: "This is a sentence. This is another one. an incomplete thought"
-
-                Text: {chunktext}
-
-                Processed text:""")
-
-            try:
-                async with self.session.post(
-                    API_URL,
-                    json={
-                        "prompt": prompt,
-                        "max_tokens": 500,
-                        "temperature": 0.1,  # Further lower temperature for even more consistency
-                        "stop": STOP_SEQUENCES,
-                        "repetition_penalty": 1.0,  # Remove penalty as it can encourage slight deviations
-                        "top_p": 0.1 # Lower top_p to focus on higher probability tokens
-                    },
-                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-                ) as response:
-                    if response.status != 200:
-                        self.logger.error(f"API returned non-200 status: {response.status}")
-                        return chunktext
-                    result = await response.json()
-                    formatted = result.get("choices", [{}])[0].get("text", "").strip()
-                    
-                    # Normalize formatted output for comparison: remove punctuation and convert to lowercase
-                    # This makes the word-by-word comparison more robust against capitalization/punctuation differences
-                    normalized_formatted_words = re.sub(r'[^\w\s]', '', formatted).lower().split()
-                    
-                    if normalized_formatted_words != original_words:
-                        self.logger.warning("Word mismatch detected after formatting. Returning original text.")
-                        self.logger.debug(f"Original words (normalized): {original_words}")
-                        self.logger.debug(f"Formatted words (normalized): {normalized_formatted_words}")
-                        return chunktext
-                    
-                    return formatted
-                    
-            except Exception as e:
-                self.logger.error(f"API error during formatchunk: {str(e)}", exc_info=True)
-                return chunktext
-
-    def deformat(self, formatted_output):
-        # Split at sentence boundaries while preserving original words
-        sentences = re.split(r'(?<=[.!?])\s+', formatted_output)
-        
-        # Join with newlines and clean up
-        output = '\n'.join(
-            re.sub(r'[.!?]', '', sent).lower().strip()
-            for sent in sentences
-        )
-        
-        # Normalize spaces and ensure single newlines
-        output = re.sub(r'\s+', ' ', output)
-        output = re.sub(r'\n ', '\n', output)
-        
-        return output.strip()
+            # Join with newlines and clean up
+            output = '\n'.join(
+                re.sub(r'[.!?]', '', sent).lower().strip()
+                for sent in sentences
+            )
+            
+            # Normalize spaces and ensure single newlines
+            output = re.sub(r'\s+', ' ', output)
+            output = re.sub(r'\n ', '\n', output)
+            
+            return output.strip()
 
     def preprocess(self, input_file):
         self.input_file = input_file
