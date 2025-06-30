@@ -85,75 +85,76 @@ class ParseFile:
             raise
 
     async def formatchunk(self, chunktext: str) -> str:
-            if self.session is None:
-                self.session = aiohttp.ClientSession()
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
 
-            # Store original words for verification, converting to lowercase for a more lenient comparison
-            original_words = [word.lower() for word in chunktext.split()]
-            
-            prompt = textwrap.dedent(f"""\
-                Your task is to identify and complete sentences in the provided text by adding necessary punctuation (periods, question marks, exclamation points).
-                Crucially, you must preserve ALL original words and their order exactly as they appear in the input text.
-                Do NOT add, delete, or modify any words. Do NOT complete partial sentences or rephrase anything.
-                Capitalize the first letter of the first word of each complete sentence.
-                Leave incomplete sentence fragments exactly as they are, without adding punctuation or capitalization.
+        # Store original words for verification, converting to lowercase for a more lenient comparison
+        original_words = re.findall(r'\b\w+\b', chunktext.lower())
+        
+        # Craft a precise prompt for the LLM
+        prompt = textwrap.dedent(f"""\
+            Your ONLY task is to correctly punctuate and capitalize the provided text.
+            You MUST maintain the EXACT original words and their order.
+            You MUST NOT add, delete, or change any words.
+            You MUST NOT rephrase or summarize.
+            Add periods, question marks, or exclamation points to end sentences.
+            Capitalize the first letter of the first word of each complete sentence.
+            Incomplete sentence fragments should remain as they are, without added punctuation or capitalization.
 
-                Example:
-                Input: "this is a sentence this is another one an incomplete thought"
-                Output: "This is a sentence. This is another one. an incomplete thought"
+            Text: {chunktext}
 
-                Text: {chunktext}
+            Formatted text:""")
 
-                Processed text:""")
-
-            try:
-                async with self.session.post(
-                    API_URL,
-                    json={
-                        "prompt": prompt,
-                        "max_tokens": 500,
-                        "temperature": 0.1,  # Further lower temperature for even more consistency
-                        "stop": STOP_SEQUENCES,
-                        "repetition_penalty": 1.0,  # Remove penalty as it can encourage slight deviations
-                        "top_p": 0.1 # Lower top_p to focus on higher probability tokens
-                    },
-                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-                ) as response:
-                    if response.status != 200:
-                        self.logger.error(f"API returned non-200 status: {response.status}")
-                        return chunktext
-                    result = await response.json()
-                    formatted = result.get("choices", [{}])[0].get("text", "").strip()
-                    
-                    # Normalize formatted output for comparison: remove punctuation and convert to lowercase
-                    # This makes the word-by-word comparison more robust against capitalization/punctuation differences
-                    normalized_formatted_words = re.sub(r'[^\w\s]', '', formatted).lower().split()
-                    
-                    if normalized_formatted_words != original_words:
-                        self.logger.warning("Word mismatch detected after formatting. Returning original text.")
-                        self.logger.debug(f"Original words (normalized): {original_words}")
-                        self.logger.debug(f"Formatted words (normalized): {normalized_formatted_words}")
-                        return chunktext
-                    
-                    return formatted
-                    
-            except Exception as e:
-                self.logger.error(f"API error during formatchunk: {str(e)}", exc_info=True)
-                return chunktext
+        try:
+            async with self.session.post(
+                API_URL,
+                json={
+                    "prompt": prompt,
+                    "max_tokens": len(chunktext.split()) + 50, # Allow some buffer for punctuation/spaces
+                    "temperature": 0.0,  # Set temperature to 0 for deterministic output, crucial for strict adherence
+                    "stop": STOP_SEQUENCES,
+                    "repetition_penalty": 1.0, # Keep penalty at 1.0, as changes are not desired
+                    "top_p": 0.1 # Lower top_p to focus on higher probability tokens
+                },
+                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
+                if response.status != 200:
+                    self.logger.error(f"API returned non-200 status: {response.status}")
+                    return chunktext
+                result = await response.json()
+                formatted = result.get("choices", [{}])[0].get("text", "").strip()
+                
+                # Normalize formatted output for comparison: remove punctuation and convert to lowercase
+                normalized_formatted_words = re.findall(r'\b\w+\b', formatted.lower())
+                
+                if normalized_formatted_words != original_words:
+                    self.logger.warning("Word mismatch detected after formatting. Returning original text.")
+                    self.logger.debug(f"Original words (normalized): {original_words}")
+                    self.logger.debug(f"Formatted words (normalized): {normalized_formatted_words}")
+                    return chunktext # Return original if words don't match
+                
+                return formatted
+                
+        except Exception as e:
+            self.logger.error(f"API error during formatchunk: {str(e)}", exc_info=True)
+            return chunktext
 
     def deformat(self, formatted_output):
         # Split at sentence boundaries while preserving original words
-        sentences = re.split(r'(?<=[.!?])\s+', formatted_output)
+        sentences = re.split(r'(?<=[.!?])\s*', formatted_output)
         
         # Join with newlines and clean up
-        output = '\n'.join(
-            re.sub(r'[.!?]', '', sent).lower().strip()
-            for sent in sentences
-        )
+        lines = []
+        for sent in sentences:
+            cleaned_line = re.sub(r'[.!?]$', '', sent).lower().strip()
+            if cleaned_line:
+                lines.append(cleaned_line)
         
-        # Normalize spaces and ensure single newlines
-        output = re.sub(r'\s+', ' ', output)
-        output = re.sub(r'\n ', '\n', output)
+        output = '\n'.join(lines)
+        
+        # Normalize spaces within each line and ensure single newlines
+        output = re.sub(r'\s+', ' ', output) # Normalize all internal whitespace to single spaces
+        output = re.sub(r'\n ', '\n', output) # Remove space after newline if it occurs
         
         return output.strip()
 
@@ -201,9 +202,13 @@ class ParseFile:
                 # Main processing loop
                 while True:
                     # Format current chunk
-                    self.chunk = await self.formatchunk(self.chunk)
+                    formatted_chunk = await self.formatchunk(self.chunk)
+                    
+                    # Log the raw formatted output from LLM for debugging purposes
+                    self.logger.info(f"--- LLM's Raw Formatted Output (single-space separated sentences) ---\n{formatted_chunk}\n--- End Raw Output ---")
 
-                    self.logger.info("--- LLM's Raw Formatted Output (single-space separated sentences) ---")
+                    # Deformat the chunk immediately after formatting
+                    self.chunk = self.deformat(formatted_chunk)
 
                     self.savechunk()
                     
