@@ -1,4 +1,21 @@
+The test.py reads the first 250 words from preprocessed.txt
 
+The 250 words are formatted into sentences where complete sentences can be identified in the text.
+Text that is not part of a complete sentence is unchanged
+
+The formatted sentences are then used to identify where sentence breaks are.  These are filled with \n
+
+Sentence breaks identified the sentences are deformatted
+
+words, word order, and number of words do not change, temporary formatting is added but then removed after 
+sentence breaks are marked.
+
+The total length in characters of the final result will have increased the character count of the input by 
+the number of line breaks because \n is two bytes.
+
+Current code changed a couple of words and completed the partial sentence at the end of the input which 
+should not have been done as text outside of a complete sentence is not changed and witin a sentence words also do
+not change.
 
 
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
