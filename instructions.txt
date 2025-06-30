@@ -3,4 +3,16 @@ Only file to be changed is test.py.  The LLM will be debugged using test.py only
 
 The test code reads the first 250 words from preprocessed.txt
 
-complete the unfinished test code in test.py
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
+2025-06-29 20:23:29,120 - asyncio - DEBUG - Using selector: EpollSelector
+2025-06-29 20:23:29,121 - process - DEBUG - Preprocessing: files/transcript.txt
+2025-06-29 20:23:29,121 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
+2025-06-29 20:23:29,121 - __main__ - INFO - Loaded first 250 words from 'files/transcript_preprocessed.txt'.
+2025-06-29 20:23:29,121 - __main__ - DEBUG - Input text for formatchunk: 'alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...'
+2025-06-29 20:23:29,121 - __main__ - INFO - Calling formatchunk with the extracted text...
+2025-06-29 20:23:29,121 - process - DEBUG - Formatting chunk of 1445 chars
+2025-06-29 20:23:42,327 - __main__ - ERROR - Error: Length mismatch. Expected 1448, got 438. Delta = 1010
+2025-06-29 20:23:42,327 - __main__ - INFO - Saved 'unformattedtext.txt' and 'deformattedtext.txt' successfully.
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
+
+unformattedtext.txt deformattedtext.txt should be the same length something is being unexpectedly truncated.
