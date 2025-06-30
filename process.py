@@ -98,6 +98,7 @@ class ParseFile:
             3. Only add punctuation to complete sentences
             4. Never add or remove any words
             5. Capitalize only the first word of complete sentences
+            6. No added deleted or modified words                     
 
             Text to process:
             {chunktext}
@@ -127,8 +128,9 @@ class ParseFile:
     def deformat(self, formatted_output):
         sentences = re.split(r'(?<=[.!?])\s+', formatted_output)
         output = '\n'.join(sentences)
-        output = re.sub(r'[.!?]', '', output)
+        output = re.sub(r'[.!?,;-]', '', output)
         output = re.sub(r'\s{2,}', ' ', output)
+        output = output.lower()
         return output.strip()
 
     def preprocess(self, input_file):
