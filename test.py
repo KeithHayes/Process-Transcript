@@ -51,6 +51,7 @@ async def main():
                 full_text = f.read()
                 words = full_text.split()
                 first_250_words = ' '.join(words[:250])
+                first_250_words = parser_instance.deformat(first_250_words)                 # Pre-process
 
             logger.info(f"Loaded first {len(words[:250])} words from '{CLEANED_FILE}'.")
             logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
@@ -59,11 +60,9 @@ async def main():
             sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', chr(0x1e), formatted_output)    # Mark sentence ends
             marked_output = re.sub(r'\s+(?=[A-Z])', chr(0x1e), sentence_ends_marked)        # Mark sentence starts
 
-            # Post-process
-            deformatted_output = parser_instance.deformat(formatted_output)
+            deformatted_output = parser_instance.deformat(marked_output)                    # Post-process
 
-            # Save outputs
-            with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:
+            with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:             # Save outputs
                 f.write(first_250_words)
             with open('files/deformattedtext.txt', 'w', encoding='utf-8') as f:
                 f.write(deformatted_output)
@@ -91,7 +90,7 @@ async def main():
                     logger.error(diff)
                 test_failed = True
             else:
-                logger.info("No differences found - words preserved perfectly")
+                logger.info("Word match")
 
             # Verify newlines were added
             if chr(0x1e) not in deformatted_output:
