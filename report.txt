@@ -22,15 +22,24 @@ not change.
 
 
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-29 23:46:28,218 - asyncio - DEBUG - Using selector: EpollSelector
-2025-06-29 23:46:28,218 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-29 23:46:28,219 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-29 23:46:28,219 - __main__ - INFO - Loaded first 250 words from 'files/transcript_preprocessed.txt'.
-2025-06-29 23:46:28,219 - __main__ - DEBUG - Input text for formatchunk: 'alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...'
-2025-06-29 23:47:08,954 - __main__ - ERROR - Error: Word count mismatch. Original: 250, Deformatted: 246
-2025-06-29 23:47:08,954 - __main__ - INFO - Saved  successfully.
+2025-06-29 23:56:07,069 - asyncio - DEBUG - Using selector: EpollSelector
+2025-06-29 23:56:07,069 - __main__ - ERROR - Test failed: 'ParseFile' object has no attribute 'preprocess'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/test.py", line 47, in main
+    parser_instance.preprocess(dummy_input_file)
+AttributeError: 'ParseFile' object has no attribute 'preprocess'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/test.py", line 99, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/kdog/pythonprojects/process_transcript/test.py", line 47, in main
+    parser_instance.preprocess(dummy_input_file)
+AttributeError: 'ParseFile' object has no attribute 'preprocess'
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
-a function could be added to test.py that diffs 'unformattedtext.txt' and 'deformattedtext.txt' 
 
 
 
@@ -173,53 +182,71 @@ class ParseFile:
             self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
-    async def formatchunk(self, chunktext: str) -> str:
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
+async def formatchunk(self, chunktext: str) -> str:
+    if self.session is None:
+        self.session = aiohttp.ClientSession()
 
-        prompt = textwrap.dedent(f"""\
-            Identify complete sentences in the following text and add proper punctuation.
-            Leave incomplete sentence fragments unchanged.
+    # Store original words for verification
+    original_words = chunktext.split()
+    
+    prompt = textwrap.dedent(f"""\
+        Identify complete sentences in this text and add punctuation ONLY.
+        Preserve ALL original words exactly in original order.
+        Do NOT complete partial sentences or modify words.
+        Rules:
+        1. No added, deleted or modified words
+        2. Only add punctuation to complete sentences
+        3. Capitalize only first word of complete sentences
+        4. Leave incomplete fragments unchanged
 
-            Rules:
-            1. Preserve ALL original words exactly
-            2. Maintain EXACT original word order
-            3. Only add punctuation to complete sentences
-            4. Never add or remove any words
-            5. Capitalize only the first word of complete sentences
-            6. No added deleted or modified words                     
+        Text: {chunktext}
 
-            Text to process:
-            {chunktext}
+        Processed text:""")
 
-            Processed text:""")
-
-        try:
-            async with self.session.post(
-                API_URL,
-                json={
-                    "prompt": prompt,
-                    "max_tokens": 500,
-                    "temperature": 0.3,
-                    "stop": STOP_SEQUENCES,
-                    "repetition_penalty": 1.1,
-                    "top_p": 0.5
-                },
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-            ) as response:
-                if response.status != 200:
-                    return chunktext
-                result = await response.json()
-                return result.get("choices", [{}])[0].get("text", "").strip()
-        except Exception:
-            return chunktext
+    try:
+        async with self.session.post(
+            API_URL,
+            json={
+                "prompt": prompt,
+                "max_tokens": 500,
+                "temperature": 0.2,  # Lower temperature for more consistency
+                "stop": STOP_SEQUENCES,
+                "repetition_penalty": 1.05,  # Minimal penalty to prevent changes
+                "top_p": 0.3
+            },
+            timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+        ) as response:
+            if response.status != 200:
+                return chunktext
+            result = await response.json()
+            formatted = result.get("choices", [{}])[0].get("text", "").strip()
+            
+            # Verify no words were changed
+            formatted_words = re.sub(r'[.!?]', '', formatted).split()
+            if formatted_words != original_words:
+                self.logger.warning("Word mismatch detected, returning original")
+                return chunktext
+                
+            return formatted
+            
+    except Exception as e:
+        self.logger.error(f"API error: {str(e)}")
+        return chunktext
 
     def deformat(self, formatted_output):
+        # Split at sentence boundaries while preserving original words
         sentences = re.split(r'(?<=[.!?])\s+', formatted_output)
-        output = '\n'.join(sentences)
-        output = re.sub(r'[.!?,;-]', '', output)
-        output = re.sub(r'\s{2,}', ' ', output)
-        output = output.lower()
+        
+        # Join with newlines and clean up
+        output = '\n'.join(
+            re.sub(r'[.!?]', '', sent).lower().strip()
+            for sent in sentences
+        )
+        
+        # Normalize spaces and ensure single newlines
+        output = re.sub(r'\s+', ' ', output)
+        output = re.sub(r'\n ', '\n', output)
+        
         return output.strip()
 
     def preprocess(self, input_file):
@@ -323,6 +350,7 @@ import logging
 import os
 import sys
 import re
+from pathlib import Path
 
 # Add parent directory to path to allow imports from config and logger
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -333,7 +361,6 @@ from config import CLEANED_FILE
 
 configure_logging()
 logger = logging.getLogger(__name__)
-
 
 def diff_texts(original, processed):
     """Compare two texts word by word and show differences"""
@@ -351,27 +378,69 @@ def diff_texts(original, processed):
     return differences
 
 async def main():
-    # [previous setup code...]
-    
-    try:
-        # [previous processing code...]
-        
-        # After saving files, run diff
-        with open('files/unformattedtext.txt', 'r') as f:
-            original = f.read()
-        with open('files/deformattedtext.txt', 'r') as f:
-            processed = f.read()
+    async with ParseFile() as parser_instance:
+        dummy_input_file = 'files/transcript.txt'
+
+        try:
+            # Ensure files directory exists
+            os.makedirs('files', exist_ok=True)
             
-        diffs = diff_texts(original, processed)
-        if diffs:
-            logger.error("Differences found:")
-            for diff in diffs:
-                logger.error(diff)
-        else:
-            logger.info("No differences found - words preserved perfectly")
+            # Ensure transcript.txt exists for preprocess
+            if not os.path.exists(dummy_input_file):
+                with open(dummy_input_file, 'w', encoding='utf-8') as f:
+                    f.write("This is a test sentence. This is another one. This helps preprocess create the file.")
+                logger.info(f"Created a dummy '{dummy_input_file}' for preprocessing.")
+
+            parser_instance.preprocess(dummy_input_file)
+
+            with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
+                full_text = f.read()
+                words = full_text.split()
+                first_250_words = ' '.join(words[:250])
+
+            logger.info(f"Loaded first {len(words[:250])} words from '{CLEANED_FILE}'.")
+            logger.debug(f"Input text for formatchunk: '{first_250_words[:100]}...'")
+
+            # Format the chunk
+            formatted_output = await parser_instance.formatchunk(first_250_words)
+
+            # Post-process
+            deformatted_output = parser_instance.deformat(formatted_output)
+
+            # Save outputs
+            with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:
+                f.write(first_250_words)
+            with open('files/deformattedtext.txt', 'w', encoding='utf-8') as f:
+                f.write(deformatted_output)
+
+            # Compare word counts
+            unformatted_word_count = len(first_250_words.split())
+            deformatted_word_count = len(deformatted_output.split())
             
-    except Exception as e:
-        logger.error(f"Test failed: {str(e)}", exc_info=True)
+            if unformatted_word_count != deformatted_word_count:
+                logger.error(f"Word count mismatch. Original: {unformatted_word_count}, Deformatted: {deformatted_word_count}")
+            else:
+                logger.info("Word count matches")
+
+            # Run detailed diff
+            with open('files/unformattedtext.txt', 'r', encoding='utf-8') as f:
+                original = f.read()
+            with open('files/deformattedtext.txt', 'r', encoding='utf-8') as f:
+                processed = f.read()
+            
+            diffs = diff_texts(original, processed)
+            if diffs:
+                logger.error("Differences found:")
+                for diff in diffs:
+                    logger.error(diff)
+            else:
+                logger.info("No differences found - words preserved perfectly")
+
+            logger.info("Test completed successfully")
+
+        except Exception as e:
+            logger.error(f"Test failed: {str(e)}", exc_info=True)
+            raise
 
 if __name__ == "__main__":
     asyncio.run(main())

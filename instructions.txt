@@ -19,13 +19,22 @@ not change.
 
 
 (venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ python test.py 
-2025-06-29 23:46:28,218 - asyncio - DEBUG - Using selector: EpollSelector
-2025-06-29 23:46:28,218 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-29 23:46:28,219 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-29 23:46:28,219 - __main__ - INFO - Loaded first 250 words from 'files/transcript_preprocessed.txt'.
-2025-06-29 23:46:28,219 - __main__ - DEBUG - Input text for formatchunk: 'alice warren sat beside a wide window in the corner of her study the late afternoon light slanted ge...'
-2025-06-29 23:47:08,954 - __main__ - ERROR - Error: Word count mismatch. Original: 250, Deformatted: 246
-2025-06-29 23:47:08,954 - __main__ - INFO - Saved  successfully.
+2025-06-29 23:56:07,069 - asyncio - DEBUG - Using selector: EpollSelector
+2025-06-29 23:56:07,069 - __main__ - ERROR - Test failed: 'ParseFile' object has no attribute 'preprocess'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/test.py", line 47, in main
+    parser_instance.preprocess(dummy_input_file)
+AttributeError: 'ParseFile' object has no attribute 'preprocess'
+Traceback (most recent call last):
+  File "/home/kdog/pythonprojects/process_transcript/test.py", line 99, in <module>
+    asyncio.run(main())
+  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
+    return loop.run_until_complete(main)
+  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
+    return future.result()
+  File "/home/kdog/pythonprojects/process_transcript/test.py", line 47, in main
+    parser_instance.preprocess(dummy_input_file)
+AttributeError: 'ParseFile' object has no attribute 'preprocess'
+(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
 
-a function could be added to test.py that diffs 'unformattedtext.txt' and 'deformattedtext.txt' 
 

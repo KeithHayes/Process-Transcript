@@ -84,53 +84,71 @@ class ParseFile:
             self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
-    async def formatchunk(self, chunktext: str) -> str:
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
+async def formatchunk(self, chunktext: str) -> str:
+    if self.session is None:
+        self.session = aiohttp.ClientSession()
 
-        prompt = textwrap.dedent(f"""\
-            Identify complete sentences in the following text and add proper punctuation.
-            Leave incomplete sentence fragments unchanged.
+    # Store original words for verification
+    original_words = chunktext.split()
+    
+    prompt = textwrap.dedent(f"""\
+        Identify complete sentences in this text and add punctuation ONLY.
+        Preserve ALL original words exactly in original order.
+        Do NOT complete partial sentences or modify words.
+        Rules:
+        1. No added, deleted or modified words
+        2. Only add punctuation to complete sentences
+        3. Capitalize only first word of complete sentences
+        4. Leave incomplete fragments unchanged
 
-            Rules:
-            1. Preserve ALL original words exactly
-            2. Maintain EXACT original word order
-            3. Only add punctuation to complete sentences
-            4. Never add or remove any words
-            5. Capitalize only the first word of complete sentences
-            6. No added deleted or modified words                     
+        Text: {chunktext}
 
-            Text to process:
-            {chunktext}
+        Processed text:""")
 
-            Processed text:""")
-
-        try:
-            async with self.session.post(
-                API_URL,
-                json={
-                    "prompt": prompt,
-                    "max_tokens": 500,
-                    "temperature": 0.3,
-                    "stop": STOP_SEQUENCES,
-                    "repetition_penalty": 1.1,
-                    "top_p": 0.5
-                },
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-            ) as response:
-                if response.status != 200:
-                    return chunktext
-                result = await response.json()
-                return result.get("choices", [{}])[0].get("text", "").strip()
-        except Exception:
-            return chunktext
+    try:
+        async with self.session.post(
+            API_URL,
+            json={
+                "prompt": prompt,
+                "max_tokens": 500,
+                "temperature": 0.2,  # Lower temperature for more consistency
+                "stop": STOP_SEQUENCES,
+                "repetition_penalty": 1.05,  # Minimal penalty to prevent changes
+                "top_p": 0.3
+            },
+            timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+        ) as response:
+            if response.status != 200:
+                return chunktext
+            result = await response.json()
+            formatted = result.get("choices", [{}])[0].get("text", "").strip()
+            
+            # Verify no words were changed
+            formatted_words = re.sub(r'[.!?]', '', formatted).split()
+            if formatted_words != original_words:
+                self.logger.warning("Word mismatch detected, returning original")
+                return chunktext
+                
+            return formatted
+            
+    except Exception as e:
+        self.logger.error(f"API error: {str(e)}")
+        return chunktext
 
     def deformat(self, formatted_output):
+        # Split at sentence boundaries while preserving original words
         sentences = re.split(r'(?<=[.!?])\s+', formatted_output)
-        output = '\n'.join(sentences)
-        output = re.sub(r'[.!?,;-]', '', output)
-        output = re.sub(r'\s{2,}', ' ', output)
-        output = output.lower()
+        
+        # Join with newlines and clean up
+        output = '\n'.join(
+            re.sub(r'[.!?]', '', sent).lower().strip()
+            for sent in sentences
+        )
+        
+        # Normalize spaces and ensure single newlines
+        output = re.sub(r'\s+', ' ', output)
+        output = re.sub(r'\n ', '\n', output)
+        
         return output.strip()
 
     def preprocess(self, input_file):
