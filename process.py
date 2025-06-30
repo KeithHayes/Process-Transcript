@@ -84,56 +84,56 @@ class ParseFile:
             self.logger.error(f'Save chunk failed: {e}', exc_info=True)
             raise
 
-async def formatchunk(self, chunktext: str) -> str:
-    if self.session is None:
-        self.session = aiohttp.ClientSession()
+    async def formatchunk(self, chunktext: str) -> str:
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
 
-    # Store original words for verification
-    original_words = chunktext.split()
-    
-    prompt = textwrap.dedent(f"""\
-        Identify complete sentences in this text and add punctuation ONLY.
-        Preserve ALL original words exactly in original order.
-        Do NOT complete partial sentences or modify words.
-        Rules:
-        1. No added, deleted or modified words
-        2. Only add punctuation to complete sentences
-        3. Capitalize only first word of complete sentences
-        4. Leave incomplete fragments unchanged
+        # Store original words for verification
+        original_words = chunktext.split()
+        
+        prompt = textwrap.dedent(f"""\
+            Identify complete sentences in this text and add punctuation ONLY.
+            Preserve ALL original words exactly in original order.
+            Do NOT complete partial sentences or modify words.
+            Rules:
+            1. No added, deleted or modified words
+            2. Only add punctuation to complete sentences
+            3. Capitalize only first word of complete sentences
+            4. Leave incomplete fragments unchanged
 
-        Text: {chunktext}
+            Text: {chunktext}
 
-        Processed text:""")
+            Processed text:""")
 
-    try:
-        async with self.session.post(
-            API_URL,
-            json={
-                "prompt": prompt,
-                "max_tokens": 500,
-                "temperature": 0.2,  # Lower temperature for more consistency
-                "stop": STOP_SEQUENCES,
-                "repetition_penalty": 1.05,  # Minimal penalty to prevent changes
-                "top_p": 0.3
-            },
-            timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-        ) as response:
-            if response.status != 200:
-                return chunktext
-            result = await response.json()
-            formatted = result.get("choices", [{}])[0].get("text", "").strip()
-            
-            # Verify no words were changed
-            formatted_words = re.sub(r'[.!?]', '', formatted).split()
-            if formatted_words != original_words:
-                self.logger.warning("Word mismatch detected, returning original")
-                return chunktext
+        try:
+            async with self.session.post(
+                API_URL,
+                json={
+                    "prompt": prompt,
+                    "max_tokens": 500,
+                    "temperature": 0.2,  # Lower temperature for more consistency
+                    "stop": STOP_SEQUENCES,
+                    "repetition_penalty": 1.05,  # Minimal penalty to prevent changes
+                    "top_p": 0.3
+                },
+                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
+                if response.status != 200:
+                    return chunktext
+                result = await response.json()
+                formatted = result.get("choices", [{}])[0].get("text", "").strip()
                 
-            return formatted
-            
-    except Exception as e:
-        self.logger.error(f"API error: {str(e)}")
-        return chunktext
+                # Verify no words were changed
+                formatted_words = re.sub(r'[.!?]', '', formatted).split()
+                if formatted_words != original_words:
+                    self.logger.warning("Word mismatch detected, returning original")
+                    return chunktext
+                    
+                return formatted
+                
+        except Exception as e:
+            self.logger.error(f"API error: {str(e)}")
+            return chunktext
 
     def deformat(self, formatted_output):
         # Split at sentence boundaries while preserving original words
@@ -209,7 +209,7 @@ async def formatchunk(self, chunktext: str) -> str:
                     remaining_words = self.count_words(self.chunk)
                     if remaining_words < 100 and self.input_pointer < len(self.input_array):
                         self.loadchunk(150)
-                
+            
             # Write final output
             with open(self.output_file, 'w', encoding='utf-8') as f:
                 final_output = self.output_array.rstrip()

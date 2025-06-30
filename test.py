@@ -33,6 +33,7 @@ def diff_texts(original, processed):
 async def main():
     async with ParseFile() as parser_instance:
         dummy_input_file = 'files/transcript.txt'
+        test_failed = False
 
         try:
             # Ensure files directory exists
@@ -57,43 +58,61 @@ async def main():
             # Format the chunk
             formatted_output = await parser_instance.formatchunk(first_250_words)
 
-            # Post-process
-            deformatted_output = parser_instance.deformat(formatted_output)
-
-            # Save outputs
-            with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:
-                f.write(first_250_words)
-            with open('files/deformattedtext.txt', 'w', encoding='utf-8') as f:
-                f.write(deformatted_output)
-
-            # Compare word counts
-            unformatted_word_count = len(first_250_words.split())
-            deformatted_word_count = len(deformatted_output.split())
-            
-            if unformatted_word_count != deformatted_word_count:
-                logger.error(f"Word count mismatch. Original: {unformatted_word_count}, Deformatted: {deformatted_word_count}")
+            # Verify formatting actually occurred
+            if formatted_output == first_250_words:
+                logger.error("Formatting failed - output identical to input")
+                test_failed = True
             else:
-                logger.info("Word count matches")
+                # Post-process
+                deformatted_output = parser_instance.deformat(formatted_output)
 
-            # Run detailed diff
-            with open('files/unformattedtext.txt', 'r', encoding='utf-8') as f:
-                original = f.read()
-            with open('files/deformattedtext.txt', 'r', encoding='utf-8') as f:
-                processed = f.read()
-            
-            diffs = diff_texts(original, processed)
-            if diffs:
-                logger.error("Differences found:")
-                for diff in diffs:
-                    logger.error(diff)
-            else:
-                logger.info("No differences found - words preserved perfectly")
+                # Save outputs
+                with open('files/unformattedtext.txt', 'w', encoding='utf-8') as f:
+                    f.write(first_250_words)
+                with open('files/deformattedtext.txt', 'w', encoding='utf-8') as f:
+                    f.write(deformatted_output)
 
-            logger.info("Test completed successfully")
+                # Compare word counts
+                unformatted_word_count = len(first_250_words.split())
+                deformatted_word_count = len(deformatted_output.split())
+                
+                if unformatted_word_count != deformatted_word_count:
+                    logger.error(f"Word count mismatch. Original: {unformatted_word_count}, Deformatted: {deformatted_word_count}")
+                    test_failed = True
+                else:
+                    logger.info("Word count matches")
+
+                # Run detailed diff
+                with open('files/unformattedtext.txt', 'r', encoding='utf-8') as f:
+                    original = f.read()
+                with open('files/deformattedtext.txt', 'r', encoding='utf-8') as f:
+                    processed = f.read()
+                
+                diffs = diff_texts(original, processed)
+                if diffs:
+                    logger.error("Differences found:")
+                    for diff in diffs:
+                        logger.error(diff)
+                    test_failed = True
+                else:
+                    logger.info("No differences found - words preserved perfectly")
+
+                # Verify newlines were added
+                if '\n' not in deformatted_output:
+                    logger.error("No sentence breaks found in output")
+                    test_failed = True
 
         except Exception as e:
             logger.error(f"Test failed: {str(e)}", exc_info=True)
+            test_failed = True
             raise
+
+        if test_failed:
+            logger.error("TEST FAILED - One or more checks failed")
+            sys.exit(1)
+        else:
+            logger.info("TEST PASSED - All checks completed successfully")
+            sys.exit(0)
 
 if __name__ == "__main__":
     asyncio.run(main())
