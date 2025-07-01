@@ -7,11 +7,7 @@ Debug and verify,
 
 Produce the desired output file.  
 
-In config.py parameters are set to configure the LLM.  
-Adjust the parameters to improve the output dased on your comparison of the transcript_preprocessed.txt input 
-and transcript_processed.txt output.
-
-Verify the added constants in config.py are hooked up.
+It appears the last chunk is not merging into transcript_processed.txt correctly.
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
