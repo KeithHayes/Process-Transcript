@@ -1,6 +1,5 @@
 import os
 import re
-import asyncio
 import logging
 import textwrap
 import aiohttp
@@ -58,7 +57,9 @@ class ParseFile:
                 self.output_pointer += len(save_words_string)
             
             remaining_words = chunkwords[150:] if len(chunkwords) > 150 else []
-            remaining_words = self.deformat(remaining_words)
+            remaining_words_string = ' '.join(remaining_words)
+            remaining_words = self.deformat(remaining_words_string).split() 
+
             self.chunk = ' '.join(remaining_words) + ' '
             
             self.logger.debug(f'Saving chunk at: {target_pointer}, length: {self.output_pointer - target_pointer} characters')
@@ -89,11 +90,11 @@ class ParseFile:
                 API_URL,
                 json={
                     "prompt": prompt,
-                    "max_tokens": len(chunktext.split()) * 2, # Doubled token allowance for safety
-                    "temperature": 0.0,
+                    "max_tokens": MAX_TOKENS,
+                    "temperature": TEMPERATURE,
                     "stop": STOP_SEQUENCES,
-                    "repetition_penalty": 1.0,
-                    "top_p": 0.1
+                    "repetition_penalty": REPETITION_PENALTY,
+                    "top_p": TOP_P
                 },
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:
@@ -167,8 +168,13 @@ class ParseFile:
                 self.output_pointer = 0
                 self.loadchunk(250)     # first chunk
 
+                LOOPCHECK = False
+
                 while True:
-                    formatted_chunk = await self.formatchunk(self.chunk)                                        # Format
+                    if LOOPCHECK:
+                        formatted_chunk = self.chunk
+                    else:
+                        formatted_chunk = await self.formatchunk(self.chunk)                                    # Format
                     sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)           # Mark sentence ends
                     sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)     # Mark sentence starts
                     self.chunk = self.deformat(sentence_starts_marked)
@@ -177,9 +183,12 @@ class ParseFile:
                         break
                     self.loadchunk(150)                                                                         # Load next chunk
 
-                # Flush for words in self.chunk
+                # Flush words in chunk
                 if self.chunk.strip():
-                    formatted_chunk = await self.formatchunk(self.chunk)
+                    if LOOPCHECK:
+                        formatted_chunk = self.chunk
+                    else:
+                        formatted_chunk = await self.formatchunk(self.chunk)
                     sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
                     sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
                     self.chunk = self.deformat(sentence_starts_marked)

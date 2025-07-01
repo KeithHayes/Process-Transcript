@@ -8,12 +8,12 @@ PROCESSED_FILE = 'files/transcript_processed.txt'
 OUTPUT_FILE = 'files/transcript_formatted.txt'
 API_URL = "http://0.0.0.0:5000/v1/completions"
 API_TIMEOUT = 60
-MAX_TOKENS = 150
+MAX_TOKENS = 300
 STOP_SEQUENCES = ["\n\n", "###", "##"]
 SPEAKER_FORMAT = "{name}: {content}"
 REPETITION_PENALTY = 1.2
-TEMPERATURE = 0.7
-TOP_P = 0.9
+TEMPERATURE = 0.1
+TOP_P = 0.1
 MAX_SENTENCE_VALIDATION_ERRORS = 5
 LOG_DIR = 'logs'
 LOG_FILE = 'runlog.log'
@@ -25,5 +25,5 @@ __all__ = [
     'TEMPERATURE', 'TOP_P', 'MIN_SENTENCE_LENGTH',
     'MAX_FRAGMENT_LENGTH', 'SPEAKER_FORMAT',
     'MAX_SENTENCE_VALIDATION_ERRORS', 'INPUT_FILE', 'OUTPUT_FILE',
-    'LOG_DIR', 'LOG_FILE', 'SENTENCE_MARKER'
+    'LOG_DIR', 'LOG_FILE', 'SENTENCE_MARKER', 'LOOPCHECK'
 ]
