@@ -1,80 +1,20 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
+in process.py I have this to complete.  
 
-The LLM should not change any words except for changing sentense case.  The goal is to format sentences so they can be placed on 
-separate lines.  After the line breaks (special character) are placed, all sentence formatting is then removed leaving only the 
-special character replacing whitespace between sentences.
 
-python run.py 
-2025-06-30 16:02:07,645 - process - DEBUG - Preprocessing: files/transcript.txt
-2025-06-30 16:02:07,645 - process - DEBUG - Cleaned file saved: files/transcript_preprocessed.txt
-2025-06-30 16:02:07,645 - process - DEBUG - Processing to: files/transcript_processed.txt
-2025-06-30 16:02:07,646 - process - INFO - Loaded 5055 character string
-2025-06-30 16:02:07,646 - process - INFO - Loaded 1 words (total 5056 chars)
-2025-06-30 16:02:08,722 - process - ERROR - An empty string is returned.
-2025-06-30 16:02:08,722 - process - ERROR - An unexpected error occurred during formatchunk: An empty string is returned.
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 128, in formatchunk
-    raise ValueError(error_message) # Error: LLM returned empty string
-ValueError: An empty string is returned.
-2025-06-30 16:02:08,722 - process - ERROR - File not marked: An unexpected error occurred during formatchunk: An empty string is returned.
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 128, in formatchunk
-    raise ValueError(error_message) # Error: LLM returned empty string
-ValueError: An empty string is returned.
+                        # is this needed
+                        # if chunk is not empty then it should be processed
+                        # formatted_chunk = await self.formatchunk(self.chunk)                                        # Format
+                        # sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)           # Mark sentence ends
+                        # sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)     # Mark sentence starts
+                        # self.chunk = self.deformat(sentence_starts_marked)
+                        # self.savechunk()
 
-The above exception was the direct cause of the following exception:
 
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 186, in process
-    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 138, in formatchunk
-    raise Exception(error_message) from e # Catch any other unexpected errors
-Exception: An unexpected error occurred during formatchunk: An empty string is returned.
-2025-06-30 16:02:08,722 - main - ERROR - Processing failed: An unexpected error occurred during formatchunk: An empty string is returned.
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 128, in formatchunk
-    raise ValueError(error_message) # Error: LLM returned empty string
-ValueError: An empty string is returned.
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 17, in main
-    await prepare_data()
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 11, in prepare_data
-    await filerunner.process(PROCESSED_FILE)
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 186, in process
-    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 138, in formatchunk
-    raise Exception(error_message) from e # Catch any other unexpected errors
-Exception: An unexpected error occurred during formatchunk: An empty string is returned.
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 128, in formatchunk
-    raise ValueError(error_message) # Error: LLM returned empty string
-ValueError: An empty string is returned.
-
-The above exception was the direct cause of the following exception:
-
-Traceback (most recent call last):
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 24, in <module>
-    asyncio.run(main())
-  File "/usr/lib/python3.10/asyncio/runners.py", line 44, in run
-    return loop.run_until_complete(main)
-  File "/usr/lib/python3.10/asyncio/base_events.py", line 649, in run_until_complete
-    return future.result()
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 17, in main
-    await prepare_data()
-  File "/home/kdog/pythonprojects/process_transcript/run.py", line 11, in prepare_data
-    await filerunner.process(PROCESSED_FILE)
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 186, in process
-    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
-  File "/home/kdog/pythonprojects/process_transcript/process.py", line 138, in formatchunk
-    raise Exception(error_message) from e # Catch any other unexpected errors
-Exception: An unexpected error occurred during formatchunk: An empty string is returned.
-(venv) kdog@kdogsputer:~/pythonprojects/process_transcript$ 
-
+But before it is completed it must be verified that the code would ever 
+be used.  It depends on how many words are in the input array and how the chunks are processed.  I think I need it, but am not sure.
 
 
 
@@ -201,7 +141,7 @@ TOP_P = 0.9
 MAX_SENTENCE_VALIDATION_ERRORS = 5
 LOG_DIR = 'logs'
 LOG_FILE = 'runlog.log'
-SENTENCE_MARKER = chr(0x1e)
+SENTENCE_MARKER = chr(0x0a)
 
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'API_URL', 'API_TIMEOUT',
@@ -246,7 +186,6 @@ from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENC
 
 class ParseFile:
     def __init__(self):
-        self.input_pointer = 0
         self.output_pointer = 0
         self.input_string = ""
         self.chunk = ""
@@ -270,25 +209,13 @@ class ParseFile:
     def loadchunk(self, word_count):
         words_loaded = 0
         words = []
-        i = self.input_pointer
-        
-        while i < len(self.input_string) and words_loaded < word_count:
-            space_pos = self.input_string.find(' ', i-1)
-            if space_pos == -1:  # Last word in input
-                word = self.input_string[i:]
-                words.append(word + ' ')
-                words_loaded += 1
-                i = len(self.input_string)
-                break
-            else:
-                word = self.input_string[i:space_pos+1]
-                words.append(word)
-                words_loaded += 1
-                i = space_pos + 1
-        
-        self.input_pointer = i
-        new_chunk_part = ''.join(words)
-        self.chunk = (self.chunk + new_chunk_part).strip()
+        while words_loaded < word_count and self.input_word_pointer < len(self.input_array):
+            words.append(self.input_array[self.input_word_pointer])
+            self.input_word_pointer += 1
+            words_loaded += 1
+
+        wordschunk = ' '.join(words)
+        self.chunk = (self.chunk + wordschunk).strip()
         if self.chunk:
             self.chunk += ' '
         self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
@@ -300,18 +227,15 @@ class ParseFile:
                 return
             self.logger.debug(f'Saving chunk')
             target_pointer = self.output_pointer
-            words = [word for word in self.chunk.split(' ') if word]
+            chunkwords = [word for word in self.chunk.split(' ') if word]
+            save_words = chunkwords[:150]                                   # First 150 words of chunk of chunk or fewer
+            if save_words:
+                save_words_string = ' '.join(save_words) + ' '              # Join with spaces, add space at end
+                self.output_string += save_words_string
+                self.output_pointer += len(save_words_string)
             
-            first_150 = words[:150]                             # Save first 150 words of chunk of chunk or fewer
-            if first_150:
-                first_150_text = ' '.join(first_150) + ' '      # Join with spaces, add space at end
-                self.output_string += first_150_text
-                self.output_pointer += len(first_150_text)
-            
-            remaining_words = words[150:] if len(words) > 150 else []
-            self.chunk = ' '.join(remaining_words)
-            if self.chunk:
-                self.chunk += ' '
+            remaining_words = chunkwords[150:] if len(chunkwords) > 150 else []
+            self.chunk = ' '.join(remaining_words) + ' '
             
             self.logger.debug(f'Saving chunk at: {target_pointer}, length: {self.output_pointer - target_pointer} characters')
         except Exception as e:
@@ -321,8 +245,6 @@ class ParseFile:
     async def formatchunk(self, chunktext: str) -> str:
         if self.session is None:
             self.session = aiohttp.ClientSession()
-
-        original_words = re.findall(r'\b\w+\b', chunktext.lower())
         
         prompt = textwrap.dedent(f"""\
             MUST maintain the EXACT original words and their order.
@@ -411,28 +333,28 @@ class ParseFile:
             with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
                 self.input_string = f.read()
                 self.logger.info(f'Loaded {len(self.input_string)} character string')
-                
+                self.input_array = self.input_string.split()
+                self.chunk_array = ""
+                self.output_array = ""
                 self.chunk = ""
                 self.output_string = ""
-                self.input_pointer = 0
+                self.input_word_pointer = 0
+                self.chunk_word_pointer = 0
                 self.output_pointer = 0
-                
                 self.loadchunk(250)     # first chunk
 
                 while True:
-                    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
-                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', chr(0x1e), formatted_chunk)         # Mark sentence ends
-                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', chr(0x1e), sentence_ends_marked)   # Mark sentence starts
+                    formatted_chunk = await self.formatchunk(self.chunk)                                        # Format
+                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)           # Mark sentence ends
+                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)     # Mark sentence starts
                     self.chunk = self.deformat(sentence_starts_marked)
                     self.savechunk()
-                    if self.input_pointer >= len(self.input_string) and not self.chunk.strip():         # Check end condition
+                    if self.input_word_pointer >= len(self.input_array):                                        # Check end condition
                         break
-                    remaining_words = self.count_words(self.chunk)
-                    if remaining_words < 100 and self.input_pointer < len(self.input_string):
-                        self.loadchunk(150)                                                             # Load next chunk
+                    self.loadchunk(150)                                                                         # Load next chunk
             
             with open(self.output_file, 'w', encoding='utf-8') as f:
-                final_output = self.output_string.rstrip()                                              # Write output
+                final_output = self.output_string.rstrip()                                                      # Write output
                 f.write(final_output)
                 self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
                 
@@ -585,5 +507,39 @@ if __name__ == "__main__":
 alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 
 === PY transcript_processed.txt ===
-alicewarren sat beside a wide window in the corner of her studythe late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the wallsshe loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and inkit was in this exact space that she found solace after a long day of meetings presentations and endless email chainsthe silence was not merely an absence of noise it was a presence itselfa companion that whispered in comfortable tones and allowed thoughts to drift unencumbered
+alice
+warren sat beside a wide window in the corner of her study
+the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls
+she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink
+it was in this exact space that she found solace after a long day of meetings presentations and endless email chains
+the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered had been selected for its faithful representation of time place and character
+there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actionstying shoelaces pouring tea gazing out toward a stormy horizon
+such attentiveness to detail formed a tapestry of everyday life and it fascinated
+alice how these small gestures could reveal so much about an individuals hopes fears and inner world transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window
+the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold
+soon the garden would blur into silhouettes and the air would cool
+she reached for the small porcelain teapot on the table beside her
+it held a fragrant chamomile infusion with just a hint of honey
+alice poured the steaming liquid into her favorite cup the one painted with delicate blue forgetmenots
+she paused to inhale the warm steam allowing its gentle scent to settle her mind
+it had become something of a ritual this teadrinking ritual a momentary pause between the realms of thought and rest
+turning back to her anthology she selected a different story
+this one described an enchanted forest where fairies danced beneath the moonlight early morning in a busy city horsedrawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues
+as she read
+alice imagined herself there she could almost hear the clipclop of hooves and feel the rough stone underfoot
+the weight of her satchel on her shoulder
+again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality
+such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred
+by the time she finished the second story darkness had fallen completely
+the study lamp cast a soft pool of light around her chair
+beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth the distance a lone streetlamp flickered to life
+its orange glow rebounded off dewy leaves turning them into luminous orbs
+alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf
+she sat for a moment longer teacup in hand simply being
+it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection
+she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars
+when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
+alice felt a gentle contentment
+gratitude even for the stories
+and for the silence world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 

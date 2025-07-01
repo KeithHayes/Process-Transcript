@@ -17,7 +17,7 @@ TOP_P = 0.9
 MAX_SENTENCE_VALIDATION_ERRORS = 5
 LOG_DIR = 'logs'
 LOG_FILE = 'runlog.log'
-SENTENCE_MARKER = chr(0x1e)
+SENTENCE_MARKER = chr(0x0a)
 
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'API_URL', 'API_TIMEOUT',

@@ -9,7 +9,6 @@ from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENC
 
 class ParseFile:
     def __init__(self):
-        self.input_pointer = 0
         self.output_pointer = 0
         self.input_string = ""
         self.chunk = ""
@@ -33,25 +32,13 @@ class ParseFile:
     def loadchunk(self, word_count):
         words_loaded = 0
         words = []
-        i = self.input_pointer
-        
-        while i < len(self.input_string) and words_loaded < word_count:
-            space_pos = self.input_string.find(' ', i-1)
-            if space_pos == -1:  # Last word in input
-                word = self.input_string[i:]
-                words.append(word + ' ')
-                words_loaded += 1
-                i = len(self.input_string)
-                break
-            else:
-                word = self.input_string[i:space_pos+1]
-                words.append(word)
-                words_loaded += 1
-                i = space_pos + 1
-        
-        self.input_pointer = i
-        new_chunk_part = ''.join(words)
-        self.chunk = (self.chunk + new_chunk_part).strip()
+        while words_loaded < word_count and self.input_word_pointer < len(self.input_array):
+            words.append(self.input_array[self.input_word_pointer])
+            self.input_word_pointer += 1
+            words_loaded += 1
+
+        wordschunk = ' '.join(words)
+        self.chunk = (self.chunk + wordschunk).strip()
         if self.chunk:
             self.chunk += ' '
         self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
@@ -63,18 +50,15 @@ class ParseFile:
                 return
             self.logger.debug(f'Saving chunk')
             target_pointer = self.output_pointer
-            words = [word for word in self.chunk.split(' ') if word]
+            chunkwords = [word for word in self.chunk.split(' ') if word]
+            save_words = chunkwords[:150]                                   # First 150 words of chunk of chunk or fewer
+            if save_words:
+                save_words_string = ' '.join(save_words) + ' '              # Join with spaces, add space at end
+                self.output_string += save_words_string
+                self.output_pointer += len(save_words_string)
             
-            first_150 = words[:150]                             # Save first 150 words of chunk of chunk or fewer
-            if first_150:
-                first_150_text = ' '.join(first_150) + ' '      # Join with spaces, add space at end
-                self.output_string += first_150_text
-                self.output_pointer += len(first_150_text)
-            
-            remaining_words = words[150:] if len(words) > 150 else []
-            self.chunk = ' '.join(remaining_words)
-            if self.chunk:
-                self.chunk += ' '
+            remaining_words = chunkwords[150:] if len(chunkwords) > 150 else []
+            self.chunk = ' '.join(remaining_words) + ' '
             
             self.logger.debug(f'Saving chunk at: {target_pointer}, length: {self.output_pointer - target_pointer} characters')
         except Exception as e:
@@ -84,8 +68,6 @@ class ParseFile:
     async def formatchunk(self, chunktext: str) -> str:
         if self.session is None:
             self.session = aiohttp.ClientSession()
-
-        original_words = re.findall(r'\b\w+\b', chunktext.lower())
         
         prompt = textwrap.dedent(f"""\
             MUST maintain the EXACT original words and their order.
@@ -174,28 +156,28 @@ class ParseFile:
             with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
                 self.input_string = f.read()
                 self.logger.info(f'Loaded {len(self.input_string)} character string')
-                
+                self.input_array = self.input_string.split()
+                self.chunk_array = ""
+                self.output_array = ""
                 self.chunk = ""
                 self.output_string = ""
-                self.input_pointer = 0
+                self.input_word_pointer = 0
+                self.chunk_word_pointer = 0
                 self.output_pointer = 0
-                
                 self.loadchunk(250)     # first chunk
 
                 while True:
-                    formatted_chunk = await self.formatchunk(self.chunk)                                # Format
-                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', chr(0x1e), formatted_chunk)         # Mark sentence ends
-                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', chr(0x1e), sentence_ends_marked)   # Mark sentence starts
+                    formatted_chunk = await self.formatchunk(self.chunk)                                        # Format
+                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)           # Mark sentence ends
+                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)     # Mark sentence starts
                     self.chunk = self.deformat(sentence_starts_marked)
                     self.savechunk()
-                    if self.input_pointer >= len(self.input_string) and not self.chunk.strip():         # Check end condition
+                    if self.input_word_pointer >= len(self.input_array):                                        # Check end condition
                         break
-                    remaining_words = self.count_words(self.chunk)
-                    if remaining_words < 100 and self.input_pointer < len(self.input_string):
-                        self.loadchunk(150)                                                             # Load next chunk
+                    self.loadchunk(150)                                                                         # Load next chunk
             
             with open(self.output_file, 'w', encoding='utf-8') as f:
-                final_output = self.output_string.rstrip()                                              # Write output
+                final_output = self.output_string.rstrip()                                                      # Write output
                 f.write(final_output)
                 self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
                 
