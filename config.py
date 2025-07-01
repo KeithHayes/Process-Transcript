@@ -28,6 +28,7 @@ REPETITION_PENALTY = 1.15        # Slightly reduced to allow necessary repetitio
 TEMPERATURE = 0.05               # Lower temperature for more consistent formatting
 TOP_P = 0.9                      # Higher top_p for better creativity in punctuation
 TOP_K = 50                       # Added top_k sampling for better diversity
+TOP_T = TOP_K
 
 # Validation and logging
 MAX_SENTENCE_VALIDATION_ERRORS = 3  # Stricter validation

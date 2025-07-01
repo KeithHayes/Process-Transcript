@@ -4,7 +4,7 @@ import logging
 import textwrap
 import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
-                    REPETITION_PENALTY, TEMPERATURE, TOP_P, SENTENCE_MARKER)
+                    REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER)
 
 class ParseFile:
     def __init__(self):
@@ -94,7 +94,8 @@ class ParseFile:
                     "temperature": TEMPERATURE,
                     "stop": STOP_SEQUENCES,
                     "repetition_penalty": REPETITION_PENALTY,
-                    "top_p": TOP_P
+                    "top_p": TOP_P,
+                    "top_t": TOP_T
                 },
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:
