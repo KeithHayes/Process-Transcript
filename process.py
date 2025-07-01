@@ -58,9 +58,9 @@ class ParseFile:
             
             remaining_words = chunkwords[150:] if len(chunkwords) > 150 else []
             remaining_words_string = ' '.join(remaining_words)
-            remaining_words = self.deformat(remaining_words_string).split() 
-
-            self.chunk = ' '.join(remaining_words) + ' '
+            #remaining_words_string = re.sub(r"[\.!?](?!.*[\.!?])", '', remaining_words_string)
+            #remaining_words_string = re.sub(r"[A-Z](?!.*[A-Z])", '', remaining_words_string)
+            self.chunk = remaining_words_string + ' '
             
             self.logger.debug(f'Saving chunk at: {target_pointer}, length: {self.output_pointer - target_pointer} characters')
         except Exception as e:
