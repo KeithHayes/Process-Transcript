@@ -2,16 +2,10 @@
 
 Debug and verify, 
 
-Produce the desired output file.  The last chunk is not being added to transcript_processed.txt as it should.
+Produce the desired output file.  
 
-when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
-alice felt a gentle contentment gratitudeeven for the storiesand for the silence that followed world
-beyond
-them
-for
-the
-tactile
-living
-reality
+In config.py parameters are set to configure the LLM.  
+Adjust the parameters to improve the output dased on your comparison of the transcript_preprocessed.txt input 
+and transcript_processed.txt output.
 
-Sentences are placed on individual lines as they should until the last chunk as tthe abbovve output snippet shows.
+write a new and complete config.py
