@@ -58,6 +58,7 @@ class ParseFile:
                 self.output_pointer += len(save_words_string)
             
             remaining_words = chunkwords[150:] if len(chunkwords) > 150 else []
+            remaining_words = self.deformat(remaining_words)
             self.chunk = ' '.join(remaining_words) + ' '
             
             self.logger.debug(f'Saving chunk at: {target_pointer}, length: {self.output_pointer - target_pointer} characters')
@@ -172,9 +173,17 @@ class ParseFile:
                     sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)     # Mark sentence starts
                     self.chunk = self.deformat(sentence_starts_marked)
                     self.savechunk()
-                    if self.input_word_pointer >= len(self.input_array):                                        # Check end condition
+                    if self.input_word_pointer >= len(self.input_array):                                        # End of input
                         break
                     self.loadchunk(150)                                                                         # Load next chunk
+
+                # Flush for words in self.chunk
+                if self.chunk.strip():
+                    formatted_chunk = await self.formatchunk(self.chunk)
+                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
+                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
+                    self.chunk = self.deformat(sentence_starts_marked)
+                    self.savechunk()
             
             with open(self.output_file, 'w', encoding='utf-8') as f:
                 final_output = self.output_string.rstrip()                                                      # Write output
