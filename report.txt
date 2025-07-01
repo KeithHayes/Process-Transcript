@@ -5,7 +5,19 @@
 
 Debug and verify, 
 
-Produce the desired output file.
+Produce the desired output file.  The last chunk is not being added to transcript_processed.txt as it should.
+
+when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
+alice felt a gentle contentment gratitudeeven for the storiesand for the silence that followed world
+beyond
+them
+for
+the
+tactile
+living
+reality
+
+Sentences are placed on individual lines as they should until the last chunk as tthe abbovve output snippet shows.
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
