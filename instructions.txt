@@ -5,3 +5,140 @@ Debug and verify,
 Produce the desired output file.  
 
 It appears the last chunk is not merging into transcript_processed.txt correctly.
+
+
+Key improvements to make:
+
+
+    Modify savechunk to:
+
+        Handle the final chunk differently by writing all remaining words
+
+        Only maintain overlap if there's more input to process
+
+        Clear the chunk buffer when processing is complete
+
+        Added more detailed logging
+
+    Update the main process loop to:
+
+        Better handle the transition to the final chunk
+
+        Ensure all content is properly written
+
+        Added more explicit state management
+
+    The changes will ensure that:
+
+        The final chunk's words are all written to output
+
+        No words are lost at the end of processing
+
+        The overlap mechanism works correctly throughout
+
+        Better logging for debugging chunk processing
+
+These changes should resolve the issue where the last chunk wasn't being properly merged into the output file, 
+particularly the fragmented words at the end of the processed transcript.
+
+The algorithm now:
+
+    Processes each chunk completely before moving to the next
+
+    Handles the final chunk as a special case where all remaining words are written
+
+    Maintains proper overlap between chunks during processing
+
+    Cleans up properly at the end of processing
+
+
+def savechunk(self):
+    try:
+        if not self.chunk:
+            return
+            
+        self.logger.debug(f'Saving chunk')
+        target_pointer = self.output_pointer
+        chunkwords = [word for word in self.chunk.split(' ') if word]
+        
+        # Always save all remaining words if we're at the end of input
+        if self.input_word_pointer >= len(self.input_array):
+            save_words = chunkwords
+        else:
+            save_words = chunkwords[:OUTPUT_CHUNK_SIZE]  # First 150 words or fewer
+            
+        if save_words:
+            save_words_string = ' '.join(save_words) + ' '
+            self.output_string += save_words_string
+            self.output_pointer += len(save_words_string)
+            
+        # Only keep overlap if there's more input to process
+        if self.input_word_pointer < len(self.input_array):
+            remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
+            remaining_words_string = ' '.join(remaining_words)
+            remaining_words_string = re.sub(r"[\.!?](?!.*[\.!?])", '', remaining_words_string)
+            remaining_words_string = re.sub(r"[A-Z](?!.*[A-Z])", '', remaining_words_string)
+            self.chunk = remaining_words_string + ' '
+        else:
+            self.chunk = ''  # Clear chunk when we're done
+            
+        self.logger.debug(f'Saved {len(save_words)} words to output, {len(self.chunk.split())} words remaining in chunk')
+        
+    except Exception as e:
+        self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
+        raise
+
+
+
+
+
+
+        async def process(self, output_file: str):
+    if not self._cleaned:
+        raise RuntimeError("Must call preprocess() before process()")
+    
+    self.output_file = output_file
+    self.logger.debug(f'Processing to: {self.output_file}')
+    
+    try:
+        with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
+            self.input_string = f.read()
+            self.logger.info(f'Loaded {len(self.input_string)} character string')
+            self.input_array = self.input_string.split()
+            self.chunk_array = ""
+            self.output_array = ""
+            self.chunk = ""
+            self.output_string = ""
+            self.input_word_pointer = 0
+            self.chunk_word_pointer = 0
+            self.output_pointer = 0
+            
+            # Load initial chunk
+            self.loadchunk(CHUNK_SIZE)
+
+            while True:
+                # Format the current chunk
+                formatted_chunk = await self.formatchunk(self.chunk)
+                sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
+                sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
+                self.chunk = self.deformat(sentence_starts_marked)
+                
+                # Save the chunk (handles both regular and final chunks)
+                self.savechunk()
+                
+                # Check if we've processed all input
+                if self.input_word_pointer >= len(self.input_array):
+                    break
+                    
+                # Load next chunk (150 new words + 100 carried over from savechunk)
+                self.loadchunk(CHUNK_SIZE - CHUNK_OVERLAP)
+            
+            # Final write to ensure all content is saved
+            with open(self.output_file, 'w', encoding='utf-8') as f:
+                final_output = self.output_string.rstrip()
+                f.write(final_output)
+                self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
+                
+    except Exception as e:
+        self.logger.error(f'Processing failed: {e}', exc_info=True)
+        raise
