@@ -5,7 +5,7 @@ import textwrap
 import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
-                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE)
+                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, LOOPCHECK)
 
 class ParseFile:
     def __init__(self):
@@ -161,54 +161,52 @@ class ParseFile:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
 
-async def process(self, output_file: str):
-    if not self._cleaned:
-        raise RuntimeError("Must call preprocess() before process()")
-        
-    self.output_file = output_file
-    self.logger.debug(f'Processing to: {self.output_file}')
-        
-    try:
-        with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
-            self.input_string = f.read()
-            self.logger.info(f'Loaded {len(self.input_string)} character string')
-            self.input_array = self.input_string.split()
-            self.chunk_array = ""
-            self.output_array = ""
-            self.chunk = ""
-            self.output_string = ""
-            self.input_word_pointer = 0
-            self.chunk_word_pointer = 0
-            self.output_pointer = 0
-            self.loadchunk(CHUNK_SIZE)     # first chunk
-
-            LOOPCHECK = False
-
-            while True:
-                if LOOPCHECK:
-                        formatted_chunk = self.chunk
-                else:
-                    formatted_chunk = await self.formatchunk(self.chunk)                                        # Format
-                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)           # Mark sentence ends
-                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)     # Mark sentence starts
-                    self.chunk = self.deformat(sentence_starts_marked)
-                
-                    # Save the chunk (handles both regular and final chunks)
-                    self.savechunk()
-                
-                    # Check if we've processed all input
-                    if self.input_word_pointer >= len(self.input_array):
-                        break
-                    
-                    # Load next chunk (150 new words + 100 carried over from savechunk)
-                    self.loadchunk(CHUNK_SIZE - CHUNK_OVERLAP)
+    async def process(self, output_file: str):
+        if not self._cleaned:
+            raise RuntimeError("Must call preprocess() before process()")
             
-                # Final write to ensure all content is saved
-                with open(self.output_file, 'w', encoding='utf-8') as f:
-                    final_output = self.output_string.rstrip()                                                  # Write output
-                    f.write(final_output)
-                    self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
+        self.output_file = output_file
+        self.logger.debug(f'Processing to: {self.output_file}')
+            
+        try:
+            with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
+                self.input_string = f.read()
+                self.logger.info(f'Loaded {len(self.input_string)} character string')
+                self.input_array = self.input_string.split()
+                self.chunk_array = ""
+                self.output_array = ""
+                self.chunk = ""
+                self.output_string = ""
+                self.input_word_pointer = 0
+                self.chunk_word_pointer = 0
+                self.output_pointer = 0
+                self.loadchunk(CHUNK_SIZE)     # first chunk
+
+                while True:
+                    if LOOPCHECK:
+                            formatted_chunk = self.chunk
+                    else:
+                        formatted_chunk = await self.formatchunk(self.chunk)                                        # Format
+                        sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)           # Mark sentence ends
+                        sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)     # Mark sentence starts
+                        self.chunk = self.deformat(sentence_starts_marked)
+                    
+                        # Save the chunk (handles both regular and final chunks)
+                        self.savechunk()
+                    
+                        # Check if we've processed all input
+                        if self.input_word_pointer >= len(self.input_array):
+                            break
+                        
+                        # Load next chunk (150 new words + 100 carried over from savechunk)
+                        self.loadchunk(CHUNK_SIZE - CHUNK_OVERLAP)
                 
-    except Exception as e:
-        self.logger.error(f'Processing failed: {e}', exc_info=True)
-        raise
+                    # Final write to ensure all content is saved
+                    with open(self.output_file, 'w', encoding='utf-8') as f:
+                        final_output = self.output_string.rstrip()                                                  # Write output
+                        f.write(final_output)
+                        self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
+                    
+        except Exception as e:
+            self.logger.error(f'Processing failed: {e}', exc_info=True)
+            raise

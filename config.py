@@ -40,6 +40,10 @@ DEBUG_LOG_FILE = 'debug.log'
 PRESERVE_CASE = True             # Preserve original capitalization where appropriate
 STRICT_PUNCTUATION = True        # Enforce strict punctuation rules
 
+# Debug flags
+LOOPCHECK = False
+
+
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE',
     'MIN_SENTENCE_LENGTH', 'MAX_FRAGMENT_LENGTH', 'SENTENCE_MARKER',
