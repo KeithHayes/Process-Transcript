@@ -17,6 +17,8 @@ class ParseFile:
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
         self.session = None  # Will hold our aiohttp session
+        self.input_word_pointer = 0
+        self.chunk_word_pointer = 0
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -49,32 +51,36 @@ class ParseFile:
             if not self.chunk:
                 return
                 
-            self.logger.debug(f'Saving chunk')
-            target_pointer = self.output_pointer
+            self.logger.debug(f'Saving chunk (input pointer: {self.input_word_pointer}/{len(self.input_array)})')
             chunkwords = [word for word in self.chunk.split(' ') if word]
             
-            # Always save all remaining words if we're at the end of input
-            if self.input_word_pointer >= len(self.input_array):
-                save_words = chunkwords
+            # Special handling for final chunk
+            is_final_chunk = self.input_word_pointer >= len(self.input_array)
+            if is_final_chunk:
+                save_words = chunkwords  # Save ALL remaining words
+                self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
             else:
-                save_words = chunkwords[:OUTPUT_CHUNK_SIZE]  # First 150 words or fewer
+                save_words = chunkwords[:OUTPUT_CHUNK_SIZE]
                 
             if save_words:
-                save_words_string = ' '.join(save_words) + ' '
+                save_words_string = ' '.join(save_words)
+                # Only add space if not the very end
+                if not is_final_chunk or self.chunk_word_pointer < len(chunkwords):
+                    save_words_string += ' '
+                    
                 self.output_string += save_words_string
                 self.output_pointer += len(save_words_string)
                 
             # Only keep overlap if there's more input to process
-            if self.input_word_pointer < len(self.input_array):
+            if not is_final_chunk:
                 remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
-                remaining_words_string = ' '.join(remaining_words)
-                remaining_words_string = re.sub(r"[\.!?](?!.*[\.!?])", '', remaining_words_string)
-                remaining_words_string = re.sub(r"[A-Z](?!.*[A-Z])", '', remaining_words_string)
-                self.chunk = remaining_words_string + ' '
+                self.chunk = ' '.join(remaining_words)
+                if remaining_words:  # Only add space if words remain
+                    self.chunk += ' '
             else:
-                self.chunk = ''  # Clear chunk when we're done
+                self.chunk = ''  # Clear when done
                 
-            self.logger.debug(f'Saved {len(save_words)} words to output, {len(self.chunk.split())} words remaining in chunk')
+            self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
             
         except Exception as e:
             self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
@@ -115,7 +121,7 @@ class ParseFile:
                 if response.status != 200:
                     error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
                     self.logger.error(error_message)
-                    raise Exception(error_message) # Error: API response incorrect
+                    raise Exception(error_message)
                 
                 result = await response.json()
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
@@ -123,20 +129,19 @@ class ParseFile:
                 if not formatted:
                     error_message = "An empty string is returned."
                     self.logger.error(error_message)
-                    raise ValueError(error_message) # Error: LLM returned empty string
+                    raise ValueError(error_message)
                 return formatted
                 
         except aiohttp.ClientError as e:
             error_message = f"Network or API client error during formatchunk: {str(e)}"
             self.logger.error(error_message, exc_info=True)
-            raise ConnectionError(error_message) from e # Error: Cannot connect to LLM API
+            raise ConnectionError(error_message) from e
         except Exception as e:
             error_message = f"An unexpected error occurred during formatchunk: {str(e)}"
             self.logger.error(error_message, exc_info=True)
-            raise Exception(error_message) from e # Catch any other unexpected errors
+            raise Exception(error_message) from e
 
     def deformat(self, formatted_output):
-        # remove all special characters.  Only lowercase letters, spaces, and the special character will remain.
         output = formatted_output.lower()
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
         return output
@@ -171,41 +176,48 @@ class ParseFile:
         try:
             with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
                 self.input_string = f.read()
-                self.logger.info(f'Loaded {len(self.input_string)} character string')
+                self.logger.info(f'Loaded {len(self.input_string)} chars, {len(self.input_string.split())} words')
                 self.input_array = self.input_string.split()
-                self.chunk_array = ""
-                self.output_array = ""
                 self.chunk = ""
                 self.output_string = ""
                 self.input_word_pointer = 0
-                self.chunk_word_pointer = 0
                 self.output_pointer = 0
-                self.loadchunk(CHUNK_SIZE)     # first chunk
+                
+                # Load initial chunk
+                self.loadchunk(CHUNK_SIZE)
 
                 while True:
                     if LOOPCHECK:
-                            formatted_chunk = self.chunk
+                        formatted_chunk = self.chunk
                     else:
-                        formatted_chunk = await self.formatchunk(self.chunk)                                        # Format
-                        sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)           # Mark sentence ends
-                        sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)     # Mark sentence starts
+                        formatted_chunk = await self.formatchunk(self.chunk)
+                        sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
+                        sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
                         self.chunk = self.deformat(sentence_starts_marked)
                     
-                        # Save the chunk (handles both regular and final chunks)
-                        self.savechunk()
+                    self.savechunk()
                     
-                        # Check if we've processed all input
-                        if self.input_word_pointer >= len(self.input_array):
-                            break
+                    # Exit condition - check after savechunk to ensure final words processed
+                    if self.input_word_pointer >= len(self.input_array) and not self.chunk.strip():
+                        break
                         
-                        # Load next chunk (150 new words + 100 carried over from savechunk)
+                    # Load next chunk if more exists
+                    if self.input_word_pointer < len(self.input_array):
                         self.loadchunk(CHUNK_SIZE - CHUNK_OVERLAP)
                 
-                    # Final write to ensure all content is saved
-                    with open(self.output_file, 'w', encoding='utf-8') as f:
-                        final_output = self.output_string.rstrip()                                                  # Write output
-                        f.write(final_output)
-                        self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
+                # Final validation
+                input_words = len(self.input_array)
+                output_words = len(self.output_string.split())
+                self.logger.info(f'Processed {output_words}/{input_words} words')
+                
+                if input_words != output_words:
+                    self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
+                
+                # Write final output
+                with open(self.output_file, 'w', encoding='utf-8') as f:
+                    final_output = self.output_string.rstrip()
+                    f.write(final_output)
+                    self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')
                     
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
