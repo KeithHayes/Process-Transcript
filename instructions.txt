@@ -1,26 +1,16 @@
 
 
 
-Produce the desired output file.  
+If I move the
 
-It appears the last chunk is not merging into transcript_processed.txt correctly in savechunks.
+def preprocess(self, input_file):
 
+member function from the current location 
 
-Current output which is incorrect.  In this output the \n's in the last line are missing.
-The chain of format, add line breaks, deformat must be implemented correctly for these lines:
+to follow the member function
 
-when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
-when she finally stood with an empty teacup the anthology was closed and the quiet settled deeply over the room
-alice felt a gentle contentment gratitudeeven for the storiesand for the silence the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
+def savechunk(self):
 
+and I make no other changes to process.py except to move the function locatin why does functionality change?
 
-the output as it SHOULD be:
-
-when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
-alice felt a gentle contentment gratitude
-even for the stories yes and for the silence that held them all together world
-beyond them for the tactile living reality she inhabits
-and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
-
-
-The end condition is not being implemented correctly.
+the task is to answer the question.

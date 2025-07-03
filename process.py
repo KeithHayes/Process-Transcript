@@ -167,6 +167,14 @@ class ParseFile:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
 
+    def formatlines(self, unformatted_string):
+        """
+        Stub implementation for formatting lines of text.
+        Currently just returns the input unchanged.
+        """
+        # TODO: Implement proper formatting logic in next development cycle
+        return unformatted_string
+
     async def process(self, output_file: str):
         if not self._cleaned:
             raise RuntimeError("Must call preprocess() before process()")
@@ -214,10 +222,29 @@ class ParseFile:
                 
                 if input_words != output_words:
                     self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
+
+                # Process the output string in chunks of 10 lines
+                final_output = ''
+                lines = self.output_string.split('\n')
+                total_lines = len(lines)
+                pointer = 0
+
+                while pointer < total_lines:
+                    # Get next 10 lines (or remaining lines if less than 10)
+                    chunk_lines = lines[pointer:pointer+10]
+                    unformatted_string = '\n'.join(chunk_lines)
+                    
+                    # Format the chunk
+                    formatted_string =  self.formatlines(unformatted_string)
+                    # Append to final output with newline
+                    if final_output:  # Only add newline if not first chunk
+                        formatted_string = '\n' + formatted_string
+                    final_output += formatted_string
+                    pointer += 10
                 
                 # Write final output
                 with open(self.output_file, 'w', encoding='utf-8') as f:
-                    final_output = self.output_string.rstrip()
+                    #final_output = self.output_string.rstrip()
                     f.write(final_output)
                     self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')
                     
