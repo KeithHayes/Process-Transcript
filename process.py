@@ -59,25 +59,29 @@ class ParseFile:
             if is_final_chunk:
                 save_words = chunkwords  # Save ALL remaining words
                 self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
-            else:
-                save_words = chunkwords[:OUTPUT_CHUNK_SIZE]
                 
-            if save_words:
+                # Join with spaces but preserve original formatting (including newlines)
                 save_words_string = ' '.join(save_words)
-                # Only add space if not the very end
-                if not is_final_chunk or self.chunk_word_pointer < len(chunkwords):
-                    save_words_string += ' '
-                    
+                # Don't add trailing space for final chunk
                 self.output_string += save_words_string
                 self.output_pointer += len(save_words_string)
                 
-            # Only keep overlap if there's more input to process
-            if not is_final_chunk:
-                remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
-                self.chunk = ' '.join(remaining_words) + ' '
+                # Clear the chunk as we've processed everything
+                self.chunk = ''
             else:
-                self.chunk = ''  # Clear when done
-                
+                # Normal chunk processing
+                save_words = chunkwords[:OUTPUT_CHUNK_SIZE]
+                if save_words:
+                    save_words_string = ' '.join(save_words) + ' '
+                    self.output_string += save_words_string
+                    self.output_pointer += len(save_words_string)
+                    
+                # Keep overlap if there's more input to process
+                remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
+                self.chunk = ' '.join(remaining_words)
+                if remaining_words:  # Add space only if there are remaining words
+                    self.chunk += ' '
+                    
             self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
             
         except Exception as e:
@@ -196,6 +200,7 @@ class ParseFile:
                     self.savechunk()
                     
                     # Exit condition - check after savechunk to ensure final words processed
+                    # is_final_chunk = self.input_word_pointer >= len(self.input_array)
                     if self.input_word_pointer >= len(self.input_array) and not self.chunk.strip():
                         break
                         
