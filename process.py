@@ -50,10 +50,9 @@ class ParseFile:
         try:
             if not self.chunk:
                 return
-                
             self.logger.debug(f'Saving chunk (input pointer: {self.input_word_pointer})')
             chunkwords = [word for word in self.chunk.split(' ') if word]
-            
+
             # Special handling for final chunk
             is_final_chunk = self.input_word_pointer >= len(self.input_array)
             if is_final_chunk:
@@ -65,7 +64,7 @@ class ParseFile:
                 # Don't add trailing space for final chunk
                 self.output_string += save_words_string
                 self.output_pointer += len(save_words_string)
-                
+
                 # Clear the chunk as we've processed everything
                 self.chunk = ''
             else:
