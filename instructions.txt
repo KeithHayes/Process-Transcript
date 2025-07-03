@@ -3,55 +3,24 @@
 
 Produce the desired output file.  
 
-It appears the last chunk is not merging into transcript_processed.txt correctly.
+It appears the last chunk is not merging into transcript_processed.txt correctly in savechunks.
 
 
-Current output which is incorrect.  In this outtput the \n and spaces in the last  words are missing: :
+Current output which is incorrect.  In this output the \n's in the last line are missing.
+The chain of format, add line breaks, deformat must be implemented correctly for these lines:
 
 when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
-alice felt a gentle contentment gratitudeeven for the stories yes and for the silence that held them all together world
-beyond
-them
-for
-the
-tactile
-living
-reality
-she
-inhabits
-and
-so
-at
-the
-close
-of
-day
-she
-gave
-thanks
-for
-words
-for
-solitude
-and
-for
-the
-small
-wonders
-that
-attend
-each
-ordinary
-moment
+when she finally stood with an empty teacup the anthology was closed and the quiet settled deeply over the room
+alice felt a gentle contentment gratitudeeven for the storiesand for the silence the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 
 
 the output as it SHOULD be:
 
 when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
-alice felt a gentle contentment gratitud
-eeven for the stories yes and for the silence that held them all together world
+alice felt a gentle contentment gratitude
+even for the stories yes and for the silence that held them all together world
 beyond them for the tactile living reality she inhabits
 and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 
 
-The end condition is not being implemented correctly unformatted words should not be at the end.  
+The end condition is not being implemented correctly.
