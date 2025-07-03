@@ -3,35 +3,62 @@
 === DOCS instructions.txt ===
 
 
-Debug and verify, 
 
 Produce the desired output file.  
 
 It appears the last chunk is not merging into transcript_processed.txt correctly.
 
 
-TThe end as it is:
+Current output which is incorrect.  In this outtput the \n and spaces in the last  words are missing: :
 
-
-its orange glow rebounded off dewy leaves turning them into luminous orbs
-alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf
+when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
+alice felt a gentle contentment gratitudeeven for the stories yes and for the silence that held them all together world
+beyond
+them
+for
+the
+tactile
+living
+reality
 she
+inhabits
+and
+so
+at
+the
+close
+of
+day
+she
+gave
+thanks
+for
+words
+for
+solitude
+and
+for
+the
+small
+wonders
+that
+attend
+each
+ordinary
+moment
 
 
-The end as it should be:
+the output as it SHOULD be:
 
-alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf
-she sat for a moment longer teacup in hand simply being
-it was a practice in mindfulness in appreciating transition
-the end of daylight and arrival of evening the movement from narrative to reflection
-She allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars
-When she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment
-gratitude even
-for the stories yes and for the world beyond them for the tactile living reality she inhabits
+when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
+alice felt a gentle contentment gratitud
+eeven for the stories yes and for the silence that held them all together world
+beyond them for the tactile living reality she inhabits
 and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 
 
-Chunks are formatted and combined but compare the input and output and the output is incomplete.
+The end condition is not being implemented correctly unformatted words should not be at the end.  
+
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
@@ -191,7 +218,7 @@ __all__ = [
     'SPEAKER_FORMAT', 'REPETITION_PENALTY', 'TEMPERATURE',
     'TOP_P', 'TOP_K', 'MAX_SENTENCE_VALIDATION_ERRORS',
     'LOG_DIR', 'LOG_FILE', 'DEBUG_LOG_FILE',
-    'PRESERVE_CASE', 'STRICT_PUNCTUATION'
+    'PRESERVE_CASE', 'STRICT_PUNCTUATION, LOOPCHECK'
 ]
 
 === PY logger.py ===
@@ -236,6 +263,8 @@ class ParseFile:
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
         self.session = None  # Will hold our aiohttp session
+        self.input_word_pointer = 0
+        self.chunk_word_pointer = 0
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -268,32 +297,34 @@ class ParseFile:
             if not self.chunk:
                 return
                 
-            self.logger.debug(f'Saving chunk')
-            target_pointer = self.output_pointer
+            self.logger.debug(f'Saving chunk (input pointer: {self.input_word_pointer})')
             chunkwords = [word for word in self.chunk.split(' ') if word]
             
-            # Always save all remaining words if we're at the end of input
-            if self.input_word_pointer >= len(self.input_array):
-                save_words = chunkwords
+            # Special handling for final chunk
+            is_final_chunk = self.input_word_pointer >= len(self.input_array)
+            if is_final_chunk:
+                save_words = chunkwords  # Save ALL remaining words
+                self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
             else:
-                save_words = chunkwords[:OUTPUT_CHUNK_SIZE]  # First 150 words or fewer
+                save_words = chunkwords[:OUTPUT_CHUNK_SIZE]
                 
             if save_words:
-                save_words_string = ' '.join(save_words) + ' '
+                save_words_string = ' '.join(save_words)
+                # Only add space if not the very end
+                if not is_final_chunk or self.chunk_word_pointer < len(chunkwords):
+                    save_words_string += ' '
+                    
                 self.output_string += save_words_string
                 self.output_pointer += len(save_words_string)
                 
             # Only keep overlap if there's more input to process
-            if self.input_word_pointer < len(self.input_array):
+            if not is_final_chunk:
                 remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
-                remaining_words_string = ' '.join(remaining_words)
-                remaining_words_string = re.sub(r"[\.!?](?!.*[\.!?])", '', remaining_words_string)
-                remaining_words_string = re.sub(r"[A-Z](?!.*[A-Z])", '', remaining_words_string)
-                self.chunk = remaining_words_string + ' '
+                self.chunk = ' '.join(remaining_words) + ' '
             else:
-                self.chunk = ''  # Clear chunk when we're done
+                self.chunk = ''  # Clear when done
                 
-            self.logger.debug(f'Saved {len(save_words)} words to output, {len(self.chunk.split())} words remaining in chunk')
+            self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
             
         except Exception as e:
             self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
@@ -334,7 +365,7 @@ class ParseFile:
                 if response.status != 200:
                     error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
                     self.logger.error(error_message)
-                    raise Exception(error_message) # Error: API response incorrect
+                    raise Exception(error_message)
                 
                 result = await response.json()
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
@@ -342,20 +373,19 @@ class ParseFile:
                 if not formatted:
                     error_message = "An empty string is returned."
                     self.logger.error(error_message)
-                    raise ValueError(error_message) # Error: LLM returned empty string
+                    raise ValueError(error_message)
                 return formatted
                 
         except aiohttp.ClientError as e:
             error_message = f"Network or API client error during formatchunk: {str(e)}"
             self.logger.error(error_message, exc_info=True)
-            raise ConnectionError(error_message) from e # Error: Cannot connect to LLM API
+            raise ConnectionError(error_message) from e
         except Exception as e:
             error_message = f"An unexpected error occurred during formatchunk: {str(e)}"
             self.logger.error(error_message, exc_info=True)
-            raise Exception(error_message) from e # Catch any other unexpected errors
+            raise Exception(error_message) from e
 
     def deformat(self, formatted_output):
-        # remove all special characters.  Only lowercase letters, spaces, and the special character will remain.
         output = formatted_output.lower()
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
         return output
@@ -390,41 +420,48 @@ class ParseFile:
         try:
             with open(CLEANED_FILE, 'r', encoding='utf-8') as f:
                 self.input_string = f.read()
-                self.logger.info(f'Loaded {len(self.input_string)} character string')
+                self.logger.info(f'Loaded {len(self.input_string)} chars, {len(self.input_string.split())} words')
                 self.input_array = self.input_string.split()
-                self.chunk_array = ""
-                self.output_array = ""
                 self.chunk = ""
                 self.output_string = ""
                 self.input_word_pointer = 0
-                self.chunk_word_pointer = 0
                 self.output_pointer = 0
-                self.loadchunk(CHUNK_SIZE)     # first chunk
+                
+                # Load initial chunk
+                self.loadchunk(CHUNK_SIZE)
 
                 while True:
                     if LOOPCHECK:
-                            formatted_chunk = self.chunk
+                        formatted_chunk = self.chunk
                     else:
-                        formatted_chunk = await self.formatchunk(self.chunk)                                        # Format
-                        sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)           # Mark sentence ends
-                        sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)     # Mark sentence starts
+                        formatted_chunk = await self.formatchunk(self.chunk)
+                        sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
+                        sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
                         self.chunk = self.deformat(sentence_starts_marked)
                     
-                        # Save the chunk (handles both regular and final chunks)
-                        self.savechunk()
+                    self.savechunk()
                     
-                        # Check if we've processed all input
-                        if self.input_word_pointer >= len(self.input_array):
-                            break
+                    # Exit condition - check after savechunk to ensure final words processed
+                    if self.input_word_pointer >= len(self.input_array) and not self.chunk.strip():
+                        break
                         
-                        # Load next chunk (150 new words + 100 carried over from savechunk)
+                    # Load next chunk if more exists
+                    if self.input_word_pointer < len(self.input_array):
                         self.loadchunk(CHUNK_SIZE - CHUNK_OVERLAP)
                 
-                    # Final write to ensure all content is saved
-                    with open(self.output_file, 'w', encoding='utf-8') as f:
-                        final_output = self.output_string.rstrip()                                                  # Write output
-                        f.write(final_output)
-                        self.logger.info(f'Saved {len(final_output)} characters to {self.output_file}')
+                # Final validation
+                input_words = len(self.input_array)
+                output_words = len(self.output_string.split())
+                self.logger.info(f'Processed {output_words}/{input_words} words')
+                
+                if input_words != output_words:
+                    self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
+                
+                # Write final output
+                with open(self.output_file, 'w', encoding='utf-8') as f:
+                    final_output = self.output_string.rstrip()
+                    f.write(final_output)
+                    self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')
                     
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
@@ -584,39 +621,63 @@ the silence was not merely an absence of noise it was a presence in itselfa comp
 outside the garden lay in gentle bloom
 roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness
 a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover
-occasionally an orangeandblackveined butterfly fluttered past the aging glass
+occasionally an orangewinged butterfly fluttered past the aging glass and
 alice followed its slow drifting flight for a moment before returning to her book
 such ordinary spectacles when observed with attention held a profound beauty
-it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked
+it was a lesson she had learned early and oftenthe marvels of life are seldom grand or flashy they are small quiet and easily overlooked
 her book an anthology of short stories from the early twentieth century lay open on her lap
 the paper was slightly yellowed but sturdy the ink crisp
-each story contained within held worlds of wonder and possibility waiting to be discovered by those who took the time to look
-had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actionstying shoelaces pouring tea gazing out toward a stormy horizon
+each story contained within had been selected for its faithful representation of time place and character
+there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actionstying shoelaces pouring tea gazing out toward a stormy horizon
 such attentiveness to detail formed a tapestry of everyday life and it fascinated
 alice how these small gestures could reveal so much about an individuals hopes fears and inner world
-in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future
-the description was simple she lifted her hands above her head letting the cool earlyspring wind play through her fingers
-yet that image carried emotion enough to fill a lifetime of longing
-alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her studies to that riverside scene
-then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window
-the sun had sunk lower and the sky had begun to shift to ethereal shades of lavender and gold
-soon the garden would blur into silhouettes and the air would cool
-she reached for the small porcelain teapot on the table beside her held a fragrant chamomile infusion with just a hint of honey
-alice poured the steaming liquid into her favorite cup the one painted with delicate blue forgetmenots
-pausing to inhale the warm steam she allowed its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest
-turning back to her anthology she selected a different story this one describing an old man sitting alone in his rocking chair staring out onto the street below
-his wrinkled face bore the weight of countless memories both joyous and sorrowful
-as he rocked back and forth his gnarled hands clutched the arms of the chair tightly almost as if holding onto life itself
-early morning in a busy city horsedrawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues
+in one story a young woman stood enchanted forest where time seemed to stand still and every creature spoke in riddles and rhymes
+alice smiled softly remembering how much she loved stories like these ones that took you faraway from reality yet somehow made more sense than anything else could ever hope to do early morning in a busy city horsedrawn carriages rattled over cobblestones
+merchants were hawking wares at street stalls and the clamor of voices in unfamiliar tongues filled the air
 as she read
 alice imagined herself there she could almost hear the clipclop of hooves and feel the rough stone underfoot
-the weight of her satchel on her shoulder
-again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality
-such was the power of fine writingit created an illusion so vivid so grounded that the line between reader and narrator blurred
+the weight of her satchel on her shoulder once more she closed her eyes letting the sounds and textures swirl around her senses
+until she could scarcely distinguish them from her own reality
+such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred
 by the time she finished the second story darkness had fallen completely
 the study lamp cast a soft pool of light around her chair
-beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moths distance a lone streetlamp flickered to life
-its orange glow rebounded off dewy leaves turning them into luminous orbs
+beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs
 alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf
+she sat for a moment longer teacup in hand simply beingit was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection
+she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars
+when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
+alice felt a gentle contentment gratitudeeven for the stories yes and for the silence that held them all together world
+beyond
+them
+for
+the
+tactile
+living
+reality
 she
+inhabits
+and
+so
+at
+the
+close
+of
+day
+she
+gave
+thanks
+for
+words
+for
+solitude
+and
+for
+the
+small
+wonders
+that
+attend
+each
+ordinary
+moment
 
