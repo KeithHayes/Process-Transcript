@@ -179,7 +179,6 @@ class ParseFile:
                     MUST NOT add, delete, or change any words.
                     MUST NOT rephrase or summarize.
                     Add periods, question marks, or exclamation points to punctuate complete sentences.
-                    Commas and semicolons should be prefered where a '-' is an option.                     
                     Capitalize the first letter of the first word of each complete sentence.
                     Incomplete sentence fragments must remain as they are.
                     Only add punctuation at the end if appropriate.
