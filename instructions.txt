@@ -1,16 +1,7 @@
+transcript_preprocessed.txt is sequentually sent to an llm model in two loops.
 
+The two loop architecture must be preserved as a stub on it is unfinished.  For now changes to 
+process.py must be minor and limited to those needed to tweak the output transcript_processed.txt to correctly 
+resolve the issue of some words being run together which in the output of unformatted lines
 
-
-If I move the
-
-def preprocess(self, input_file):
-
-member function from the current location 
-
-to follow the member function
-
-def savechunk(self):
-
-and I make no other changes to process.py except to move the function locatin why does functionality change?
-
-the task is to answer the question.
+Compare input to output and identify the needed tweeks.
