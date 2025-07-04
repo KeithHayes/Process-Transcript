@@ -282,18 +282,15 @@ class ParseFile:
         if self.session is None:
             self.session = aiohttp.ClientSession()
         
+        original_words = chunktext.split()
         prompt = textwrap.dedent(f"""\
             MUST maintain the EXACT original words and their order.
             MUST NOT add, delete, or change any words.
             MUST NOT rephrase or summarize.
-            Add periods, question marks, or exclamation points to puntuate complete sentences.
+            Add periods, question marks, or exclamation points to punctuate complete sentences.
             Capitalize the first letter of the first word of each complete sentence.
-            Incomplete sentence fragments must remain as they are, without any added punctuation or capitalization change.
-            No puntuation capitalization or word changes after the first word or before the last word in a sentence.
-            Only the first letteer in a sentence can be uppercase.
-
+            Incomplete sentence fragments must remain as they are.
             Text: {chunktext}
-
             Formatted text:""")
 
         try:
@@ -314,7 +311,14 @@ class ParseFile:
                     raise Exception(f"API error: {response.status}")
                 
                 result = await response.json()
-                return result.get("choices", [{}])[0].get("text", "").strip()
+                formatted = result.get("choices", [{}])[0].get("text", "").strip()
+                
+                # Validate word preservation
+                formatted_words = formatted.split()
+                if len(formatted_words) != len(original_words):
+                    raise ValueError(f"Word count mismatch: {len(original_words)} vs {len(formatted_words)}")
+                
+                return formatted
                 
         except Exception as e:
             self.logger.error(f"Formatting failed: {str(e)}", exc_info=True)
@@ -341,6 +345,7 @@ class ParseFile:
         try:
             with open(input_file, 'r', encoding='utf-8') as f:
                 text = f.read()
+                # Preserve all content including final section
                 text = re.sub(r'\s+', ' ', text).strip()
             
             os.makedirs(os.path.dirname(CLEANED_FILE) or '.', exist_ok=True)
@@ -348,6 +353,7 @@ class ParseFile:
                 f.write(text)
             
             self._cleaned = True
+            self.logger.info(f'Preprocessed {len(text.split())} words')
         except Exception as e:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
@@ -363,6 +369,7 @@ class ParseFile:
                 self.output_string = ""
                 self.input_word_pointer = 0
                 
+                # Load initial chunk
                 self.loadchunk(CHUNK_SIZE)
 
                 while True:
@@ -370,19 +377,21 @@ class ParseFile:
                         formatted_chunk = self.chunk
                     else:
                         formatted_chunk = await self.formatchunk(self.chunk)
+                        # Add sentence markers
                         formatted_chunk = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
                         formatted_chunk = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, formatted_chunk)
                         self.chunk = self.deformat(formatted_chunk)
                     
                     self.savechunk()
                     
+                    # Ensure all words are processed
                     if self.input_word_pointer >= len(self.input_array) and not self.chunk.strip():
                         break
                         
                     if self.input_word_pointer < len(self.input_array):
                         self.loadchunk(CHUNK_SIZE - CHUNK_OVERLAP)
                 
-                # Process lines through formatlines stub
+                # Final line processing
                 final_output = ''
                 lines = self.output_string.split('\n')
                 total_lines = len(lines)
@@ -399,6 +408,7 @@ class ParseFile:
                 
                 with open(PROCESSED_FILE, 'w', encoding='utf-8') as f:
                     f.write(final_output)
+                    self.logger.info(f'Processed {len(self.input_array)} words, output {len(final_output.split())} words')
                     
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
