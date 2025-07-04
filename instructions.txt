@@ -1,1 +1,14 @@
-words and word order should match between transcript_preprocessed.txt and transcript_processed.txt only line breaks have been added
+when she finally stood the teacup
+empty the anthology closed and the
+quiet settled deeply over the room
+alice felt a gentle contentment
+gratitude even for the stories yes and
+for the world beyond them for the
+tactile living reality she inhabits
+and so at the close of day she gave
+thanks for words for solitude and for
+the small wonders that attend each
+ordinary moment
+
+
+was not processed and added to transcript_preprocessed.txt
