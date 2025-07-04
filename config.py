@@ -12,6 +12,7 @@ SENTENCE_MARKER = chr(0x0a)      # Unicode character to mark sentence boundaries
 INPUT_FILE = 'files/transcript.txt'
 CLEANED_FILE = 'files/transcript_preprocessed.txt'
 PROCESSED_FILE = 'files/transcript_processed.txt'
+POSTPROCESSED_FILE = 'files/transcript_postprocessed.txt'
 OUTPUT_FILE = 'files/transcript_formatted.txt'
 
 # API configuration
@@ -46,7 +47,7 @@ LINECHECK = False
 
 
 __all__ = [
-    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE',
+    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE','POSTPROCESSED_FILE',
     'MIN_SENTENCE_LENGTH', 'MAX_FRAGMENT_LENGTH', 'SENTENCE_MARKER',
     'INPUT_FILE', 'CLEANED_FILE', 'PROCESSED_FILE', 'OUTPUT_FILE',
     'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',

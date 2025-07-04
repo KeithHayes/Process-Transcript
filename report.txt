@@ -1,116 +1,12 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-    async def formatchunk(self, chunktext: str) -> str:
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
-        
-        prompt = textwrap.dedent(f"""\
-            MUST maintain the EXACT original words and their order.
-            MUST NOT add, delete, or change any words.
-            MUST NOT rephrase or summarize.
-            Add periods, question marks, or exclamation points to puntuate complete sentences.
-            Capitalize the first letter of the first word of each complete sentence.
-            Incomplete sentence fragments must remain as they are, without any added punctuation or capitalization change.
-            No puntuation capitalization or word changes after the first word or before the last word in a sentence.
-            Only the first letteer in a sentence can be uppercase.
+def formatlines(self, unformatted_string):
 
-            Text: {chunktext}
+Does not use the LLM and it should to format the sentences.  Rewrite formatlines so that it uses calls to the 
+API_URL to format each sentenc on each line of the chunk of lines sent to it.
 
-            Formatted text:""")
-
-        try:
-            async with self.session.post(
-                API_URL,
-                json={
-                    "prompt": prompt,
-                    "max_tokens": MAX_TOKENS,
-                    "temperature": TEMPERATURE,
-                    "stop": STOP_SEQUENCES,
-                    "repetition_penalty": REPETITION_PENALTY,
-                    "top_p": TOP_P,
-                    "top_t": TOP_T
-                },
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-            ) as response:
-                if response.status != 200:
-                    error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
-                    self.logger.error(error_message)
-                    raise Exception(error_message)
-                
-                result = await response.json()
-                formatted = result.get("choices", [{}])[0].get("text", "").strip()
-                
-                if not formatted:
-                    error_message = "An empty string is returned."
-                    self.logger.error(error_message)
-                    raise ValueError(error_message)
-                return formatted
-                
-        except aiohttp.ClientError as e:
-            error_message = f"Network or API client error during formatchunk: {str(e)}"
-            self.logger.error(error_message, exc_info=True)
-            raise ConnectionError(error_message) from e
-        except Exception as e:
-            error_message = f"An unexpected error occurred during formatchunk: {str(e)}"
-            self.logger.error(error_message, exc_info=True)
-            raise Exception(error_message) from e
-
-
-The above code processes input chunks sent to it.  The below code will also process chunks from another source and 
-in another way, but the LLM calls will be to the same model.
-
-
-    def formatlines(self, unformatted_string):
-        """
-        Stub implementation for formatting lines of text.
-        Currently just returns the input unchanged.
-        """
-        if LINECHECK:
-            return_string = unformatted_string
-        else:
-            # TODO: Implement proper formatting logic here
-
-            # see below for specification
-
-        return return_string
-
-
-        Chunks of individual strings each on their own line make up the input.
-
-        Input: 
-
-had she fallen completely under the spell of the study lamps soft pool of light around her chair
-beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth
-the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs
-alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf
-she sat for a moment longer tea cup in hand simply being
-it was a practice in mindfulness in appreciating the transition the end of daylight and arrival of evening the movement from narrative to reflection
-allowing herself this small pause she rose to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath the stars a sky of stars when she finally stood the teacup empty the anthology closed
-the quiet settled deeply over the room
-alice felt a gentle contentment gratitude even for the stories yes and for the silence that held them all together
-worlds beyond them for the tactile living reality she inhabited and so at the close of day she gave thanks for words for solitude and for the small wonders that attended each ordinary moment
-
-        Rules:
-        
-Each sentence is on a separate line, do not change that. 
-Do not change words in a sentence. 
-Keep word count and order. 
-Punctuate each line as a sentence starting with a capital letter and ending with a [!.?] 
-Add commas as needed add ';' as needed. Do not add dashes, use commas instead.
-
-        Output :
-
-Had she fallen completely under the spell of the study lamp's soft pool of light around her chair?
-Beyond the window, the garden was now a shadowy realm, defined only by silhouettes and the glimmer of a single landing moth.
-In the distance, a lone streetlamp flickered to life; its orange glow rebounded off dewy leaves, turning them into luminous orbs.
-Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf.
-She sat for a moment longer, teacup in hand, simply being.
-It was a practice in mindfulness, in appreciating the transition: the end of daylight and arrival of evening; the movement from narrative to reflection.
-Allowing herself this small pause, she rose to begin the next phase of her evening routine: preparing a light supper, writing a few thoughtful entries in her journal, and perhaps stepping out onto the back porch to breathe beneath the stars, a sky of stars, when she finally stood, the teacup empty, the anthology closed.
-The quiet settled deeply over the room.
-Alice felt a gentle contentment, gratitude even, for the stories, yes, and for the silence that held them all together.
-Worlds beyond them, for the tactile, living reality she inhabited, and so, at the close of day, she gave thanks for words, for solitude, and for the small wonders that attended each ordinary moment.
+Get rid of the hardcoded rules and use the LLM
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
@@ -230,6 +126,7 @@ SENTENCE_MARKER = chr(0x0a)      # Unicode character to mark sentence boundaries
 INPUT_FILE = 'files/transcript.txt'
 CLEANED_FILE = 'files/transcript_preprocessed.txt'
 PROCESSED_FILE = 'files/transcript_processed.txt'
+POSTPROCESSED_FILE = 'files/transcript_postprocessed.txt'
 OUTPUT_FILE = 'files/transcript_formatted.txt'
 
 # API configuration
@@ -264,7 +161,7 @@ LINECHECK = False
 
 
 __all__ = [
-    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE',
+    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE','POSTPROCESSED_FILE',
     'MIN_SENTENCE_LENGTH', 'MAX_FRAGMENT_LENGTH', 'SENTENCE_MARKER',
     'INPUT_FILE', 'CLEANED_FILE', 'PROCESSED_FILE', 'OUTPUT_FILE',
     'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',
@@ -304,7 +201,8 @@ import textwrap
 import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
-                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, LINECHECK)
+                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
+                    POSTPROCESSED_FILE, LINECHECK)
 
 class ParseFile:
     def __init__(self):
@@ -448,35 +346,89 @@ class ParseFile:
 
     def formatlines(self, unformatted_string):
         """
-        Stub implementation for formatting lines of text.
-        Currently just returns the input unchanged.
+        Formats lines of text with proper punctuation and capitalization while preserving original words.
+        
+        Rules:
+        - Each line is treated as a separate sentence
+        - First word of each line is capitalized
+        - Line ends with proper punctuation (.!?)
+        - Commas and semicolons are added as needed
+        - No words are added, removed, or reordered
+        - No dashes - use commas instead
+        
+        Args:
+            unformatted_string: Input string with one sentence per line
+        
+        Returns:
+            Formatted string with proper punctuation and capitalization
         """
         if LINECHECK:
-            return_string = unformatted_string
-        else:
-            # TODO: Implement proper formatting logic in next development cycle
-            return_string = unformatted_string
-        return return_string
+            return unformatted_string
 
-    def xpreprocess(self, input_file):
-        self.input_file = input_file
-        self.logger.debug(f'Preprocessing: {self.input_file}')
-        try:
-            with open(self.input_file, 'r', encoding='utf-8') as f:
-                text = f.read()
-                text = re.sub(r'\s+', ' ', text).strip()
-                self.textsize = len(text)
+        lines = unformatted_string.split('\n')
+        formatted_lines = []
+        
+        for line in lines:
+            if not line.strip():
+                formatted_lines.append('')
+                continue
+                
+            words = line.split()
+            if not words:
+                formatted_lines.append('')
+                continue
+                
+            # Capitalize first word
+            if len(words) > 0:
+                words[0] = words[0][0].upper() + words[0][1:] if words[0] else words[0]
             
-            os.makedirs(os.path.dirname(CLEANED_FILE) or '.', exist_ok=True)
-            with open(CLEANED_FILE, 'w', encoding='utf-8') as f:
-                f.write(text)
+            # Determine punctuation
+            last_word = words[-1] if words else ''
+            has_punctuation = last_word and last_word[-1] in {'.', '!', '?'}
             
-            self._cleaned = True
-            self.logger.debug(f'Cleaned file saved: {CLEANED_FILE}')
+            # Add punctuation if missing
+            if not has_punctuation:
+                # Default to period unless line suggests question/exclamation
+                punctuation = '.'
+                lower_line = line.lower()
+                if any(q_word in lower_line for q_word in ('who', 'what', 'when', 'where', 'why', 'how', '?')):
+                    punctuation = '?'
+                elif any(e_word in lower_line for e_word in ('!', 'wow', 'oh', 'ah')):
+                    punctuation = '!'
+                
+                words[-1] = words[-1] + punctuation if words else ''
             
-        except Exception as e:
-            self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
-            raise
+            # Add commas based on natural language patterns
+            formatted_line = ' '.join(words)
+            
+            # Common comma patterns (can be expanded)
+            comma_rules = [
+                (r'\b(and|but|or|yet|so)\b', ', \\1 '),  # Coordinating conjunctions
+                (r'\b(because|although|while|if|when|since|until)\b', ', \\1 '),  # Subordinating conjunctions
+                (r'\bhowever\b', ', however, '),
+                (r'\btherefore\b', ', therefore, '),
+                (r'\bfor example\b', ', for example, '),
+                (r'\bsuch as\b', ', such as '),
+                (r'(\w+ing)\s(\w+)', '\\1, \\2'),  # Gerund phrases
+                (r'(\d{4})\s(\d{4})', '\\1, \\2'),  # Number sequences
+            ]
+            
+            for pattern, replacement in comma_rules:
+                formatted_line = re.sub(pattern, replacement, formatted_line)
+            
+            # Fix any double commas that might have been introduced
+            formatted_line = re.sub(r',\s*,', ',', formatted_line)
+            
+            # Add semicolons for related independent clauses
+            if ';' not in formatted_line:
+                clauses = [c.strip() for c in formatted_line.split(',') if c.strip()]
+                if len(clauses) >= 2 and all(len(c.split()) > 3 for c in clauses[:2]):
+                    if clauses[0][0].isupper() and clauses[1][0].isupper():
+                        formatted_line = formatted_line.replace(',', ';', 1)
+            
+            formatted_lines.append(formatted_line)
+        
+        return '\n'.join(formatted_lines)
 
     def preprocess(self, input_file):
         self.input_file = input_file
@@ -496,7 +448,7 @@ class ParseFile:
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)  # Get text directly from preprocess
-        self.output_file = input_file  # Or set this appropriately if different from input
+        self.output_file = POSTPROCESSED_FILE
 
         if not self._cleaned:
             raise RuntimeError("Must call preprocess() before process()")
@@ -577,8 +529,7 @@ from process import ParseFile
 async def prepare_data():
     configure_logging()
     async with ParseFile() as filerunner:
-        filerunner.preprocess(INPUT_FILE)
-        await filerunner.process(PROCESSED_FILE)
+        await filerunner.process(INPUT_FILE)
 
 async def main():
     configure_logging()
@@ -707,6 +658,151 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
+
+=== PY transcript.txt ===
+alice warren sat beside a wide
+window in the corner of her study the
+late afternoon light slanted gently
+across the hardwood floor illuminating
+endless rows of books that lined the
+walls she loved the hush of quiet
+contemplation the soft rustle of
+turning pages and the subtle comfort
+of stories held within paper and ink
+it was in this exact space that she
+found solace after a long day of
+meetings presentations and endless
+email chains the silence was not
+merely an absence of noise it was a
+presence in itself a companion that
+whispered in comfortable tones and
+allowed thoughts to drift unencumbered
+outside the garden lay in gentle
+bloom roses of deep crimson and pale
+pink nodded in the early breeze while
+lavender and thyme filled the
+afternoon air with fragrant sweetness
+a pair of robins hopped atop the low
+stone wall pecking at small insects
+among the wild clover occasionally a
+butterfly orange with black veined
+wings fluttered past the aging glass
+and alice followed its slow drifting
+flight for a moment before returning
+to her book such ordinary spectacles
+when observed with attention held a
+profound beauty it was a lesson she
+had learned early and often that the
+marvels of life are seldom grand or
+flashy they are small quiet and
+easily overlooked her book an anthology of 
+short stories from the early twentieth 
+century lay open on her lap the paper 
+was slightly yellowed but sturdy the 
+ink crisp each story contained within 
+had been selected for its faithful
+representation of time place and
+character there was a certain charm
+in the way authors of that era wove
+descriptive passages around otherwise
+trivial actions tying shoelaces
+pouring tea gazing out toward a
+stormy horizon such attentiveness to
+detail formed a tapestry of everyday
+life and it fascinated alice how these
+small gestures could reveal so much
+about an individuals hopes fears and
+inner world
+in one story a young woman stood at the
+edge of a river watching the current
+drift by as though it carried with it
+unspoken promises of a distant future
+the description was simple she lifted
+her hands above her head letting the
+cool early spring wind play through
+her fingers yet that image carried
+emotion enough to fill a lifetime of
+longing alice closed her eyes
+imagining the wind on her skin and for
+a moment she felt transported away
+from her study to that riverside scene
+then she opened her eyes again setting
+the bookmark between the pages and
+raised her gaze to the window
+the sun had sunk lower the sky had
+begun to shift to ethereal shades of
+lavender and gold soon the garden
+would blur into silhouettes and the
+air would cool she reached for the
+small porcelain teapot on the table
+beside her it held a fragrant
+chamomile infusion with just a hint
+of honey alice poured the steaming
+liquid into her favorite cup the one
+painted with delicate blue forget me
+nots she paused to inhale the warm
+steam allowing its gentle scent to
+settle her mind it had become something
+of a ritual this tea drinking ritual
+a momentary pause between the realms
+of thought and rest
+turning back to her anthology she
+selected a different story this one
+described an early morning in a busy
+city horse drawn carriages rattling
+over cobblestones merchants hawking
+wares at street stalls and the clamor
+of voices in unfamiliar tongues as she
+read alice imagined herself there she
+could almost hear the clip clop of
+hooves and feel the rough stone
+underfoot the weight of her satchel
+on her shoulder again she closed her
+eyes letting the sounds and textures
+swirl around her senses until she
+could scarcely distinguish them from
+her own reality such was the power of
+fine writing it created an illusion
+so vivid so grounded that the line
+between reader and narrator blurred
+by the time she finished the second
+story darkness had fallen completely
+the study lamp cast a soft pool of
+light around her chair beyond the
+window the garden was now a shadowy
+realm defined only by silhouettes and
+the glimmer of a single landing moth
+in the distance a lone streetlamp
+flickered to life its orange glow
+rebounded off dewy leaves turning them
+into luminous orbs alice closed the
+anthology pressed a finger against the
+spine and slid the book into its place
+on the shelf
+she sat for a moment longer teacup in
+hand simply being it was a practice
+in mindfulness in appreciating
+transition the end of daylight and
+arrival of evening the movement from
+narrative to reflection she allowed
+herself this small pause before rising
+to begin the next phase of her evening
+routine preparing a light supper
+writing a few thoughtful entries in
+her journal and perhaps stepping out
+onto the back porch to breathe beneath
+a sky of stars
+when she finally stood the teacup
+empty the anthology closed and the
+quiet settled deeply over the room
+alice felt a gentle contentment
+gratitude even for the stories yes and
+for the world beyond them for the
+tactile living reality she inhabits
+and so at the close of day she gave
+thanks for words for solitude and for
+the small wonders that attend each
+ordinary moment
 
 === PY transcript_preprocessed.txt ===
 alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment

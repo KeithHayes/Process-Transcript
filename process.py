@@ -5,7 +5,8 @@ import textwrap
 import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
-                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, LINECHECK)
+                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
+                    POSTPROCESSED_FILE, LINECHECK)
 
 class ParseFile:
     def __init__(self):
@@ -149,35 +150,89 @@ class ParseFile:
 
     def formatlines(self, unformatted_string):
         """
-        Stub implementation for formatting lines of text.
-        Currently just returns the input unchanged.
+        Formats lines of text with proper punctuation and capitalization while preserving original words.
+        
+        Rules:
+        - Each line is treated as a separate sentence
+        - First word of each line is capitalized
+        - Line ends with proper punctuation (.!?)
+        - Commas and semicolons are added as needed
+        - No words are added, removed, or reordered
+        - No dashes - use commas instead
+        
+        Args:
+            unformatted_string: Input string with one sentence per line
+        
+        Returns:
+            Formatted string with proper punctuation and capitalization
         """
         if LINECHECK:
-            return_string = unformatted_string
-        else:
-            # TODO: Implement proper formatting logic in next development cycle
-            return_string = unformatted_string
-        return return_string
+            return unformatted_string
 
-    def xpreprocess(self, input_file):
-        self.input_file = input_file
-        self.logger.debug(f'Preprocessing: {self.input_file}')
-        try:
-            with open(self.input_file, 'r', encoding='utf-8') as f:
-                text = f.read()
-                text = re.sub(r'\s+', ' ', text).strip()
-                self.textsize = len(text)
+        lines = unformatted_string.split('\n')
+        formatted_lines = []
+        
+        for line in lines:
+            if not line.strip():
+                formatted_lines.append('')
+                continue
+                
+            words = line.split()
+            if not words:
+                formatted_lines.append('')
+                continue
+                
+            # Capitalize first word
+            if len(words) > 0:
+                words[0] = words[0][0].upper() + words[0][1:] if words[0] else words[0]
             
-            os.makedirs(os.path.dirname(CLEANED_FILE) or '.', exist_ok=True)
-            with open(CLEANED_FILE, 'w', encoding='utf-8') as f:
-                f.write(text)
+            # Determine punctuation
+            last_word = words[-1] if words else ''
+            has_punctuation = last_word and last_word[-1] in {'.', '!', '?'}
             
-            self._cleaned = True
-            self.logger.debug(f'Cleaned file saved: {CLEANED_FILE}')
+            # Add punctuation if missing
+            if not has_punctuation:
+                # Default to period unless line suggests question/exclamation
+                punctuation = '.'
+                lower_line = line.lower()
+                if any(q_word in lower_line for q_word in ('who', 'what', 'when', 'where', 'why', 'how', '?')):
+                    punctuation = '?'
+                elif any(e_word in lower_line for e_word in ('!', 'wow', 'oh', 'ah')):
+                    punctuation = '!'
+                
+                words[-1] = words[-1] + punctuation if words else ''
             
-        except Exception as e:
-            self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
-            raise
+            # Add commas based on natural language patterns
+            formatted_line = ' '.join(words)
+            
+            # Common comma patterns (can be expanded)
+            comma_rules = [
+                (r'\b(and|but|or|yet|so)\b', ', \\1 '),  # Coordinating conjunctions
+                (r'\b(because|although|while|if|when|since|until)\b', ', \\1 '),  # Subordinating conjunctions
+                (r'\bhowever\b', ', however, '),
+                (r'\btherefore\b', ', therefore, '),
+                (r'\bfor example\b', ', for example, '),
+                (r'\bsuch as\b', ', such as '),
+                (r'(\w+ing)\s(\w+)', '\\1, \\2'),  # Gerund phrases
+                (r'(\d{4})\s(\d{4})', '\\1, \\2'),  # Number sequences
+            ]
+            
+            for pattern, replacement in comma_rules:
+                formatted_line = re.sub(pattern, replacement, formatted_line)
+            
+            # Fix any double commas that might have been introduced
+            formatted_line = re.sub(r',\s*,', ',', formatted_line)
+            
+            # Add semicolons for related independent clauses
+            if ';' not in formatted_line:
+                clauses = [c.strip() for c in formatted_line.split(',') if c.strip()]
+                if len(clauses) >= 2 and all(len(c.split()) > 3 for c in clauses[:2]):
+                    if clauses[0][0].isupper() and clauses[1][0].isupper():
+                        formatted_line = formatted_line.replace(',', ';', 1)
+            
+            formatted_lines.append(formatted_line)
+        
+        return '\n'.join(formatted_lines)
 
     def preprocess(self, input_file):
         self.input_file = input_file
@@ -197,7 +252,7 @@ class ParseFile:
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)  # Get text directly from preprocess
-        self.output_file = input_file  # Or set this appropriately if different from input
+        self.output_file = POSTPROCESSED_FILE
 
         if not self._cleaned:
             raise RuntimeError("Must call preprocess() before process()")

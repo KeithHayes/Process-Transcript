@@ -7,8 +7,7 @@ from process import ParseFile
 async def prepare_data():
     configure_logging()
     async with ParseFile() as filerunner:
-        filerunner.preprocess(INPUT_FILE)
-        await filerunner.process(PROCESSED_FILE)
+        await filerunner.process(INPUT_FILE)
 
 async def main():
     configure_logging()
