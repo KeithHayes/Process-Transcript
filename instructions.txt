@@ -1,6 +1,3 @@
-def formatlines(self, unformatted_string):
+what is this line telling me?
 
-Does not use the LLM and it should to format the sentences.  Rewrite formatlines so that it uses calls to the 
-API_URL to format each sentenc on each line of the chunk of lines sent to it.
-
-Get rid of the hardcoded rules and use the LLM
+self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')

@@ -1,12 +1,9 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-def formatlines(self, unformatted_string):
+what is this line telling me?
 
-Does not use the LLM and it should to format the sentences.  Rewrite formatlines so that it uses calls to the 
-API_URL to format each sentenc on each line of the chunk of lines sent to it.
-
-Get rid of the hardcoded rules and use the LLM
+self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
@@ -344,17 +341,10 @@ class ParseFile:
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
         return output
 
-    def formatlines(self, unformatted_string):
+    async def formatlines(self, unformatted_string):
         """
-        Formats lines of text with proper punctuation and capitalization while preserving original words.
-        
-        Rules:
-        - Each line is treated as a separate sentence
-        - First word of each line is capitalized
-        - Line ends with proper punctuation (.!?)
-        - Commas and semicolons are added as needed
-        - No words are added, removed, or reordered
-        - No dashes - use commas instead
+        Formats lines of text by sending each line to the LLM API for proper punctuation and capitalization.
+        Maintains original words and order while adding appropriate punctuation and capitalization.
         
         Args:
             unformatted_string: Input string with one sentence per line
@@ -365,6 +355,9 @@ class ParseFile:
         if LINECHECK:
             return unformatted_string
 
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+
         lines = unformatted_string.split('\n')
         formatted_lines = []
         
@@ -373,60 +366,53 @@ class ParseFile:
                 formatted_lines.append('')
                 continue
                 
-            words = line.split()
-            if not words:
-                formatted_lines.append('')
-                continue
-                
-            # Capitalize first word
-            if len(words) > 0:
-                words[0] = words[0][0].upper() + words[0][1:] if words[0] else words[0]
-            
-            # Determine punctuation
-            last_word = words[-1] if words else ''
-            has_punctuation = last_word and last_word[-1] in {'.', '!', '?'}
-            
-            # Add punctuation if missing
-            if not has_punctuation:
-                # Default to period unless line suggests question/exclamation
-                punctuation = '.'
-                lower_line = line.lower()
-                if any(q_word in lower_line for q_word in ('who', 'what', 'when', 'where', 'why', 'how', '?')):
-                    punctuation = '?'
-                elif any(e_word in lower_line for e_word in ('!', 'wow', 'oh', 'ah')):
-                    punctuation = '!'
-                
-                words[-1] = words[-1] + punctuation if words else ''
-            
-            # Add commas based on natural language patterns
-            formatted_line = ' '.join(words)
-            
-            # Common comma patterns (can be expanded)
-            comma_rules = [
-                (r'\b(and|but|or|yet|so)\b', ', \\1 '),  # Coordinating conjunctions
-                (r'\b(because|although|while|if|when|since|until)\b', ', \\1 '),  # Subordinating conjunctions
-                (r'\bhowever\b', ', however, '),
-                (r'\btherefore\b', ', therefore, '),
-                (r'\bfor example\b', ', for example, '),
-                (r'\bsuch as\b', ', such as '),
-                (r'(\w+ing)\s(\w+)', '\\1, \\2'),  # Gerund phrases
-                (r'(\d{4})\s(\d{4})', '\\1, \\2'),  # Number sequences
-            ]
-            
-            for pattern, replacement in comma_rules:
-                formatted_line = re.sub(pattern, replacement, formatted_line)
-            
-            # Fix any double commas that might have been introduced
-            formatted_line = re.sub(r',\s*,', ',', formatted_line)
-            
-            # Add semicolons for related independent clauses
-            if ';' not in formatted_line:
-                clauses = [c.strip() for c in formatted_line.split(',') if c.strip()]
-                if len(clauses) >= 2 and all(len(c.split()) > 3 for c in clauses[:2]):
-                    if clauses[0][0].isupper() and clauses[1][0].isupper():
-                        formatted_line = formatted_line.replace(',', ';', 1)
-            
-            formatted_lines.append(formatted_line)
+            try:
+                prompt = textwrap.dedent(f"""\
+                    MUST maintain the EXACT original words and their order.
+                    MUST NOT add, delete, or change any words.
+                    MUST NOT rephrase or summarize.
+                    Add periods, question marks, or exclamation points to punctuate complete sentences.
+                    Commas and semicolons should be prefered where a '-' is an option.                     
+                    Capitalize the first letter of the first word of each complete sentence.
+                    Incomplete sentence fragments must remain as they are.
+                    Only add punctuation at the end if appropriate.
+                    Only capitalize the first word if it starts a sentence.
+
+                    Text: {line}
+
+                    Formatted text:""")
+
+                async with self.session.post(
+                    self.api_url,
+                    json={
+                        "prompt": prompt,
+                        "max_tokens": MAX_TOKENS,
+                        "temperature": TEMPERATURE,
+                        "stop": STOP_SEQUENCES,
+                        "repetition_penalty": REPETITION_PENALTY,
+                        "top_p": TOP_P,
+                        "top_t": TOP_T
+                    },
+                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+                ) as response:
+                    if response.status != 200:
+                        error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
+                        self.logger.error(error_message)
+                        formatted_lines.append(line)  # Fall back to original line if API fails
+                        continue
+                    
+                    result = await response.json()
+                    formatted_line = result.get("choices", [{}])[0].get("text", "").strip()
+                    
+                    if not formatted_line:
+                        self.logger.warning(f"Empty response for line: {line}")
+                        formatted_lines.append(line)  # Fall back to original line if empty response
+                    else:
+                        formatted_lines.append(formatted_line)
+                        
+            except Exception as e:
+                self.logger.error(f"Error formatting line: {line}. Error: {str(e)}", exc_info=True)
+                formatted_lines.append(line)  # Fall back to original line on error
         
         return '\n'.join(formatted_lines)
 
@@ -447,7 +433,7 @@ class ParseFile:
             raise
 
     async def process(self, input_file: str):
-        self.input_string = self.preprocess(input_file)  # Get text directly from preprocess
+        self.input_string = self.preprocess(input_file)
         self.output_file = POSTPROCESSED_FILE
 
         if not self._cleaned:
@@ -477,7 +463,7 @@ class ParseFile:
                 
                 self.savechunk()
                 
-                # Exit condition - check after savechunk to ensure final words processed
+                # Exit condition
                 if self.input_word_pointer >= len(self.input_array) and not self.chunk.strip():
                     break
                     
@@ -503,11 +489,12 @@ class ParseFile:
                 # Get next 10 lines (or remaining lines if less than 10)
                 chunk_lines = lines[pointer:pointer+10]
                 unformatted_string = '\n'.join(chunk_lines)
-                formatted_string = self.formatlines(unformatted_string)
+                formatted_string = await self.formatlines(unformatted_string)
                 if final_output:  # add newline after first line
                     formatted_string = '\n' + formatted_string
                 final_output += formatted_string
                 pointer += 10
+                self.logger.info(f'Saved {pointer} lines to {self.output_file}')
             
             # Final output
             with open(self.output_file, 'w', encoding='utf-8') as f:
@@ -517,7 +504,6 @@ class ParseFile:
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
             raise
-
 
 === PY run.py ===
 import asyncio
