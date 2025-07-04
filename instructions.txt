@@ -1,14 +1,110 @@
-when she finally stood the teacup
-empty the anthology closed and the
-quiet settled deeply over the room
-alice felt a gentle contentment
-gratitude even for the stories yes and
-for the world beyond them for the
-tactile living reality she inhabits
-and so at the close of day she gave
-thanks for words for solitude and for
-the small wonders that attend each
-ordinary moment
+    async def formatchunk(self, chunktext: str) -> str:
+        if self.session is None:
+            self.session = aiohttp.ClientSession()
+        
+        prompt = textwrap.dedent(f"""\
+            MUST maintain the EXACT original words and their order.
+            MUST NOT add, delete, or change any words.
+            MUST NOT rephrase or summarize.
+            Add periods, question marks, or exclamation points to puntuate complete sentences.
+            Capitalize the first letter of the first word of each complete sentence.
+            Incomplete sentence fragments must remain as they are, without any added punctuation or capitalization change.
+            No puntuation capitalization or word changes after the first word or before the last word in a sentence.
+            Only the first letteer in a sentence can be uppercase.
+
+            Text: {chunktext}
+
+            Formatted text:""")
+
+        try:
+            async with self.session.post(
+                API_URL,
+                json={
+                    "prompt": prompt,
+                    "max_tokens": MAX_TOKENS,
+                    "temperature": TEMPERATURE,
+                    "stop": STOP_SEQUENCES,
+                    "repetition_penalty": REPETITION_PENALTY,
+                    "top_p": TOP_P,
+                    "top_t": TOP_T
+                },
+                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+            ) as response:
+                if response.status != 200:
+                    error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
+                    self.logger.error(error_message)
+                    raise Exception(error_message)
+                
+                result = await response.json()
+                formatted = result.get("choices", [{}])[0].get("text", "").strip()
+                
+                if not formatted:
+                    error_message = "An empty string is returned."
+                    self.logger.error(error_message)
+                    raise ValueError(error_message)
+                return formatted
+                
+        except aiohttp.ClientError as e:
+            error_message = f"Network or API client error during formatchunk: {str(e)}"
+            self.logger.error(error_message, exc_info=True)
+            raise ConnectionError(error_message) from e
+        except Exception as e:
+            error_message = f"An unexpected error occurred during formatchunk: {str(e)}"
+            self.logger.error(error_message, exc_info=True)
+            raise Exception(error_message) from e
 
 
-was not processed and added to transcript_preprocessed.txt
+The above code processes input chunks sent to it.  The below code will also process chunks from another source and 
+in another way, but the LLM calls will be to the same model.
+
+
+    def formatlines(self, unformatted_string):
+        """
+        Stub implementation for formatting lines of text.
+        Currently just returns the input unchanged.
+        """
+        if LINECHECK:
+            return_string = unformatted_string
+        else:
+            # TODO: Implement proper formatting logic here
+
+            # see below for specification
+
+        return return_string
+
+
+        Chunks of individual strings each on their own line make up the input.
+
+        Input: 
+
+had she fallen completely under the spell of the study lamps soft pool of light around her chair
+beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth
+the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs
+alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf
+she sat for a moment longer tea cup in hand simply being
+it was a practice in mindfulness in appreciating the transition the end of daylight and arrival of evening the movement from narrative to reflection
+allowing herself this small pause she rose to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath the stars a sky of stars when she finally stood the teacup empty the anthology closed
+the quiet settled deeply over the room
+alice felt a gentle contentment gratitude even for the stories yes and for the silence that held them all together
+worlds beyond them for the tactile living reality she inhabited and so at the close of day she gave thanks for words for solitude and for the small wonders that attended each ordinary moment
+
+        Rules:
+        
+Each sentence is on a separate line, do not change that. 
+Do not change words in a sentence. 
+Keep word count and order. 
+Punctuate each line as a sentence starting with a capital letter and ending with a [!.?] 
+Add commas as needed add ';' as needed. Do not add dashes, use commas instead.
+
+        Output :
+
+Had she fallen completely under the spell of the study lamp's soft pool of light around her chair?
+Beyond the window, the garden was now a shadowy realm, defined only by silhouettes and the glimmer of a single landing moth.
+In the distance, a lone streetlamp flickered to life; its orange glow rebounded off dewy leaves, turning them into luminous orbs.
+Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf.
+She sat for a moment longer, teacup in hand, simply being.
+It was a practice in mindfulness, in appreciating the transition: the end of daylight and arrival of evening; the movement from narrative to reflection.
+Allowing herself this small pause, she rose to begin the next phase of her evening routine: preparing a light supper, writing a few thoughtful entries in her journal, and perhaps stepping out onto the back porch to breathe beneath the stars, a sky of stars, when she finally stood, the teacup empty, the anthology closed.
+The quiet settled deeply over the room.
+Alice felt a gentle contentment, gratitude even, for the stories, yes, and for the silence that held them all together.
+Worlds beyond them, for the tactile, living reality she inhabited, and so, at the close of day, she gave thanks for words, for solitude, and for the small wonders that attended each ordinary moment.
