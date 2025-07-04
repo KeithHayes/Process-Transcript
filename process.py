@@ -5,7 +5,7 @@ import textwrap
 import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
-                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, LOOPCHECK)
+                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, LINECHECK)
 
 class ParseFile:
     def __init__(self):
@@ -147,6 +147,18 @@ class ParseFile:
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
         return output
 
+    def formatlines(self, unformatted_string):
+        """
+        Stub implementation for formatting lines of text.
+        Currently just returns the input unchanged.
+        """
+        if LINECHECK:
+            return_string = unformatted_string
+        else:
+            # TODO: Implement proper formatting logic in next development cycle
+            return_string = unformatted_string
+        return return_string
+
     def preprocess(self, input_file):
         self.input_file = input_file
         self.logger.debug(f'Preprocessing: {self.input_file}')
@@ -166,14 +178,6 @@ class ParseFile:
         except Exception as e:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
-
-    def formatlines(self, unformatted_string):
-        """
-        Stub implementation for formatting lines of text.
-        Currently just returns the input unchanged.
-        """
-        # TODO: Implement proper formatting logic in next development cycle
-        return unformatted_string
 
     async def process(self, output_file: str):
         if not self._cleaned:
@@ -196,7 +200,7 @@ class ParseFile:
                 self.loadchunk(CHUNK_SIZE)
 
                 while True:
-                    if LOOPCHECK:
+                    if FORMATCHECK:
                         formatted_chunk = self.chunk
                     else:
                         formatted_chunk = await self.formatchunk(self.chunk)
@@ -223,7 +227,7 @@ class ParseFile:
                 if input_words != output_words:
                     self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
 
-                # Process the output string in chunks of 10 lines
+                # Process unformatted lines
                 final_output = ''
                 lines = self.output_string.split('\n')
                 total_lines = len(lines)
@@ -233,18 +237,14 @@ class ParseFile:
                     # Get next 10 lines (or remaining lines if less than 10)
                     chunk_lines = lines[pointer:pointer+10]
                     unformatted_string = '\n'.join(chunk_lines)
-                    
-                    # Format the chunk
                     formatted_string =  self.formatlines(unformatted_string)
-                    # Append to final output with newline
-                    if final_output:  # Only add newline if not first chunk
+                    if final_output:  # add newline after first line
                         formatted_string = '\n' + formatted_string
                     final_output += formatted_string
                     pointer += 10
                 
-                # Write final output
+                # Final output
                 with open(self.output_file, 'w', encoding='utf-8') as f:
-                    #final_output = self.output_string.rstrip()
                     f.write(final_output)
                     self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')
                     

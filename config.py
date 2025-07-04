@@ -41,7 +41,8 @@ PRESERVE_CASE = True             # Preserve original capitalization where approp
 STRICT_PUNCTUATION = True        # Enforce strict punctuation rules
 
 # Debug flags
-LOOPCHECK = False
+FORMATCHECK = False
+LINECHECK = False
 
 
 __all__ = [
@@ -51,6 +52,6 @@ __all__ = [
     'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',
     'SPEAKER_FORMAT', 'REPETITION_PENALTY', 'TEMPERATURE',
     'TOP_P', 'TOP_K', 'MAX_SENTENCE_VALIDATION_ERRORS',
-    'LOG_DIR', 'LOG_FILE', 'DEBUG_LOG_FILE',
-    'PRESERVE_CASE', 'STRICT_PUNCTUATION, LOOPCHECK'
+    'LOG_DIR', 'LOG_FILE', 'DEBUG_LOG_FILE', 'FORMATCHECK',
+    'PRESERVE_CASE', 'STRICT_PUNCTUATION', 'LINECHECK'
 ]
