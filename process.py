@@ -3,7 +3,7 @@ import re
 import logging
 import textwrap
 import aiohttp
-from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
+from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, PROCESSED_FILE,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
                     CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, LINECHECK)
 
@@ -179,11 +179,9 @@ class ParseFile:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
 
-    async def process(self, output_file: str):
-        if not self._cleaned:
-            raise RuntimeError("Must call preprocess() before process()")
-            
-        self.output_file = output_file
+    async def process(self, input_file: str):
+        self.preprocess(input_file) 
+        self.output_file = PROCESSED_FILE
         self.logger.debug(f'Processing to: {self.output_file}')
             
         try:
