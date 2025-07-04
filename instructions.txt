@@ -1,7 +1,28 @@
-transcript_preprocessed.txt is sequentually sent to an llm model in two loops.
+async def prepare_data():
+    configure_logging()
+    async with ParseFile() as filerunner:
+        filerunner.preprocess(INPUT_FILE)
+        await filerunner.process(PROCESSED_FILE)
 
-The two loop architecture must be preserved as a stub on it is unfinished.  For now changes to 
-process.py must be minor and limited to those needed to tweak the output transcript_processed.txt to correctly 
-resolve the issue of some words being run together which in the output of unformatted lines
+async def main():
+    configure_logging()
+    logger = logging.getLogger('main')
+    try:
+        await prepare_data()
+        logger.info("Processing completed successfully")
+    except Exception as e:
+        logger.error(f"Processing failed: {str(e)}", exc_info=True)
+        raise
 
-Compare input to output and identify the needed tweeks.
+if __name__ == "__main__":
+    asyncio.run(main())
+
+    will be changed to
+
+    async with ParseFile() as filerunner:
+        await filerunner.process(INPUT_FILE)
+
+        tthe call to preproccess is gone and the file argument is changed.
+
+        in process.py the process function will be changed to call the preprocess function before it does anything else 
+        this added line will prepare the PROCESSED_FILE which will then be used as it is now
