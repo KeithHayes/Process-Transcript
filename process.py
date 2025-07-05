@@ -17,7 +17,7 @@ class ParseFile:
         self._cleaned = False
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
-        self.session = None  # Will hold our aiohttp session
+        self.session = None
         self.input_word_pointer = 0
         self.chunk_word_pointer = 0
 
@@ -41,7 +41,7 @@ class ParseFile:
             words_loaded += 1
 
         wordschunk = ' '.join(words)
-        self.chunk = (self.chunk + wordschunk).strip()
+        self.chunk = (self.chunk + ' ' + wordschunk).strip()
         if self.chunk:
             self.chunk += ' '
         self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
@@ -49,27 +49,22 @@ class ParseFile:
     
     def savechunk(self):
         try:
-            if not self.chunk:
+            if not self.chunk.strip():
                 return
                 
             self.logger.debug(f'Saving chunk (input pointer: {self.input_word_pointer})')
-            chunkwords = [word for word in self.chunk.split(' ') if word]
-
-            # Special handling for final chunk
-            is_final_chunk = self.input_word_pointer >= len(self.input_array)
+            chunkwords = self.chunk.split()
+            
+            # Check if this is the final chunk
+            is_final_chunk = (self.input_word_pointer >= len(self.input_array) and 
+                             len(chunkwords) <= (CHUNK_OVERLAP + OUTPUT_CHUNK_SIZE))
             
             if is_final_chunk:
-                # For final chunk, ensure we don't split it and add protective markers
+                # For final chunk, save all remaining words
                 save_words = chunkwords
                 self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
                 
-                # Join with spaces and add to output without trailing space
                 save_words_string = ' '.join(save_words)
-                
-                # Add protective markers if the chunk is very small
-                if len(save_words) < 10:
-                    save_words_string = f"[CONTINUATION: {save_words_string} :END]"
-                    
                 self.output_string += save_words_string
                 self.output_pointer += len(save_words_string)
                 self.chunk = ''
@@ -97,11 +92,11 @@ class ParseFile:
         if self.session is None:
             self.session = aiohttp.ClientSession()
         
-        # Handle protected final chunks
+        # Handle protected chunks
         is_protected_chunk = chunktext.startswith("[CONTINUATION:") and chunktext.endswith(":END]")
         if is_protected_chunk:
-            chunktext = chunktext[14:-5].strip()  # Remove protective markers
-        
+            chunktext = chunktext[14:-5].strip()
+
         prompt = textwrap.dedent(f"""\
             MUST maintain the EXACT original words and their order.
             MUST NOT add, delete, or change any words.
@@ -140,41 +135,32 @@ class ParseFile:
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
                 
                 if not formatted:
-                    error_message = "An empty string is returned."
+                    error_message = "Empty response from API"
                     self.logger.error(error_message)
                     raise ValueError(error_message)
                     
-                # Reapply protective markers if this was a protected chunk
+                # Reapply protective markers if needed
                 if is_protected_chunk:
                     formatted = f"[CONTINUATION: {formatted} :END]"
                     
                 return formatted
                 
         except aiohttp.ClientError as e:
-            error_message = f"Network or API client error during formatchunk: {str(e)}"
+            error_message = f"Network error during formatchunk: {str(e)}"
             self.logger.error(error_message, exc_info=True)
             raise ConnectionError(error_message) from e
         except Exception as e:
-            error_message = f"An unexpected error occurred during formatchunk: {str(e)}"
+            error_message = f"Unexpected error in formatchunk: {str(e)}"
             self.logger.error(error_message, exc_info=True)
             raise Exception(error_message) from e
 
     def deformat(self, formatted_output):
         output = formatted_output.lower()
+        output = output.replace("[continuation:", "").replace(":end]", "")
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
         return output
 
     async def formatlines(self, unformatted_string):
-        """
-        Formats lines of text by sending each line to the LLM API for proper punctuation and capitalization.
-        Maintains original words and order while adding appropriate punctuation and capitalization.
-        
-        Args:
-            unformatted_string: Input string with one sentence per line
-        
-        Returns:
-            Formatted string with proper punctuation and capitalization
-        """
         if LINECHECK:
             return unformatted_string
 
@@ -218,9 +204,9 @@ class ParseFile:
                     timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
                 ) as response:
                     if response.status != 200:
-                        error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
+                        error_message = f"API error: {response.status}. Response: {await response.text()}"
                         self.logger.error(error_message)
-                        formatted_lines.append(line)  # Fall back to original line if API fails
+                        formatted_lines.append(line)
                         continue
                     
                     result = await response.json()
@@ -228,13 +214,13 @@ class ParseFile:
                     
                     if not formatted_line:
                         self.logger.warning(f"Empty response for line: {line}")
-                        formatted_lines.append(line)  # Fall back to original line if empty response
+                        formatted_lines.append(line)
                     else:
                         formatted_lines.append(formatted_line)
                         
             except Exception as e:
                 self.logger.error(f"Error formatting line: {line}. Error: {str(e)}", exc_info=True)
-                formatted_lines.append(line)  # Fall back to original line on error
+                formatted_lines.append(line)
         
         return '\n'.join(formatted_lines)
 
@@ -247,25 +233,20 @@ class ParseFile:
                 text = re.sub(r'\s+', ' ', text).strip()
                 self.textsize = len(text)
             self._cleaned = True
-            self.logger.debug(f'Cleaned file saved: {CLEANED_FILE}')
+            self.logger.debug(f'Cleaned text size: {self.textsize} chars')
             return text
-
         except Exception as e:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
-        self.processed_file = PROCESSED_FILE
-        self.postprocess_file = POSTPROCESSED_FILE
-
         if not self._cleaned:
             raise RuntimeError("Must call preprocess() before process()")
             
-        self.logger.debug(f'Processing to: {self.postprocess_file}')
+        self.logger.info(f'Processing {len(self.input_string)} chars')
             
         try:
-            self.logger.info(f'Loaded {len(self.input_string)} chars, {len(self.input_string.split())} words')
             self.input_array = self.input_string.split()
             self.chunk = ""
             self.output_string = ""
@@ -300,51 +281,38 @@ class ParseFile:
             self.logger.info(f'Processed {output_words}/{input_words} words')
 
             if input_words != output_words:
-                self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
+                missing = input_words - output_words
+                self.logger.warning(f'Word count mismatch! Missing {missing} words')
+                self.logger.debug(f'Last input words: {" ".join(self.input_array[-20:])}')
+                self.logger.debug(f'Last output words: {" ".join(self.output_string.split()[-20:])}')
 
-            # Process output
-            with open(self.processed_file, 'w', encoding='utf-8') as f:
-                f.write(self.output_string)
-                self.logger.info(f'Saved {len(self.output_string.split())} chars to {self.processed_file}')
-            
-            # Process unformatted lines
+            # Save processed output
+            with open(PROCESSED_FILE, 'w', encoding='utf-8') as f:
+                clean_output = self.output_string.replace("[CONTINUATION:", "").replace(":END]", "")
+                f.write(clean_output)
+                self.logger.info(f'Saved processed output to {PROCESSED_FILE}')
+
+            # Process lines in batches
             final_output = ''
-            lines = self.output_string.split('\n')
+            lines = clean_output.split('\n')
             total_lines = len(lines)
             pointer = 0
 
             while pointer < total_lines:
-                # Get next 10 lines (or remaining lines if less than 10)
                 chunk_lines = lines[pointer:pointer+10]
                 unformatted_string = '\n'.join(chunk_lines)
                 formatted_string = await self.formatlines(unformatted_string)
-                if final_output:  # add newline after first line
+                if final_output:
                     formatted_string = '\n' + formatted_string
                 final_output += formatted_string
                 pointer += 10
-                self.logger.info(f'Saved {pointer} lines to {self.postprocess_file}')
+                self.logger.info(f'Processed {pointer}/{total_lines} lines')
             
-            # Clean up protective markers before final output
-            markers_removed = 0
-            if "[CONTINUATION:" in final_output or ":END]" in final_output:
-                markers_removed = final_output.count("[CONTINUATION:")
-                final_output = final_output.replace("[CONTINUATION:", "").replace(":END]", "")
-                self.logger.warning(
-                    f"Removed {markers_removed} protective markers from final output. "
-                    "This indicates small fragments were processed separately."
-                )
-
-            # Postprocess output
-            with open(self.postprocess_file, 'w', encoding='utf-8') as f:
+            # Save final output
+            with open(POSTPROCESSED_FILE, 'w', encoding='utf-8') as f:
                 f.write(final_output)
-                self.logger.info(f'Saved {len(final_output)} chars to {self.postprocess_file}')
+                self.logger.info(f'Saved final output to {POSTPROCESSED_FILE}')
                 
-                if markers_removed > 0:
-                    self.logger.warning(
-                        "Document contained fragmented sections. "
-                        "Please verify ending sections for proper formatting."
-                    )
-                    
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
             raise
