@@ -241,12 +241,12 @@ class ParseFile:
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
         self.processed_file = PROCESSED_FILE
-        self.output_file = POSTPROCESSED_FILE
+        self.postprocess_file = POSTPROCESSED_FILE
 
         if not self._cleaned:
             raise RuntimeError("Must call preprocess() before process()")
             
-        self.logger.debug(f'Processing to: {self.output_file}')
+        self.logger.debug(f'Processing to: {self.postprocess_file}')
             
         try:
             self.logger.info(f'Loaded {len(self.input_string)} chars, {len(self.input_string.split())} words')
@@ -307,12 +307,12 @@ class ParseFile:
                     formatted_string = '\n' + formatted_string
                 final_output += formatted_string
                 pointer += 10
-                self.logger.info(f'Saved {pointer} lines to {self.output_file}')
+                self.logger.info(f'Saved {pointer} lines to {self.postprocess_file}')
             
             # Postprocess output
-            with open(self.output_file, 'w', encoding='utf-8') as f:
+            with open(self.postprocess_file, 'w', encoding='utf-8') as f:
                 f.write(final_output)
-                self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')
+                self.logger.info(f'Saved {len(final_output)} chars to {self.postprocess_file}')
                 
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)

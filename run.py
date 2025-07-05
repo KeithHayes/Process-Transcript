@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from logger import configure_logging
-from config import INPUT_FILE, PROCESSED_FILE
+from config import INPUT_FILE
 from process import ParseFile
 
 async def prepare_data():
