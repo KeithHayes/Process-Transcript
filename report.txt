@@ -197,7 +197,7 @@ import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
                     CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
-                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK)
+                    POSTPROCESSED_FILE, LINECHECK)
 
 class ParseFile:
     def __init__(self):
@@ -208,7 +208,7 @@ class ParseFile:
         self._cleaned = False
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
-        self.session = None
+        self.session = None  # Will hold our aiohttp session
         self.input_word_pointer = 0
         self.chunk_word_pointer = 0
 
@@ -232,7 +232,7 @@ class ParseFile:
             words_loaded += 1
 
         wordschunk = ' '.join(words)
-        self.chunk = (self.chunk + ' ' + wordschunk).strip()
+        self.chunk = (self.chunk + wordschunk).strip()
         if self.chunk:
             self.chunk += ' '
         self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
@@ -240,24 +240,24 @@ class ParseFile:
     
     def savechunk(self):
         try:
-            if not self.chunk.strip():
+            if not self.chunk:
                 return
-                
             self.logger.debug(f'Saving chunk (input pointer: {self.input_word_pointer})')
-            chunkwords = self.chunk.split()
-            
-            # Check if this is the final chunk
-            is_final_chunk = (self.input_word_pointer >= len(self.input_array) and 
-                             len(chunkwords) <= (CHUNK_OVERLAP + OUTPUT_CHUNK_SIZE))
-            
+            chunkwords = [word for word in self.chunk.split(' ') if word]
+
+            # Special handling for final chunk
+            is_final_chunk = self.input_word_pointer >= len(self.input_array)
             if is_final_chunk:
-                # For final chunk, save all remaining words
-                save_words = chunkwords
+                save_words = chunkwords  # Save ALL remaining words
                 self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
                 
+                # Join with spaces but preserve original formatting (including newlines)
                 save_words_string = ' '.join(save_words)
+                # Don't add trailing space for final chunk
                 self.output_string += save_words_string
                 self.output_pointer += len(save_words_string)
+
+                # Clear the chunk as we've processed everything
                 self.chunk = ''
             else:
                 # Normal chunk processing
@@ -270,7 +270,7 @@ class ParseFile:
                 # Keep overlap if there's more input to process
                 remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
                 self.chunk = ' '.join(remaining_words)
-                if remaining_words:
+                if remaining_words:  # Add space only if there are remaining words
                     self.chunk += ' '
                     
             self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
@@ -283,27 +283,20 @@ class ParseFile:
         if self.session is None:
             self.session = aiohttp.ClientSession()
         
-        # Handle protected chunks
-        is_protected_chunk = chunktext.startswith("[CONTINUATION:") and chunktext.endswith(":END]")
-        if is_protected_chunk:
-            chunktext = chunktext[14:-5].strip()
-
         prompt = textwrap.dedent(f"""\
             MUST maintain the EXACT original words and their order.
             MUST NOT add, delete, or change any words.
             MUST NOT rephrase or summarize.
-            {"THIS IS A FINAL FRAGMENT - ONLY ADD BASIC PUNCTUATION IF APPROPRIATE" if is_protected_chunk else ""}
             Add proper punctuation to complete sentences.
-            Capitalize the first word of each complete sentence.
-            Put each complete sentence on its own new line.
-            Leave incomplete fragments as-is on their own line.
-            Preserve all original words exactly.
+            Capitalize first word of each complete sentence.
+            Put each complete sentence on its own line.
+            Leave incomplete fragments as-is.
             Example:
             Input: "the cat sat the dog ran"
             Output: "The cat sat.\nThe dog ran."
-            
+
             Text: {chunktext}
-            
+
             Formatted text:""")
 
         try:
@@ -323,30 +316,14 @@ class ParseFile:
                 if response.status != 200:
                     error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
                     self.logger.error(error_message)
-                    raise Exception(error_message)
+                    return chunktext  # Return original if API fails
                 
                 result = await response.json()
-                formatted = result.get("choices", [{}])[0].get("text", "").strip()
+                return result.get("choices", [{}])[0].get("text", "").strip()
                 
-                if not formatted:
-                    error_message = "Empty response from API"
-                    self.logger.error(error_message)
-                    raise ValueError(error_message)
-                    
-                # Reapply protective markers if needed
-                if is_protected_chunk:
-                    formatted = f"[CONTINUATION: {formatted} :END]"
-                    
-                return formatted
-                
-        except aiohttp.ClientError as e:
-            error_message = f"Network error during formatchunk: {str(e)}"
-            self.logger.error(error_message, exc_info=True)
-            raise ConnectionError(error_message) from e
         except Exception as e:
-            error_message = f"Unexpected error in formatchunk: {str(e)}"
-            self.logger.error(error_message, exc_info=True)
-            raise Exception(error_message) from e
+            self.logger.error(f"Error formatting chunk: {str(e)}", exc_info=True)
+            return chunktext  # Return original on error
 
     def deformat(self, formatted_output):
         formatted_output = formatted_output.replace('\n', SENTENCE_MARKER)
@@ -356,6 +333,16 @@ class ParseFile:
         return output
 
     async def formatlines(self, unformatted_string):
+        """
+        Formats lines of text by sending each line to the LLM API for proper punctuation and capitalization.
+        Maintains original words and order while adding appropriate punctuation and capitalization.
+        
+        Args:
+            unformatted_string: Input string with one sentence per line
+        
+        Returns:
+            Formatted string with proper punctuation and capitalization
+        """
         if LINECHECK:
             return unformatted_string
 
@@ -399,9 +386,9 @@ class ParseFile:
                     timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
                 ) as response:
                     if response.status != 200:
-                        error_message = f"API error: {response.status}. Response: {await response.text()}"
+                        error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
                         self.logger.error(error_message)
-                        formatted_lines.append(line)
+                        formatted_lines.append(line)  # Fall back to original line if API fails
                         continue
                     
                     result = await response.json()
@@ -409,13 +396,13 @@ class ParseFile:
                     
                     if not formatted_line:
                         self.logger.warning(f"Empty response for line: {line}")
-                        formatted_lines.append(line)
+                        formatted_lines.append(line)  # Fall back to original line if empty response
                     else:
                         formatted_lines.append(formatted_line)
                         
             except Exception as e:
                 self.logger.error(f"Error formatting line: {line}. Error: {str(e)}", exc_info=True)
-                formatted_lines.append(line)
+                formatted_lines.append(line)  # Fall back to original line on error
         
         return '\n'.join(formatted_lines)
 
@@ -428,20 +415,24 @@ class ParseFile:
                 text = re.sub(r'\s+', ' ', text).strip()
                 self.textsize = len(text)
             self._cleaned = True
-            self.logger.debug(f'Cleaned text size: {self.textsize} chars')
-            return text
+            self.logger.debug(f'Cleaned file saved: {CLEANED_FILE}')
+            return(text)
+
         except Exception as e:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
+        self.output_file = POSTPROCESSED_FILE
+
         if not self._cleaned:
             raise RuntimeError("Must call preprocess() before process()")
             
-        self.logger.info(f'Processing {len(self.input_string)} chars')
+        self.logger.debug(f'Processing to: {self.output_file}')
             
         try:
+            self.logger.info(f'Loaded {len(self.input_string)} chars, {len(self.input_string.split())} words')
             self.input_array = self.input_string.split()
             self.chunk = ""
             self.output_string = ""
@@ -474,39 +465,31 @@ class ParseFile:
             input_words = len(self.input_array)
             output_words = len(self.output_string.split())
             self.logger.info(f'Processed {output_words}/{input_words} words')
-
+            
             if input_words != output_words:
-                missing = input_words - output_words
-                self.logger.warning(f'Word count mismatch! Missing {missing} words')
-                self.logger.debug(f'Last input words: {" ".join(self.input_array[-20:])}')
-                self.logger.debug(f'Last output words: {" ".join(self.output_string.split()[-20:])}')
+                self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
 
-            # Save processed output
-            with open(PROCESSED_FILE, 'w', encoding='utf-8') as f:
-                clean_output = self.output_string.replace("[CONTINUATION:", "").replace(":END]", "")
-                f.write(clean_output)
-                self.logger.info(f'Saved processed output to {PROCESSED_FILE}')
-
-            # Process lines in batches
+            # Process unformatted lines
             final_output = ''
-            lines = clean_output.split('\n')
+            lines = self.output_string.split('\n')
             total_lines = len(lines)
             pointer = 0
 
             while pointer < total_lines:
+                # Get next 10 lines (or remaining lines if less than 10)
                 chunk_lines = lines[pointer:pointer+10]
                 unformatted_string = '\n'.join(chunk_lines)
                 formatted_string = await self.formatlines(unformatted_string)
-                if final_output:
+                if final_output:  # add newline after first line
                     formatted_string = '\n' + formatted_string
                 final_output += formatted_string
                 pointer += 10
-                self.logger.info(f'Processed {pointer}/{total_lines} lines')
+                self.logger.info(f'Saved {pointer} lines to {self.output_file}')
             
-            # Save final output
-            with open(POSTPROCESSED_FILE, 'w', encoding='utf-8') as f:
+            # Final output
+            with open(self.output_file, 'w', encoding='utf-8') as f:
                 f.write(final_output)
-                self.logger.info(f'Saved final output to {POSTPROCESSED_FILE}')
+                self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')
                 
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
@@ -686,5 +669,50 @@ ordinary moment
 alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itselfa companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the the formatted text should be generated based on the input provided transported away from her study to that riverside scene alice opened her eyes again setting the bookmark between the pages raising her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool reaching for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cuppainted with delicate blue forgetmenots pausing to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritualthis teadrinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an enchanted forest where fairies danced beneath the moonlight early morning in a busy city horsedrawn carriages rattled over cobblestones merchants hawked wares at street stalls and the clamor of voices in unfamiliar tongues filled the air as she read alice imagined herself there she could almost hear the clipclop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder once more she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing the moth flew towards the distant streetlamp which flickered to life casting an orange glow that reflected off the dewy leaves transforming them into luminescent orbs alice closed the anthology pressing a finger against the spine before placing it neatly on the shelf she sat there for a moment longer sipping her tea and savoring the tranquility it was a practice in mindfulness embracing the transition from daylight to evening moving from narrative to introspection as she finished her cup the room fell silent enveloped by peace with a satisfied sigh alice prepared for the next part of her evening routine a light supper some reflective writing in her journal and maybe even a breath of fresh air on the back porch under a starry sky when she finally stood up the teacup empty and the anthology closed she felt a sense of calm satisfaction wash over her grateful not only for the stories but also for the silence that followed a world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanksfor words for solitude and for the small wonders that attend each ordinary moment
 
 === PY transcript_postprocessed.txt ===
-Alice Warren sat beside a wide window in the corner of her study. The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls. She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink. It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains. The silence wasn't merely an absence of noise; it was a presence in itself—a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered.
+Alice
+Warren sat beside a wide window in the corner of her study.
+The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls.
+She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink.
+It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains.
+The silence wasn't just an absence of sound; it was a presence in itself—a companion that whispered softly, allowing thoughts to wander freely without interruption.
+Outside the garden laid in gentle bloom.
+Roses of deep crimson and pale pink nodded in the early breeze, while lavender and thyme filled the afternoon air with fragrant sweetness.
+A pair of robins hopped atop the low stone wall, pecking at small insects among the wild clover.
+Occasionally, an orange butterfly with black-veined wings fluttered past the aging glass.
+Alice followed its slow drifting flight for a moment before returning to her book.
+Such ordinary spectacles, when observed with attention, held a profound beauty.
+It was a lesson she had learned early and often: that the marvels of life are seldom grand or flashy; they are small, quiet, and easily overlooked.
+Her book, an anthology of short stories from the early twentieth century, lay open on her lap.
+The paper was slightly yellowed but sturdy; the ink crisp.
+Each story contained within had been selected for its faithful representation of time, place, and character.
+There was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions - tying shoelaces, pouring tea, gazing out towards a stormy horizon.
+Such attention to detail forms a tapestry of everyday life—it's truly fascinating.
+Alice, how these small gestures could reveal so much about an individual's hopes, fears, and inner world!
+In one story, there's a young woman standing at the edge of a river, gazing at the flowing water as if it holds unspoken promises for her distant future.
+The description was simple: She lifted her hands above her head, letting the cool early spring wind play through her fingers.
+Yet that image carried emotion enough to fill a lifetime of longing.
+Alice closed her eyes, imagining the wind on her skin. For a moment, she felt transported away from her study to that riverside scene.
+Then she opened her eyes again, setting the bookmark between the pages, and raised her gaze to the window.
+The sun had sunk lower; the sky had begun to shift to ethereal shades of lavender and gold.
+Soon, the garden would blur into silhouettes, and the air would cool.
+She reached for the small porcelain teapot on the table beside her.
+It held a fragrant chamomile infusion, with just a hint of honey filling.
+Alice's nostrils flared as she carefully poured the steaming liquid into her favorite cup - the one painted with delicate blue forget-me-nots.
+Pausing to inhale the warm steam, she allowed its gentle scent to settle her mind. It had become somewhat of a ritual—this tea-drinking ritual. A momentary pause between the realms of thought and rest.
+Turning back to her well-loved anthology, she selected another story. This one described an enchantress who lived deep within a forest, surrounded by creatures both magical and mundane.
+As
+Alice read, sipping her tea and losing herself once more in the world of make-believe.
+Early morning in a bustling city, horsedrawn carriages rattled over cobblestone streets. Merchants hawked their wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air.
+She read and imagined herself there; she could almost hear the clip-clop of hooves and feel the rough stone beneath her feet. The weight of her satchel on her shoulder. Again, she closed her eyes, letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality.
+Such was the power of fine writing; it created an illusion so vivid, so grounded, that the line between reader and narrator blurred.
+By the time she finished the second story, darkness had fallen completely.
+The study lamp cast a soft pool of light around her chair, while beyond the window, the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth.
+The distance a lone streetlamp flickered to life; its orange glow rebounded off dewy leaves, turning them into luminous orbs.
+Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf.
+She sat for a moment longer, tea cup in hand, simply being.
+It was a practice in mindfulness.
+Alice appreciated the transition from daylight to the arrival of evening.
+With this movement from narrative to reflection, she allowed herself a small pause before rising to begin the next phase of her evening routine: preparing a light supper, writing a few thoughtful entries in her journal, and perhaps stepping out onto the back porch to breathe beneath a sky of stars.
+When she finally stood with an empty teacup, the anthology was closed, and the quiet settled deeply over the room.
+Alice felt a gentle contentment, gratitude even for the stories, yes, and for the journey they took her on; for the world beyond them, for the tactile, living reality she inhabited. And so, at the close of day, she gave thanks—for words, for solitude, and for the small wonders that attended each ordinary moment.
 
