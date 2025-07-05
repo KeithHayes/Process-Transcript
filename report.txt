@@ -679,6 +679,9 @@ thanks for words for solitude and for
 the small wonders that attend each
 ordinary moment
 
+=== PY transcript_preprocessed.txt ===
+alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
+
 === PY transcript_processed.txt ===
 alice
 warren sat beside a wide window in the corner of her study
@@ -754,6 +757,78 @@ each
 ordinary
 moment
 
-=== PY transcript_preprocessed.txt ===
-alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
+=== PY transcript_postprocessed.txt ===
+Alice
+Warren sat beside a wide window in the corner of her study.
+The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls.
+She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink.
+It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains.
+The silence wasn't just an absence of sound; it was a presence all its own—a companion that whispered comfortingly and let thoughts wander freely.
+Outside the garden laid in gentle bloom.
+Roses of deep crimson and pale pink nodded in the early breeze, while lavender and thyme filled the afternoon air with fragrant sweetness.
+A pair of robins hopped atop the low stone wall, pecking at small insects among the wild clover.
+Occasionally, an orange-colored butterfly with black veins on its wings fluttered past the aging glass.
+Alice followed its slow drifting flight for a moment before returning to her book.
+Such ordinary spectacles, when observed with attention, held a profound beauty.
+It was a lesson she had learned early and often that the marvels of life are seldom grand or flashy; they are small, quiet, and easily overlooked.
+Her book, an anthology of short stories from the early twentieth century, lay open on her lap.
+The paper was slightly yellowed but sturdy; the ink was crisp.
+Each story contained within had been selected for its faithful representation of Time, Place, and Character.
+There was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions—tying shoelaces, pouring tea, gazing out toward a stormy horizon.
+Such attentiveness to detail forms a tapestry of everyday life—and it fascinates me.
+Alice, how these small gestures could reveal so much about an individual's hopes, fears, and inner world!
+In one story, a young woman named Alice's actions were deliberate and methodical.
+She carefully placed the bookmark between the pages of her open book, signaling a temporary pause in her reading.
+The sun was beginning to set outside, casting an ethereal glow over the garden.
+As the day drew to a close...
+Alice prepared herself for another evening spent immersed in literature.
+Reaching for the small porcelain teapot on the table beside her, she filled her favorite cup, adorned with delicate blue forget-me-nots, with steaming chamomile infusion laced with just a hint of honey.
+This soothing brew had become more than just a beverage; it served as a transitional moment between the world of thoughts and dreams and the reality of rest.
+With her tea in hand, she walked towards the window.
+Alice turned back to her anthology, selecting a new tale to lose herself within. Early morning in a busy city, horsedrawn carriages rattle over cobblestone streets.
+Merchants hawk wares at street stalls, and the clamor of voices in unfamiliar tongues fills the air.
+As
+Alice reads. She imagines herself there; she can almost hear the clip-clop of hooves and feel the rough stone beneath her feet.
+The weight of her satchel on her shoulder, she closes her eyes, allowing the sounds and textures to swirl around her senses.
+So vivid is this illusion that the line between reader and narrator becomes blurred.
+By the time she finishes the second story, darkness has fallen completely.
+The study lamp casts a soft pool of light around her chair, while outside the garden becomes a shadowy realm defined only by silhouettes and the glimmer of a lone landing moth. In the distance, a lone streetlight flickers to life; its orange glow reflecting off dewy leaves, transforming them into luminous orbs.
+Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf.
+She sat for a moment longer, teacup in hand, simply being. It was a practice in mindfulness, in appreciating the transition from the end of daylight to the arrival of evening—the movement from narrative to reflection.
+She allowed herself this small pause before rising to begin the next phase of her evening routine: preparing a light supper, writing a few thoughtful entries in her journal, and perhaps stepping out onto the back porch to breathe beneath a sky of stars.
+When she finally stood the teacup empty, the anthology closed, and the quiet settled deeply over the room.
+Alice felt a gentle contentment, even for the stories, and for the silence that followed. World.
+Beyond
+Them
+For example, you could say "For instance," or simply "For."
+The
+Tactile
+Living is an essential part of life. It allows us to experience the world around us and grow as individuals. Without it, we would be nothing more than mere spectators in our own existence. That's why it's so important to make the most out of every moment we have on this planet - because once you stop living, there's no going back.
+Reality.
+She
+Inhabits
+And
+So
+At
+The
+Close.
+Of course! I'd be happy to help you with that project. Just let me know what you need and when you need it by.
+Day
+She
+Gave
+Thanks! That was really helpful.
+For example, you could say "For instance," or simply "For."
+Words.
+For example, you could say "For instance," or simply "For."
+Solitude is a state of seclusion or isolation that can be either enjoyable or unpleasant. It may involve being alone without feeling lonely, or feeling disconnected from others despite being in their presence. The experience of solitude can vary greatly depending on one's personality, circumstances, and cultural background. Some people seek out times of solitude for reflection, creativity, or personal growth, while others find it difficult or even painful. Regardless of its nature, solitude remains an important aspect of human existence that has been explored throughout history in literature, art, philosophy, and psychology.
+And
+For example, you could say "For instance," or simply "For."
+The
+Small
+Wonders never cease!
+That's what I thought!
+Attend! The meeting is about to start.
+Each
+Ordinary
+Moment! This is an exciting time for us all. Let's make sure we capture every detail and cherish these memories forever.
 

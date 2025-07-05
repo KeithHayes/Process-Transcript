@@ -47,8 +47,9 @@ def create_report():
     txt_files = [
         #os.path.join(base_path, 'files', 'transcript.txt'),
         os.path.join(base_path, 'files', 'transcript.txt'),
-        os.path.join(base_path, 'files', 'transcript_processed.txt'),
         os.path.join(base_path, 'files', 'transcript_preprocessed.txt'),
+        os.path.join(base_path, 'files', 'transcript_processed.txt'),
+        os.path.join(base_path, 'files', 'transcript_postprocessed.txt'),
     ]
 
     # Report file path
