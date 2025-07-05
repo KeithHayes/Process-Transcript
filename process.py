@@ -51,22 +51,27 @@ class ParseFile:
         try:
             if not self.chunk:
                 return
+                
             self.logger.debug(f'Saving chunk (input pointer: {self.input_word_pointer})')
             chunkwords = [word for word in self.chunk.split(' ') if word]
 
             # Special handling for final chunk
             is_final_chunk = self.input_word_pointer >= len(self.input_array)
+            
             if is_final_chunk:
-                save_words = chunkwords  # Save ALL remaining words
+                # For final chunk, ensure we don't split it and add protective markers
+                save_words = chunkwords
                 self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
                 
-                # Join with spaces but preserve original formatting (including newlines)
+                # Join with spaces and add to output without trailing space
                 save_words_string = ' '.join(save_words)
-                # Don't add trailing space for final chunk
+                
+                # Add protective markers if the chunk is very small
+                if len(save_words) < 10:
+                    save_words_string = f"[CONTINUATION: {save_words_string} :END]"
+                    
                 self.output_string += save_words_string
                 self.output_pointer += len(save_words_string)
-
-                # Clear the chunk as we've processed everything
                 self.chunk = ''
             else:
                 # Normal chunk processing
@@ -79,7 +84,7 @@ class ParseFile:
                 # Keep overlap if there's more input to process
                 remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
                 self.chunk = ' '.join(remaining_words)
-                if remaining_words:  # Add space only if there are remaining words
+                if remaining_words:
                     self.chunk += ' '
                     
             self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
@@ -92,15 +97,21 @@ class ParseFile:
         if self.session is None:
             self.session = aiohttp.ClientSession()
         
+        # Handle protected final chunks
+        is_protected_chunk = chunktext.startswith("[CONTINUATION:") and chunktext.endswith(":END]")
+        if is_protected_chunk:
+            chunktext = chunktext[14:-5].strip()  # Remove protective markers
+        
         prompt = textwrap.dedent(f"""\
             MUST maintain the EXACT original words and their order.
             MUST NOT add, delete, or change any words.
             MUST NOT rephrase or summarize.
-            Add periods, question marks, or exclamation points to puntuate complete sentences.
+            {"THIS IS A FINAL FRAGMENT - ONLY ADD BASIC PUNCTUATION IF APPROPRIATE" if is_protected_chunk else ""}
+            Add periods, question marks, or exclamation points to punctuate complete sentences.
             Capitalize the first letter of the first word of each complete sentence.
-            Incomplete sentence fragments must remain as they are, without any added punctuation or capitalization change.
-            No puntuation capitalization or word changes after the first word or before the last word in a sentence.
-            Only the first letteer in a sentence can be uppercase.
+            Incomplete sentence fragments must remain as they are.
+            No punctuation, capitalization or word changes after the first word or before the last word in a sentence.
+            Only the first letter in a sentence can be uppercase.
 
             Text: {chunktext}
 
@@ -132,6 +143,11 @@ class ParseFile:
                     error_message = "An empty string is returned."
                     self.logger.error(error_message)
                     raise ValueError(error_message)
+                    
+                # Reapply protective markers if this was a protected chunk
+                if is_protected_chunk:
+                    formatted = f"[CONTINUATION: {formatted} :END]"
+                    
                 return formatted
                 
         except aiohttp.ClientError as e:
@@ -232,7 +248,7 @@ class ParseFile:
                 self.textsize = len(text)
             self._cleaned = True
             self.logger.debug(f'Cleaned file saved: {CLEANED_FILE}')
-            return(text)
+            return text
 
         except Exception as e:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
@@ -291,7 +307,6 @@ class ParseFile:
                 f.write(self.output_string)
                 self.logger.info(f'Saved {len(self.output_string.split())} chars to {self.processed_file}')
             
-
             # Process unformatted lines
             final_output = ''
             lines = self.output_string.split('\n')
@@ -309,11 +324,27 @@ class ParseFile:
                 pointer += 10
                 self.logger.info(f'Saved {pointer} lines to {self.postprocess_file}')
             
+            # Clean up protective markers before final output
+            markers_removed = 0
+            if "[CONTINUATION:" in final_output or ":END]" in final_output:
+                markers_removed = final_output.count("[CONTINUATION:")
+                final_output = final_output.replace("[CONTINUATION:", "").replace(":END]", "")
+                self.logger.warning(
+                    f"Removed {markers_removed} protective markers from final output. "
+                    "This indicates small fragments were processed separately."
+                )
+
             # Postprocess output
             with open(self.postprocess_file, 'w', encoding='utf-8') as f:
                 f.write(final_output)
                 self.logger.info(f'Saved {len(final_output)} chars to {self.postprocess_file}')
                 
+                if markers_removed > 0:
+                    self.logger.warning(
+                        "Document contained fragmented sections. "
+                        "Please verify ending sections for proper formatting."
+                    )
+                    
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
             raise
