@@ -1,7 +1,7 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-transcript_preprocessed.txt is not savved and as you see there are problems with the chunking logic.
+i am confused if I look at transcript_processed.txt I see no line breaks  but transcript_postprocessed.txt is correct
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
