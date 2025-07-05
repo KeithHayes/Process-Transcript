@@ -41,14 +41,14 @@ def create_report():
         os.path.join(base_path, 'logger.py'),
         os.path.join(base_path, 'process.py'),
         os.path.join(base_path, 'run.py'),
-        os.path.join(base_path, 'test.py'),
+        #os.path.join(base_path, 'test.py'),
     ]
 
     txt_files = [
         #os.path.join(base_path, 'files', 'transcript.txt'),
         os.path.join(base_path, 'files', 'transcript.txt'),
-        os.path.join(base_path, 'files', 'transcript_preprocessed.txt'),
         os.path.join(base_path, 'files', 'transcript_processed.txt'),
+        os.path.join(base_path, 'files', 'transcript_preprocessed.txt'),
     ]
 
     # Report file path

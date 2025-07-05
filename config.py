@@ -18,7 +18,7 @@ OUTPUT_FILE = 'files/transcript_formatted.txt'
 # API configuration
 API_URL = "http://0.0.0.0:5000/v1/completions"
 API_TIMEOUT = 90                 # Increased timeout for better reliability
-MAX_TOKENS = 500                 # Increased token limit for better formatting
+MAX_TOKENS = 700                 # Increased token limit for better formatting
 STOP_SEQUENCES = ["\n\n", "###", "##", "</end>"]
 
 # Formatting templates
