@@ -102,15 +102,17 @@ class ParseFile:
             MUST NOT add, delete, or change any words.
             MUST NOT rephrase or summarize.
             {"THIS IS A FINAL FRAGMENT - ONLY ADD BASIC PUNCTUATION IF APPROPRIATE" if is_protected_chunk else ""}
-            Add periods, question marks, or exclamation points to punctuate complete sentences.
-            Capitalize the first letter of the first word of each complete sentence.
-            Incomplete sentence fragments must remain as they are.
-            Put each complete sentence on its own line.
-            No punctuation, capitalization or word changes after the first word or before the last word in a sentence.
-            Only the first letter in a sentence can be uppercase.
-
+            Add proper punctuation to complete sentences.
+            Capitalize the first word of each complete sentence.
+            Put each complete sentence on its own new line.
+            Leave incomplete fragments as-is on their own line.
+            Preserve all original words exactly.
+            Example:
+            Input: "the cat sat the dog ran"
+            Output: "The cat sat.\nThe dog ran."
+            
             Text: {chunktext}
-
+            
             Formatted text:""")
 
         try:
@@ -156,9 +158,10 @@ class ParseFile:
             raise Exception(error_message) from e
 
     def deformat(self, formatted_output):
+        formatted_output = formatted_output.replace('\n', SENTENCE_MARKER)
         output = formatted_output.lower()
-        output = output.replace("[continuation:", "").replace(":end]", "")
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
+        output = output.replace(SENTENCE_MARKER, '\n')
         return output
 
     async def formatlines(self, unformatted_string):
