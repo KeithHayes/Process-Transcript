@@ -1,1 +1,1 @@
-No code will be changed.  Only config.py may be changed to adjust LLM parameters.
+transcript_preprocessed.txt is not savved and as you see there are problems with the chunking logic.

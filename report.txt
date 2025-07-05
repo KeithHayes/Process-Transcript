@@ -1,7 +1,7 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-No code will be changed.  Only config.py may be changed to adjust LLM parameters.
+transcript_preprocessed.txt is not savved and as you see there are problems with the chunking logic.
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
@@ -710,9 +710,6 @@ thanks for words for solitude and for
 the small wonders that attend each
 ordinary moment
 
-=== PY transcript_preprocessed.txt ===
-alice warren sat beside a wide window in the corner of her study the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink it was in this exact space that she found solace after a long day of meetings presentations and endless email chains the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered outside the garden lay in gentle bloom roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover occasionally a butterfly orange with black veined wings fluttered past the aging glass and alice followed its slow drifting flight for a moment before returning to her book such ordinary spectacles when observed with attention held a profound beauty it was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked her book an anthology of short stories from the early twentieth century lay open on her lap the paper was slightly yellowed but sturdy the ink crisp each story contained within had been selected for its faithful representation of time place and character there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon such attentiveness to detail formed a tapestry of everyday life and it fascinated alice how these small gestures could reveal so much about an individuals hopes fears and inner world in one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers yet that image carried emotion enough to fill a lifetime of longing alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold soon the garden would blur into silhouettes and the air would cool she reached for the small porcelain teapot on the table beside her it held a fragrant chamomile infusion with just a hint of honey alice poured the steaming liquid into her favorite cup the one painted with delicate blue forget me nots she paused to inhale the warm steam allowing its gentle scent to settle her mind it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest turning back to her anthology she selected a different story this one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues as she read alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred by the time she finished the second story darkness had fallen completely the study lamp cast a soft pool of light around her chair beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth in the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf she sat for a moment longer teacup in hand simply being it was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room alice felt a gentle contentment gratitude even for the stories yes and for the world beyond them for the tactile living reality she inhabits and so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
-
 === PY transcript_processed.txt ===
 alice
 warren sat beside a wide window in the corner of her study
@@ -806,8 +803,8 @@ It was a lesson she had learned early and often that the marvels of life are sel
 Her book, an anthology of short stories from the early twentieth century, lay open on her lap.
 The paper was slightly yellowed but sturdy; the ink crisp.
 Each story contained within had been selected for its faithful representation of time, place, and character.
-There was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions - tying shoe laces, pouring tea, gazing out towards a stormy horizon.
-Such attention to detail forms a tapestry of everyday life—it's truly fascinating!
+There was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions - tying shoelaces, pouring tea, gazing out toward a stormy horizon.
+Such attention to detail forms a tapestry of everyday life—it's truly fascinating.
 Alice, how these small gestures could reveal so much about an individual's hopes, fears, and inner world!
 In one story, a young woman named Alice closed her eyes, imagining the wind on her skin.
 For a moment, she felt transported away from her study... to that riverside scene.
@@ -836,7 +833,7 @@ Them
 For example, you could say "For instance," or simply "For."
 The
 Tactile
-Living is an essential part of life. It allows us to experience the world around us and grow as individuals. Without it, we would be nothing more than mere spectators in our own existence. That's why it's important to cherish every moment of living and make the most out of it.
+Living is an essential part of life. It allows us to experience the world around us and grow as individuals. Without it, we would not be able to enjoy the simple pleasures that make life worth living.
 Reality.
 She
 Inhabits
@@ -852,8 +849,8 @@ Gave
 Thanks! That was really helpful.
 For example, you could say "For instance," or simply "For."
 Words.
-For example, you could say "For instance" or simply "As an illustration."
-Solitude is a state of seclusion that can be both peaceful and lonely. It allows for introspection and self-reflection, but also carries the risk of isolation and depression. The decision to embrace solitude depends on one's personality and life circumstances. Some people thrive in solitude while others find it difficult to cope with. Ultimately, balance between social interaction and personal space is key to mental wellbeing.
+For example, you could say "For instance," or simply "For."
+Solitude is a state of seclusion that can be both peaceful and lonely. It allows for introspection and self-reflection, but also carries the risk of isolation and depression. The decision to embrace solitude depends on one's personality and circumstances; some find it nourishing while others find it draining. Ultimately, balance between social interaction and personal space is key to mental wellbeing.
 And
 For example, you could say "For instance," or simply "For."
 The
@@ -863,5 +860,5 @@ That
 Attend! The meeting is about to start.
 Each
 Ordinary
-"That was quite an experience." He said with a sigh of relief.
+Moment's notice! The meeting has been called for tomorrow morning at 9 AM sharp. Don't be late!
 
