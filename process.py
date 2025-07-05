@@ -105,6 +105,7 @@ class ParseFile:
             Add periods, question marks, or exclamation points to punctuate complete sentences.
             Capitalize the first letter of the first word of each complete sentence.
             Incomplete sentence fragments must remain as they are.
+            Put each complete sentence on its own line.
             No punctuation, capitalization or word changes after the first word or before the last word in a sentence.
             Only the first letter in a sentence can be uppercase.
 
