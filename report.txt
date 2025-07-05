@@ -1,9 +1,7 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-what is this line telling me?
-
-self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
+No code will be changed.  Only config.py may be changed to adjust LLM parameters.
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
@@ -199,7 +197,7 @@ import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
                     CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
-                    POSTPROCESSED_FILE, LINECHECK)
+                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK)
 
 class ParseFile:
     def __init__(self):
@@ -372,7 +370,6 @@ class ParseFile:
                     MUST NOT add, delete, or change any words.
                     MUST NOT rephrase or summarize.
                     Add periods, question marks, or exclamation points to punctuate complete sentences.
-                    Commas and semicolons should be prefered where a '-' is an option.                     
                     Capitalize the first letter of the first word of each complete sentence.
                     Incomplete sentence fragments must remain as they are.
                     Only add punctuation at the end if appropriate.
@@ -434,6 +431,7 @@ class ParseFile:
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
+        self.processed_file = PROCESSED_FILE
         self.output_file = POSTPROCESSED_FILE
 
         if not self._cleaned:
@@ -475,9 +473,15 @@ class ParseFile:
             input_words = len(self.input_array)
             output_words = len(self.output_string.split())
             self.logger.info(f'Processed {output_words}/{input_words} words')
-            
+
             if input_words != output_words:
                 self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
+
+            # Process output
+            with open(self.processed_file, 'w', encoding='utf-8') as f:
+                f.write(self.output_string)
+                self.logger.info(f'Saved {len(self.output_string.split())} chars to {self.processed_file}')
+            
 
             # Process unformatted lines
             final_output = ''
@@ -496,7 +500,7 @@ class ParseFile:
                 pointer += 10
                 self.logger.info(f'Saved {pointer} lines to {self.output_file}')
             
-            # Final output
+            # Postprocess output
             with open(self.output_file, 'w', encoding='utf-8') as f:
                 f.write(final_output)
                 self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')
@@ -803,36 +807,70 @@ the silence was not merely an absence of noise it was a presence in itselfa comp
 outside the garden lay in gentle bloom
 roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness
 a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover
-occasionally an orangewinged butterfly fluttered past the aging glass and
+occasionally a butterflyorange with blackveined wingsfluttered past the aging glass
 alice followed its slow drifting flight for a moment before returning to her book
 such ordinary spectacles when observed with attention held a profound beauty
-it was a lesson she had learned early and oftenthe marvels of life are seldom grand or flashy they are small quiet and easily overlooked
+it was a lesson she had learned early and oftenthat the marvels of life are seldom grand or flashy they are small quiet and easily overlooked
 her book an anthology of short stories from the early twentieth century lay open on her lap
 the paper was slightly yellowed but sturdy the ink crisp
-each story contained within had been selected for its faithful representation of human experiencelove loss joy sorrow and everything in between
-as
-alice turned another page she felt herself drawn into the world of these characters once again finding solace in their struggles and triumphs
-time place and characterthere was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoe laces pouring tea gazing out toward a stormy horizon
+each story contained within had been selected for its faithful representation of time place and character
+there was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actionstying shoelaces pouring tea gazing out toward a stormy horizon
 such attentiveness to detail formed a tapestry of everyday life and it fascinated
 alice how these small gestures could reveal so much about an individuals hopes fears and inner world
-one story had a young woman standing enchanted in a forest where time seemed to stand still and every creature spoke in riddles and rhymes
-alice smiled softly as she began reading about these whimsical creatures who lived within the confines of a magical worldso unlike hers yet somehow familiar like old friends waiting patiently for her return
-when she finished the tale she set down the book feeling content but also yearning for more than just stories
-she looked out toward the garden once again now bathed in warm sunlight and thought perhaps she would take up painting again soon
-twilights glow inspired wishes upon another star hoping against hope that maybe someday she might find herself walking along paths less traveled exploring lands unknown seeking adventure and wonder beyond the pages of books
-early morning in a busy city horsedrawn carriages rattled over cobblestones merchants were hawking wares at street stalls and the clamor of voices in unfamiliar tongues filled the air
+in one story a young woman alices actions were deliberate and calming
+she picked up her favorite cup painted with delicate blue forgetmenots and poured herself some steaming chamomile tea with a hint of honey
+as she inhaled the soothing aroma she allowed her mind to settle into the familiar rhythm of reading
+the story she chose this time was about a young girl who found solace in nature much like how
+alice did when standing at the edge of a river watching the current drift by
+with every sip of tea
+alice could feel herself being transported to that serene riverside scene where unspoken promises of a distant future seemed within reach early morning in a busy city horsedrawn carriages rattled over cobblestones
+merchants hawked wares at street stalls and the clamor of voices in unfamiliar tongues filled the air
 as she read
-alice imagined herself there she could almost hear the clipclop of hooves and feel the rough stone underfoot
-the weight of her satchel on her shoulder once more
-by the time she finished the second story darkness fell and she found herself lost in thought wondering what other wonders laid ahead
-had she fallen completely under the spell of the study lamps soft pool of light around her chair
-beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth
-the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs
+alice imagined herself there
+she could almost hear the clipclop of hooves and feel the rough stone underfoot
+the weight of her satchel on her shoulder
+again she closed her eyes letting the sounds and textures swirl around her senses
+until she could scarcely distinguish them from her own reality
+such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred
+by the time she finished the second story darkness had fallen completely
+the study lamp cast a soft pool of light around her chair
+beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs
 alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf
-she sat for a moment longer tea cup in hand simply being
-it was a practice in mindfulness in appreciating the transition the end of daylight and arrival of evening the movement from narrative to reflection
-allowing herself this small pause she rose to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath the stars a sky of stars when she finally stood the teacup empty the anthology closed
-the quiet settled deeply over the room
-alice felt a gentle contentment gratitude even for the stories yes and for the silence that held them all together
-worlds beyond them for the tactile living reality she inhabited and so at the close of day she gave thanks for words for solitude and for the small wonders that attended each ordinary moment
+she sat for a moment longer teacup in hand simply beingit was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection
+she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars
+when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
+alice felt a gentle contentment gratitudeeven for the storiesand for the silence that followed world
+beyond
+them
+for
+the
+tactile
+living
+reality
+she
+inhabits
+and
+so
+at
+the
+close
+of
+day
+she
+gave
+thanks
+for
+words
+for
+solitude
+and
+for
+the
+small
+wonders
+that
+attend
+each
+ordinary
+moment
 

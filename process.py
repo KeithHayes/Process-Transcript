@@ -6,7 +6,7 @@ import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
                     CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
-                    POSTPROCESSED_FILE, LINECHECK)
+                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK)
 
 class ParseFile:
     def __init__(self):
@@ -240,6 +240,7 @@ class ParseFile:
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
+        self.processed_file = PROCESSED_FILE
         self.output_file = POSTPROCESSED_FILE
 
         if not self._cleaned:
@@ -281,9 +282,15 @@ class ParseFile:
             input_words = len(self.input_array)
             output_words = len(self.output_string.split())
             self.logger.info(f'Processed {output_words}/{input_words} words')
-            
+
             if input_words != output_words:
                 self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
+
+            # Process output
+            with open(self.processed_file, 'w', encoding='utf-8') as f:
+                f.write(self.output_string)
+                self.logger.info(f'Saved {len(self.output_string.split())} chars to {self.processed_file}')
+            
 
             # Process unformatted lines
             final_output = ''
@@ -302,7 +309,7 @@ class ParseFile:
                 pointer += 10
                 self.logger.info(f'Saved {pointer} lines to {self.output_file}')
             
-            # Final output
+            # Postprocess output
             with open(self.output_file, 'w', encoding='utf-8') as f:
                 f.write(final_output)
                 self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')

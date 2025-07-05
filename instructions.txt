@@ -1,3 +1,1 @@
-what is this line telling me?
-
-self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
+No code will be changed.  Only config.py may be changed to adjust LLM parameters.
