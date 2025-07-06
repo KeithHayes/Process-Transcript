@@ -23,10 +23,10 @@ MAX_TOKENS = 800                  # Increased token limit
 STOP_SEQUENCES = ["\n\n", "###", "##", "</end>", "Text:", "Formatted text:"]
 
 # Language model parameters
-REPETITION_PENALTY = 1.3          # Balanced repetition control
+REPETITION_PENALTY = 1.2          # Balanced repetition control
 TEMPERATURE = 0.15                # Lower temperature for consistency
 TOP_P = 0.9                       # Focused sampling
-TOP_K = 40                        # Balanced predictability
+TOP_K = 50                        # Balanced predictability
 TOP_T = TOP_K
 
 # Validation and logging
