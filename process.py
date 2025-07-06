@@ -5,7 +5,8 @@ import aiohttp
 from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
                     CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
-                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK)
+                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, STRICT_PUNCTUATION_RULES,
+                    MAX_SENTENCE_LENGTH, PUNCTUATION_VALIDATION)
 
 class ParseFile:
     def __init__(self):
@@ -16,7 +17,7 @@ class ParseFile:
         self._cleaned = False
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
-        self.session = None  # Will hold our aiohttp session
+        self.session = None
         self.input_word_pointer = 0
         self.chunk_word_pointer = 0
 
@@ -30,6 +31,22 @@ class ParseFile:
 
     def count_words(self, text):
         return len(text.split()) if text.strip() else 0
+
+    def validate_output(self, original, processed):
+        """Ensure word-for-word match between input and output (warning only)"""
+        orig_words = original.lower().split()
+        proc_words = processed.lower().split()
+        
+        if len(orig_words) != len(proc_words):
+            self.logger.warning(f"Word count mismatch! Original: {len(orig_words)}, Processed: {len(proc_words)}")
+            return False
+            
+        for i, (ow, pw) in enumerate(zip(orig_words, proc_words)):
+            if ow != pw:
+                self.logger.warning(f"Word mismatch at position {i}: Original='{ow}' vs Processed='{pw}'")
+                return False
+                
+        return True
 
     def loadchunk(self, word_count):
         words_loaded = 0
@@ -51,32 +68,26 @@ class ParseFile:
             if not self.chunk:
                 return
             chunkwords = [word for word in self.chunk.split(' ') if word]
-            # Special handling for final chunk
             is_final_chunk = self.input_word_pointer >= len(self.input_array)
             if is_final_chunk:
-                save_words = chunkwords  # Save ALL remaining words
+                save_words = chunkwords
                 self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
                 
-                # Join with spaces but preserve original formatting (including newlines)
                 save_words_string = ' '.join(save_words)
-                # Don't add trailing space for final chunk
                 self.output_string += save_words_string
                 self.output_pointer += len(save_words_string)
 
-                # Clear the chunk as we've processed everything
                 self.chunk = ''
             else:
-                # Normal chunk processing
                 save_words = chunkwords[:OUTPUT_CHUNK_SIZE]
                 if save_words:
                     save_words_string = ' '.join(save_words) + ' '
                     self.output_string += save_words_string
                     self.output_pointer += len(save_words_string)
                     
-                # Keep overlap if there's more input to process
                 remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
                 self.chunk = ' '.join(remaining_words)
-                if remaining_words:  # Add space only if there are remaining words
+                if remaining_words:
                     self.chunk += ' '
             
         except Exception as e:
@@ -93,6 +104,12 @@ class ParseFile:
             ONLY add basic punctuation (. , ; : ? !) and capitalization where appropriate.
             NEVER invent new content or make stylistic changes.
             PRESERVE all original words exactly as they appear in the input.
+            FOLLOW these rules STRICTLY:
+            1. Capitalize ONLY the first word of each sentence and proper nouns
+            2. End complete sentences with . ? or !
+            3. Use commas only for clear pauses or lists
+            4. Never change word forms or tenses
+            5. Preserve all original spacing between words
 
             Input: {chunktext}
 
@@ -119,6 +136,8 @@ class ParseFile:
                 
                 result = await response.json()
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
+                
+                self.validate_output(chunktext, formatted)
                 return formatted if formatted else chunktext
                 
         except Exception as e:
@@ -127,21 +146,12 @@ class ParseFile:
 
     def deformat(self, formatted_output):
         protected = formatted_output.replace('\n', SENTENCE_MARKER)
+        protected = re.sub(r'([\'\"])', r'\\\1', protected)
         output = protected.lower()
-        output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
+        output = re.sub(f'[^a-z\\s\'{re.escape(SENTENCE_MARKER)}]', '', output)
         return output.replace(SENTENCE_MARKER, '\n')
 
     async def formatlines(self, unformatted_string):
-        """
-        Formats lines of text by sending each line to the LLM API for proper punctuation and capitalization.
-        Maintains original words and order while adding appropriate punctuation and capitalization.
-        
-        Args:
-            unformatted_string: Input string with one sentence per line
-        
-        Returns:
-            Formatted string with proper punctuation and capitalization
-        """
         if LINECHECK:
             return unformatted_string
 
@@ -187,7 +197,7 @@ class ParseFile:
                     if response.status != 200:
                         error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
                         self.logger.error(error_message)
-                        formatted_lines.append(line)  # Fall back to original line if API fails
+                        formatted_lines.append(line)
                         continue
                     
                     result = await response.json()
@@ -195,13 +205,13 @@ class ParseFile:
                     
                     if not formatted_line:
                         self.logger.warning(f"Empty response for line: {line}")
-                        formatted_lines.append(line)  # Fall back to original line if empty response
+                        formatted_lines.append(line)
                     else:
                         formatted_lines.append(formatted_line)
                         
             except Exception as e:
                 self.logger.error(f"Error formatting line: {line}. Error: {str(e)}", exc_info=True)
-                formatted_lines.append(line)  # Fall back to original line on error
+                formatted_lines.append(line)
         
         return '\n'.join(formatted_lines)
 
@@ -221,7 +231,6 @@ class ParseFile:
                         text[i - 1].isalpha() and text[i + 1].isalpha()
                     ):
                         cleaned_chars.append(char)
-                    # else: skip the character
 
                 text = ''.join(cleaned_chars)
                 self.textsize = len(text)
@@ -233,7 +242,6 @@ class ParseFile:
         except Exception as e:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
-
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
@@ -253,7 +261,6 @@ class ParseFile:
             self.input_word_pointer = 0
             self.output_pointer = 0
             
-            # Load initial chunk
             self.loadchunk(CHUNK_SIZE)
 
             while True:
@@ -267,15 +274,12 @@ class ParseFile:
                 
                 self.savechunk()
                 
-                # Exit condition
                 if self.input_word_pointer >= len(self.input_array) and not self.chunk.strip():
                     break
                     
-                # Load next chunk if more exists
                 if self.input_word_pointer < len(self.input_array):
                     self.loadchunk(CHUNK_SIZE - CHUNK_OVERLAP)
             
-            # Final validation
             input_words = len(self.input_array)
             output_words = len(self.output_string.split())
             self.logger.info(f'Word count Input: {input_words}, Output: {output_words}')
@@ -283,29 +287,25 @@ class ParseFile:
             if input_words != output_words:
                 self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
 
-            # Processed file
             with open(self.processed_file, 'w', encoding='utf-8') as f:
                 f.write(self.output_string)
                 self.logger.info(f'Saved {len(self.output_string)} chars to {self.processed_file}')
 
-            # Process unformatted lines
             final_output = ''
             lines = self.output_string.split('\n')
             total_lines = len(lines)
             pointer = 0
 
             while pointer < total_lines:
-                # Get next 10 lines (or remaining lines if less than 10)
                 chunk_lines = lines[pointer:pointer+10]
                 unformatted_string = '\n'.join(chunk_lines)
                 formatted_string = await self.formatlines(unformatted_string)
-                if final_output:  # add newline after first line
+                if final_output:
                     formatted_string = '\n' + formatted_string
                 final_output += formatted_string
                 pointer += 10
                 self.logger.info(f'Saved {pointer} lines to {self.postprocessed_file}')
             
-            # Final output
             with open(self.postprocessed_file, 'w', encoding='utf-8') as f:
                 f.write(final_output)
                 self.logger.info(f'Saved {len(final_output)} chars to {self.postprocessed_file}')
