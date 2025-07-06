@@ -8,11 +8,14 @@ words, words with special characters, and spaces as the only whitespace.
 
 This becomes test input since it can be compared to output.
 
-The LLM must not change the words or word order as it finds sentences in the input string of words.  TThis is priority.
+The LLM must not change the words or word order as it finds sentences in the input string of words.  This is priority.
 
 A first pass identifies sentences and another pass punctuates them.  This seems like it could be simplified but it must not be.
 The two pass structure must be maintained because it lets regular expressions properly connect sentences in the output as 
-a side effect of removing the last punctuation mark and then allowing it be added in with the next chunk format.
+a side effect of removing the last punctuation mark in the new format and then allowing it be added in with the next chunk 
+load and format.
+
+Config.py must be set up to help keep the literal words and word order the same in the output relative to the input.
 
 
 
@@ -252,16 +255,14 @@ class ParseFile:
         self.chunk = (self.chunk + wordschunk).strip()
         if self.chunk:
             self.chunk += ' '
-        self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
+        self.logger.info(f'Loaded {words_loaded} words (input pointer: {self.input_word_pointer})')
         return self.chunk
     
     def savechunk(self):
         try:
             if not self.chunk:
                 return
-            self.logger.debug(f'Saving chunk (input pointer: {self.input_word_pointer})')
             chunkwords = [word for word in self.chunk.split(' ') if word]
-
             # Special handling for final chunk
             is_final_chunk = self.input_word_pointer >= len(self.input_array)
             if is_final_chunk:
@@ -299,20 +300,15 @@ class ParseFile:
             self.session = aiohttp.ClientSession()
         
         prompt = textwrap.dedent(f"""\
-            MUST maintain the EXACT original words and their order.
-            MUST put each complete sentence on its own line.
-            MUST NOT merge sentences together.
-            MUST NOT let proper names end sentences.
-            Add proper punctuation to complete sentences.
-            Capitalize first word of each complete sentence.
-            Leave incomplete fragments as-is on their own line.
-            Example:
-            Input: "the cat sat the dog ran"
-            Output: "The cat sat.\nThe dog ran."
+            MUST maintain the EXACT original words and their order - DO NOT CHANGE ANY WORDS.
+            MUST NOT add new words or remove existing words.
+            ONLY add basic punctuation (. , ; : ? !) and capitalization where appropriate.
+            NEVER invent new content or make stylistic changes.
+            PRESERVE all original words exactly as they appear in the input.
 
-            Text: {chunktext}
+            Input: {chunktext}
 
-            Formatted text:""")
+            Properly punctuated output:""")
 
         try:
             async with self.session.post(
@@ -342,12 +338,9 @@ class ParseFile:
             return chunktext
 
     def deformat(self, formatted_output):
-        # First protect existing newlines
         protected = formatted_output.replace('\n', SENTENCE_MARKER)
-        # Then process normally
         output = protected.lower()
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
-        # Restore newlines
         return output.replace(SENTENCE_MARKER, '\n')
 
     async def formatlines(self, unformatted_string):
@@ -497,7 +490,7 @@ class ParseFile:
             # Final validation
             input_words = len(self.input_array)
             output_words = len(self.output_string.split())
-            self.logger.info(f'Processed {output_words}/{input_words} words')
+            self.logger.info(f'Word count Input: {input_words}, Output: {output_words}')
             
             if input_words != output_words:
                 self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
@@ -749,70 +742,80 @@ And so, at the close of day, she gave thanks: for words, for solitude, and for t
 === PY transcript_processed.txt ===
 alice
 warren sat beside a wide window in the corner of her study
-the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls
+the lateafternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls
 she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink
 it was in this exact space that she found solace after a long day of meetings presentations and endless email chains
-the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered
-outside the garden lay in gentle bloom
-roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air a pair of robins with fragrant sweetness hopped onto the low stone wall and began pecking at small insects amidst the wild clover
-occasionally an
-orange
-butterfly would flutter by passing through the aged glass panes
-alice watched this delicate creatures dance for just a brief moment before returning her focus back upon her reading material 
-an
-anthology filled exclusively with tales spun during those very same years which now seemed like yesterday themselves young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future
-the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers
-yet that image carried emotion enough to fill a lifetime of longing
-alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene
-then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window
-the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold
-soon the garden would be bathed in twilights soft glow the formatted output should be like below where every sentence is separated by periods or other appropriate punctuations she read
-alice imagined herself there she could almost hear the clipclop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder
-again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality
-such was the power of fine writingit created an illusion so vivid so grounded that the line between reader and narrator blurred
-by the time she finished the second story darkness had fallen completely
-the study lamp cast a soft pool of light around her chair
-beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth
-in the distance crickets chirped in unison like tiny violins playing a haunting melody a lonely street lamp flickered to life its orange glow reflected upon dew drops transforming them into luminescent orbs
-alice carefully placed anthology closing it softly with an audible thud that echoed through the silent room
-sitting still for another minute tea cup resting delicately between fingers eyes fixed upon nothing but thoughts drifting aimlessly within her head 
-this is where serenity resides
-in these moments when time stands still yet everything around you moves forward at breakneck speed
-as darkness descends upon ushering in nightfall like clockwork precision so too does our heroine rise up ready take on whatever challenges lie ahead be they mundane chores such as cooking dinner or more profound endeavors involving selfreflection via penning down personal musings within pages bound by leather the cover was adorned by golden letters which read journal
-after an age seemingly passed in wandering through cloudy heights far from any semblance of grounding or connection to her mundane life below she finally stood upright amidst warming amber light filling up the space around her its origin still unclear but slowly becoming more apparent as it grew stronger revealing itself eventually as nothing other than a simple window casti
+the silence wasnt just an absence of noiseit was a presence too a companion that whispered in familiar tones and allowed thoughts to drift unencumbered
+outside the garden laid in gentle bloom
+roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness
+a pair of robins hop atop the low stone wall pecking at small insects amongst the wild clover
+occasionally an orangeandblack winged butterfly flits past the aged glassalice watches slowly drift away with interest before resuming reading her book upon her lap
+this anthology contains tales from early twentieth century each meticulously chosen for accurate portrayal through vivid descriptions which weave together seemingly insignificant moments into captivating narratives like tying shoe laces becoming pauses filled by contemplative thoughts or sipping tea signaling deep reflection on lifes journey itself
+these intricate details paint pictures richer than any grand gesture ever could unveiling characters hidden depths while also reflecting broader societal trends during those times
+it is this appreciation towards minutiae that has always drawn
+alice closer towards literature finding solace among pages documenting ordinary lives extraordinary experiences
+a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future
+the description was simple yet it held emotions enough to fill a lifetime of longing
+alice closed her eyes imagining the wind on her skin feeling herself being transported away from her studies to that riverside scene
+with a deep breath she set the bookmark between the pages and looked up towards the window
+outside the sun had sunk low into the horizon painting the sky in an array of ethereal shades lavenders and golds blending seamlessly together until everything seemed almost surreal
+in no time at all nightfall would descend upon them like a cloak draped over sleepy shoulders soon afterwards darkness would envelope even this tranquil corner of suburbia it would blur into silhouettes and the air would cool
+she reached for the small porcelain teapot on the table beside her
+it held a fragrant chamomile infusionwith just a hint of honey
+alice poured the steaming liquid into her favourite cup the one painted with delicate blue forgetmenots
+pausing to inhale the warm steam she allowed its gentle scent to settle her mind
+it had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest
+turning back to her anthology she selected a different story
+this one described an early morning in a busy city horsedrawn carriages rattled over cobblestone streets merchants hawked wares at street stalls and the clamour of voices filled the air in unfamiliar tongues she read
+alice imagined herself thereshe could almost hear the clipclop of hooves and feel the rough stone underfoot
+the weight of her satchel hung heavily on her shoulder
+again she closed her eyes letting the sounds and textures swirl around her sensitive senses
+until she couldnt tell if what she felt were hers alone anymore
+fine writing held such power to create an illusion so vivid so tangible that even the lines separating reader and narrator seemed to fade away into obscurity
+when at last did finish reading through both stories
+darkness fell upon everything outside like a heavy curtain drawn shut for good measure against any remaining daylight left hanging precariously beyond its edge inside though still lit up bright enough thanks largely due solely because one small desk lamp standing sentry over near corner casts out just barely sufficient amount of warm yellowishwhite artificial illumination needed allowing a young girl to continue perusing pages with print in black letters set off by crisp clean stark whitenesspage after endless seemingly interminable page
+right up until that moment arrives when she looks back again toward the clock ticking steadily away relentlessly marking the passage of times seconds minutes hours days weeks monthsyears never stopping nor slowing down regardless of however slowly at times progress may have been made thus far along what seems like an eternal stretch of roadway flanked only by darkness save for those rare occasions upon which some distant lonely streetlamps would flicker briefly awake emitting feeble bursts of dimmed orange hue reflected dully yet somehow magically transformed nearby foliage into ethereal luminescent spheres resembling precious jewelsglinting softly amidst velvety nighttime gloominess enveloping everything around within its cloak concealing secretsuntold mysteries waiting patiently whispering promises hinting possibilities offering hope to inspired dreamers like our fair protagonist herein before described
+she had just finished reading through another captivating chapter from her beloved book collection which lay beside one another on the bedside table glowing with promise beneath the faint light cast by an oldfashioned lamp post
+with great care and affection she placed this latest addition next to the others watching fondly as they seemed almost alive with anticipation for what adventures might lie ahead when read once more during some far off evening soon enough
+closing her eyes then finally after many hours spent immersed in these pages rich with history fantasy romance tragedy triumph joy sorrow laughter tears heartache healing forgiveness redemption second chances new beginnings endless possibility infinite wonder bound only limited imaginations willingness embrace explore discover learn grow evolve change adapt survive thrive transcend time itself perhaps even defying death if luck held true long enough maybe someday soon enough anyway eventually certainly hopefully probably quite possibly definitely most likely very well could be should things work out right way round sort speak manner speaking fashion sense style grace charm wit humor panache flare flair verve vivacity vibrancy vigor vitality life force essence soul spark passion fire burning bright guiding hand leading light shining example paragon virtue aspiration ambition goal destination fate fortune calling answered prayers granted wishes made dreams coming true hopes realized potential actualized goals achieved success secured victory won battle war against odds overcome obstacles faced challenges met head on taken risks paid dividends reaped benefits enjoyed spoils fruit labor pains joys pleasures delights satisfactions gratifications desires wants needs cravings appetites hungers passions lusts libidos urges impulses whims fancies caprices inclinations proclivities penchants leanings biases preferences choices decisions options alternatives selections picks selects elects favors likes approves enjoys appreciates savoring every last morsel sweet nectar elixir potion draught nourishment sustenance fuel energy power source drive motivator spur catalyst igniter instigator starter upper booster shot kick start jumpstart launch pad springboard catapult rocket ship spaceship airplane jet plane helicopter hot air balloon dirigible zeppelin submarine boat sailboat rowboat canoe kayak raft inflatable motorcycle car truck bus train airplane taxi limo towncar uber lyft didi ola driver cab ride shared economy gig economy peertopeer marketplace network platform community forum discussion group chat messaging social media feed stream flow river current ocean wave tidal bore surge swell undertow rip tide maverick renegade free spirited nonconformist iconoclast visionary pioneer trailblazer pathfinder frontiersman colonizer settler homesteader rancher cowboy cowgirl wrangler rodeo rider buckaroos bronco buster wild westerner mountain man prospector miner gold seeker silver strike oil driller black powder shooter gunfighter lawman marshal deputy constable officer enforcer guard protector watchdog doggie pet pooch puppy dog tailwagger friend loyal confidant pal sidekick partner accomplice comrade buddy mate team
 
 === PY transcript_postprocessed.txt ===
 Alice
-Warren sat besides a wide window in the corner of her study.
+Warren sat beside a wide window in the corner of her study.
 The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls.
 She loved the hush of quiet contemplation; the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink.
 It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains.
-The silence wasn't just an empty space; rather, it had its own voice - soft whispers comforting one's mind while allowing free-flowing thought processes without interruption.
-Outside the Garden Lay in Gentle Bloom
-Roses of deep crimson and pale pink nodded in the early breeze, while lavender and thyme filled the afternoon air. A pair of robins, with fragrant sweetness, hopped onto the low stone wall and began pecking at small insects amongst the wild clover.
-Occasionally, an
-Orange is my favorite color because it's bright and cheerful!
-Butterfly would flutter by, passing through the aged glass panes!
-Alice watched this delicate creature's dance for just a brief moment before returning her focus back upon her reading material.
-An
-An anthology filled exclusively with tales spun during those very same years—which now seemed like yesterday themself—a young woman stood at the edge of a river, watching the current drift by as though it carried with it unspoken promises of a distant future.
-The description was simple; she lifted her hands above her head, letting the cool early-spring wind play through her fingers.
-Yet that image carried emotion enough to fill a lifetime of longing.
-Alice closed her eyes, imagining the wind on her skin. For a moment, she felt transported away from her study to that river's side scene.
-Then she opened her eyes again, setting the bookmark between the pages, and raised her gaze to the window.
-The Sun Had Sunk Lower; The Sky Had Begun To Shift To Ethereal Shades Of Lavender And Gold
-Soon, the garden would be bathed in twilight's soft glow. She read.
-Alice imagined herself there; she could almost hear the clip-clop of hooves and feel the rough stone underfoot. The weight of her satchel was on her shoulder.
-Again, she closed her eyes, letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality.
-Such was the power of fine writing; it created an illusion so vivid, so grounded, that the line between reader and narrator blurred.
-By the time she finished the second story, darkness had fallen completely.
-The study lamp cast a soft pool of light around her chair.
-Beyond the window, the garden was now a shadowy realm; defined only by silhouettes and the glimmer of a single landing moth.
-In the distance, crickets chimed together, creating an eerie symphony that echoed through the night sky. A lone streetlamp flickered on, casting an amber hue over everything within its reach. The dewdrops sparkled underneath this new light source; they appeared almost magical—like miniature diamonds scattered across nature's canvas.
-Alice carefully placed her favorite book on the shelf, gently shutting its cover with a sound so quiet you could hear a pin drop in the otherwise still library.
-Sitting still for another minute, the teacup was resting delicately between her fingers while she gazed off into space with no particular focus in sight; lost amidst wandering thoughts that danced around inside her mind like leaves blown by an autumn breeze...
-This is where Serenity resides.
-In these moments, when time seems to stand still but everything else is moving forward at breakneck speed...
-As darkness descends, ushering in nightfall with clockwork precision, so too does our heroine rise up, ready to take on whatever challenges lie ahead—be they mundane chores such as cooking dinner or more profound endeavors involving self-reflection via penning down personal musings within pages bound by leather. The cover was adorned by golden letters that read "Journal."
-After an age seemingly passed in wandering through cloudy heights far from any semblance of grounding or connection to her mundane life below, she finally stood upright amidst warming amber light filling up the space around her. Its origin was still unclear but slowly becoming more apparent as it grew stronger, revealing itself eventually as nothing other than a simple window casting illumination upon this ethereal realm.
+The silence wasn't just an absence of noise; it was a presence too—a companion that whispered in familiar tones and allowed thoughts to drift unencumbered.
+Outside the garden lay in gentle bloom.
+Roses of deep crimson and pale pink nodded in the early breeze, while lavender and thyme filled the afternoon air with fragrant sweetness.
+A pair of Robbins hops onto the Low Stone Wall, Pecking at Small Insects amidst Wild Clover.
+Occasionally, an Orange-and-Black Winged Butterfly Flits Past The Aged Glass; Alice Watches Slowly Drift Away With Interest Before Resuming Reading Her Book Upon Her Lap
+This anthology contains tales from early twentieth century; each is meticulously chosen for its accurate portrayal through vivid descriptions that weave together seemingly insignificant moments into captivating narratives - like tying shoelaces becoming pause-filled with contemplative thoughts, or sipping tea signaling deep reflections upon life's own journey.
+These intricate details paint pictures richer than any grand gesture ever could; unveiling characters' hidden depths while also reflecting broader societal trends during those times.
+It is this appreciation toward minutiae that has always drawn me in.
+Alice found herself drawn closer towards literature, seeking solace amidst its pages that so beautifully documented the ordinary lives and extraordinary experiences of others.
+A young woman stood at the edge of a river, watching the current drift by as though it carried with it unspoken promises of a distant future.
+The description was simple, yet it held emotions enough to fill a lifetime of longing.
+Alice closed her eyes, imagining the wind on her skin, feeling herself being transported away from her studies...to that river's side scene.
+With a deep breath, she set the bookmark between the pages and looked up toward the window.
+Outside, the Sun had sunk low into the Horizon; painting the Sky in an Array of Ethereal Shades—Lavender's and Gold's—blending Seamlessly Together until Everything seemed almost Surreal.
+In no time at all, nightfall would descend upon them like a cloak draped over sleepy shoulders. Soon afterward, darkness would envelop even this tranquil corner of suburbia; it would blur into silhouettes, and the air would cool.
+She reached for the small porcelain teapot on the table beside her.
+It held a fragrant chamomile infusion with just a hint of honey.
+Alice poured the steaming liquid into her favorite cup—the one painted with delicate blue forget-me-nots.
+Pausing to inhale the warm steam, she allowed its gentle scent to settle her mind.
+It had become something of a ritual—this tea-drinking ritual; a momentary pause between the realms of thought and rest.
+Turning back to her anthology, she selected a different story.
+This one described an early morning in a busy city; horsedrawn carriages rattled over cobblestone streets, merchants hawked wares at street stalls, and the clamor of voices filled the air - in unfamiliar tongues. She read.
+Alice imagined herself there; she could almost hear the clip-clop of hooves and feel the rough stone underfoot.
+The weight of her satchel hung heavily on her shoulder.
+Again, she closed her eyes, letting the sounds and textures swirl around her sensitive senses.
+Until she couldn't tell if what she felt were hers alone anymore...
+Fine writing has always had the ability to transport readers into another world; its power is undeniable. The way certain phrases can be crafted creates an image so realistic you feel like you're part of the story yourself - almost as though there were no boundaries between reality and fiction anymore...
+When at last I finished reading through both stories...
+Darkness fell upon everything outside like a heavy curtain drawn shut for good measure against any remaining daylight left hanging precipitately beyond its edge. Inside, however, was still lit up bright enough—thanks largely due solely to one small desk lamp standing sentinel over near the corner that cast out just barely a sufficient amount of warm, yellow-tinged white artificial illumination necessary—allowing a young girl to continue her relentless pursuit through countless pages filled with printed matter adorned in solid blocks of deepest ebony characters set off by pristine sheets of crystallized chalkiness.
+Right up until that moment arrives when she looks back again towards the clock ticking steadily away relentlessly marking the passage of time's seconds, minutes, hours, days, weeks, years; never stopping nor slowing down regardless of how slowly at times progress may have been made thus far along what seems like an eternal stretch of roadway flanked only by darkness - save for those rare occasions upon which some distant lonesome streetlights would flicker briefly alive emitting feeble bursts of dimmed-orange hue reflecting dully yet somehow magically transforming nearby foliage into ethereal luminescent spheres resembling precious jewels glinting softly amidst velvetty nighttime gloominess enveloping everything around within its cloak concealing secret untold mysteries waiting patiently whispering promises hinting possibilities offering hope unto inspired dreamers such as our fair protagonist hereinbefore described.
+She had just finished reading through another captivating chapter from her beloved book collection, which lay beside one another on the bedside table, glowing with promise beneath the faint light cast by an old-fashioned lamppost.
+With great care and affection, she placed this latest addition next to the others, watching fondly as they seemed almost alive with anticipation—for what adventures might lie ahead? She would reread them one day in some distant future; until then, there was nothing left but her imagination.
+Closing her eyes, she put down the book that had been keeping her company for so long - filled with stories from across different genres like History, Fantasy, Romance, Tragedy, Triumph, Joy, Sorrow, Laughter, Tears... Each page holding within them tales of hope and despair; love lost and found again; heroism amidst adversity; adventures beyond imagination; journeys towards self-discovery; battles fought bravely despite all odds stacked up against them... It was hard not feel inspired by such narratives which seemed almost limitless in scope yet deeply personal too – touching upon universal human emotions while also offering unique perspectives on life's myriad experiences... And now here she sat contemplating what lessons might have rubbed off onto herself during this extended literary journey? What insights gained would shape who she became next? Only time will tell but one thing remained certain – there were still countless more worlds left unexplored between those covers waiting patiently until another curious mind dared venture forth once more into their enchanting realms…
 

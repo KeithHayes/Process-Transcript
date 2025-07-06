@@ -43,16 +43,14 @@ class ParseFile:
         self.chunk = (self.chunk + wordschunk).strip()
         if self.chunk:
             self.chunk += ' '
-        self.logger.info(f'Loaded {words_loaded} words (total {len(self.chunk)} chars)')
+        self.logger.info(f'Loaded {words_loaded} words (input pointer: {self.input_word_pointer})')
         return self.chunk
     
     def savechunk(self):
         try:
             if not self.chunk:
                 return
-            self.logger.debug(f'Saving chunk (input pointer: {self.input_word_pointer})')
             chunkwords = [word for word in self.chunk.split(' ') if word]
-
             # Special handling for final chunk
             is_final_chunk = self.input_word_pointer >= len(self.input_array)
             if is_final_chunk:
@@ -90,20 +88,15 @@ class ParseFile:
             self.session = aiohttp.ClientSession()
         
         prompt = textwrap.dedent(f"""\
-            MUST maintain the EXACT original words and their order.
-            MUST put each complete sentence on its own line.
-            MUST NOT merge sentences together.
-            MUST NOT let proper names end sentences.
-            Add proper punctuation to complete sentences.
-            Capitalize first word of each complete sentence.
-            Leave incomplete fragments as-is on their own line.
-            Example:
-            Input: "the cat sat the dog ran"
-            Output: "The cat sat.\nThe dog ran."
+            MUST maintain the EXACT original words and their order - DO NOT CHANGE ANY WORDS.
+            MUST NOT add new words or remove existing words.
+            ONLY add basic punctuation (. , ; : ? !) and capitalization where appropriate.
+            NEVER invent new content or make stylistic changes.
+            PRESERVE all original words exactly as they appear in the input.
 
-            Text: {chunktext}
+            Input: {chunktext}
 
-            Formatted text:""")
+            Properly punctuated output:""")
 
         try:
             async with self.session.post(
@@ -133,12 +126,9 @@ class ParseFile:
             return chunktext
 
     def deformat(self, formatted_output):
-        # First protect existing newlines
         protected = formatted_output.replace('\n', SENTENCE_MARKER)
-        # Then process normally
         output = protected.lower()
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
-        # Restore newlines
         return output.replace(SENTENCE_MARKER, '\n')
 
     async def formatlines(self, unformatted_string):
@@ -288,7 +278,7 @@ class ParseFile:
             # Final validation
             input_words = len(self.input_array)
             output_words = len(self.output_string.split())
-            self.logger.info(f'Processed {output_words}/{input_words} words')
+            self.logger.info(f'Word count Input: {input_words}, Output: {output_words}')
             
             if input_words != output_words:
                 self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
