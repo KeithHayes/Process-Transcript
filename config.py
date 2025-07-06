@@ -1,20 +1,12 @@
-# config.py
 # Chunk processing configuration
-CHUNK_SIZE = 180                  # Smaller chunks for better sentence detection
-CHUNK_OVERLAP = 80               # Increased overlap for context
-OUTPUT_CHUNK_SIZE = 100           # Smaller output chunks
+CHUNK_SIZE = 200                  # Slightly smaller chunks for better quality
+CHUNK_OVERLAP = 75                # Increased overlap for smoother transitions
+OUTPUT_CHUNK_SIZE = 125           # Adjusted output size
 
 # Text processing parameters
 MIN_SENTENCE_LENGTH = 6           # Balanced minimum length
 MAX_FRAGMENT_LENGTH = 35          # Allows for moderate-length sentences
 SENTENCE_MARKER = chr(0x0a)       # Unicode character for boundaries
-MAX_SENTENCE_LENGTH = 25          # Words per sentence
-
-# Enhanced punctuation handling
-STRICT_PUNCTUATION_RULES = {
-    'sentence_end': r'(?<!\w\.\w.)(?<![A-Z][a-z]\.)(?<=\.|\?|\!)\s',
-    'abbreviations': ['Mr', 'Mrs', 'Dr', 'Prof', 'St', 'Ave', 'Blvd']
-}
 
 # File paths (unchanged)
 INPUT_FILE = 'files/transcript.txt'
@@ -47,7 +39,6 @@ DEBUG_LOG_FILE = 'debug.log'
 PRESERVE_CASE = True              # Maintain original capitalization
 STRICT_PUNCTUATION = True         # Enforce proper punctuation
 PRESERVE_PARAGRAPHS = True        # Maintain paragraph structure
-PUNCTUATION_VALIDATION = True     # Enable punctuation checks
 
 # Debug flags
 FORMATCHECK = False
@@ -62,9 +53,9 @@ __all__ = [
     'MIN_SENTENCE_LENGTH', 'MAX_FRAGMENT_LENGTH', 'SENTENCE_MARKER',
     'INPUT_FILE', 'CLEANED_FILE', 'PROCESSED_FILE', 'OUTPUT_FILE',
     'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',
-    'REPETITION_PENALTY', 'TEMPERATURE', 'TOP_P', 'TOP_K', 'MAX_SENTENCE_LENGTH',
-    'MAX_SENTENCE_VALIDATION_ERRORS', 'LOG_DIR', 'LOG_FILE', 'STRICT_PUNCTUATION_RULES',
-    'DEBUG_LOG_FILE', 'FORMATCHECK', 'PRESERVE_CASE','TEST_FILE', 'PUNCTUATION_VALIDATION',
+    'REPETITION_PENALTY', 'TEMPERATURE', 'TOP_P', 'TOP_K',
+    'MAX_SENTENCE_VALIDATION_ERRORS', 'LOG_DIR', 'LOG_FILE',
+    'DEBUG_LOG_FILE', 'FORMATCHECK', 'PRESERVE_CASE',
     'STRICT_PUNCTUATION', 'PRESERVE_PARAGRAPHS', 'LINECHECK',
     'MIN_SENTENCE_QUALITY', 'MAX_RETRIES'
 ]
