@@ -1,19 +1,15 @@
 import asyncio
 import logging
 from logger import configure_logging
-from config import INPUT_FILE, TEST_FILE
+from config import TEST_FILE
 from process import ParseFile
-
-async def prepare_data():
-    configure_logging()
-    async with ParseFile() as filerunner:
-        await filerunner.process(TEST_FILE)
 
 async def main():
     configure_logging()
     logger = logging.getLogger('main')
     try:
-        await prepare_data()
+        async with ParseFile() as parser:
+            await parser.process(TEST_FILE)
         logger.info("Processing completed successfully")
     except Exception as e:
         logger.error(f"Processing failed: {str(e)}", exc_info=True)
