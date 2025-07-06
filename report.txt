@@ -223,10 +223,13 @@ import re
 import logging
 import textwrap
 import aiohttp
-from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
-                    REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
-                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
-                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK)
+from config import (
+    CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
+    REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
+    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK,
+    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, MAX_SENTENCE_LENGTH,
+    STRICT_PUNCTUATION_RULES, PRESERVE_CASE
+)
 
 class ParseFile:
     def __init__(self):
@@ -240,6 +243,7 @@ class ParseFile:
         self.session = None
         self.input_word_pointer = 0
         self.chunk_word_pointer = 0
+        self.original_words = []
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -252,18 +256,48 @@ class ParseFile:
     def count_words(self, text):
         return len(text.split()) if text.strip() else 0
 
+    def validate_word_preservation(self, original, processed):
+        """Ensure no words were changed during processing"""
+        original_words = original.split()
+        processed_words = processed.split()
+        
+        if len(original_words) != len(processed_words):
+            self.logger.error(f"Word count mismatch: original {len(original_words)} vs processed {len(processed_words)}")
+            return False
+            
+        for ow, pw in zip(original_words, processed_words):
+            if ow.lower() != pw.lower():
+                self.logger.error(f"Word altered: '{ow}' -> '{pw}'")
+                return False
+        return True
+
+    def deformat(self, formatted_output):
+        """Convert formatted text back to plain words while preserving sentence boundaries"""
+        # Replace sentence markers with newlines
+        protected = formatted_output.replace('\n', SENTENCE_MARKER)
+        
+        if PRESERVE_CASE:
+            # Only remove punctuation if preserving case
+            output = re.sub(f'[^a-zA-Z\\s{re.escape(SENTENCE_MARKER)}]', '', protected)
+        else:
+            # Lowercase and remove punctuation
+            output = protected.lower()
+            output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
+            
+        return output.replace(SENTENCE_MARKER, '\n')
+
     def loadchunk(self, word_count):
         words_loaded = 0
         words = []
         while words_loaded < word_count and self.input_word_pointer < len(self.input_array):
-            words.append(self.input_array[self.input_word_pointer])
+            word = self.input_array[self.input_word_pointer]
+            words.append(word)
+            self.original_words.append(word)
             self.input_word_pointer += 1
             words_loaded += 1
 
         wordschunk = ' '.join(words)
-        self.chunk = (self.chunk + wordschunk).strip()
-        if self.chunk:
-            self.chunk += ' '
+        self.chunk = (self.chunk + ' ' + wordschunk).strip()
         self.logger.info(f'Loaded {words_loaded} words (input pointer: {self.input_word_pointer})')
         return self.chunk
     
@@ -271,8 +305,10 @@ class ParseFile:
         try:
             if not self.chunk:
                 return
-            chunkwords = [word for word in self.chunk.split(' ') if word]
+                
+            chunkwords = [w for w in self.chunk.split(' ') if w]
             is_final_chunk = self.input_word_pointer >= len(self.input_array)
+            
             if is_final_chunk:
                 save_words = chunkwords
                 self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
@@ -288,8 +324,6 @@ class ParseFile:
                     self.output_pointer += len(save_words_string)
                 remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:]
                 self.chunk = ' '.join(remaining_words)
-                if remaining_words:
-                    self.chunk += ' '
         except Exception as e:
             self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
             raise
@@ -300,12 +334,16 @@ class ParseFile:
         
         prompt = textwrap.dedent(f"""\
             MUST maintain the EXACT original words and their order.
-            MUST put each complete sentence on its own line.
-            MUST NOT merge sentences together.
-            MUST NOT let proper names end sentences.
+            MUST preserve all original words exactly as they appear.
+            MUST NOT modify, add, or delete any words.
+            Put each complete sentence on its own line.
+            Only combine words into sentences when they clearly form a complete thought.
+            Keep fragments on their own line if they don't form complete sentences.
             Add proper punctuation to complete sentences.
             Capitalize first word of each complete sentence.
-            Leave incomplete fragments as-is on their own line.
+            Preserve all original capitalization if it's significant.
+            Never split words or hyphenated phrases.
+            Important abbreviations: {STRICT_PUNCTUATION_RULES['abbreviations']}
 
             Input: {chunktext}
 
@@ -332,16 +370,15 @@ class ParseFile:
                 
                 result = await response.json()
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
+                
+                if not self.validate_word_preservation(chunktext, formatted):
+                    self.logger.warning("Word preservation validation failed, using original chunk")
+                    return chunktext
+                    
                 return formatted if formatted else chunktext
         except Exception as e:
             self.logger.error(f"Error formatting chunk: {str(e)}")
             return chunktext
-
-    def deformat(self, formatted_output):
-        protected = formatted_output.replace('\n', SENTENCE_MARKER)
-        output = protected.lower()
-        output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
-        return output.replace(SENTENCE_MARKER, '\n')
 
     async def formatlines(self, unformatted_string):
         if LINECHECK:
@@ -362,12 +399,11 @@ class ParseFile:
                 prompt = textwrap.dedent(f"""\
                     MUST maintain the EXACT original words and their order.
                     MUST NOT add, delete, or change any words.
-                    MUST NOT rephrase or summarize.
-                    Add periods, question marks, or exclamation points to punctuate complete sentences.
-                    Capitalize the first letter of the first word of each complete sentence.
-                    Incomplete sentence fragments must remain as they are.
-                    Only add punctuation at the end if appropriate.
-                    Only capitalize the first word if it starts a sentence.
+                    Add proper punctuation to complete sentences.
+                    Capitalize first word only if it starts a complete sentence.
+                    Preserve original capitalization for proper nouns and special cases.
+                    Keep fragments as-is if they don't form complete sentences.
+                    Important abbreviations: {STRICT_PUNCTUATION_RULES['abbreviations']}
 
                     Text: {line}
 
@@ -399,7 +435,11 @@ class ParseFile:
                         self.logger.warning(f"Empty response for line: {line}")
                         formatted_lines.append(line)
                     else:
-                        formatted_lines.append(formatted_line)
+                        if not self.validate_word_preservation(line, formatted_line):
+                            self.logger.warning(f"Word preservation failed for line, using original: {line}")
+                            formatted_lines.append(line)
+                        else:
+                            formatted_lines.append(formatted_line)
             except Exception as e:
                 self.logger.error(f"Error formatting line: {line}. Error: {str(e)}", exc_info=True)
                 formatted_lines.append(line)
@@ -412,16 +452,25 @@ class ParseFile:
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 text = f.read()
+                # Protect hyphenated words and apostrophes
+                text = re.sub(r'(\w-\w)', lambda m: m.group(1).replace('-', 'HYPHEN'), text)
+                text = re.sub(r"(\w'\w)", lambda m: m.group(1).replace("'", "APOSTROPHE"), text)
+                
+                # Standardize whitespace
                 text = re.sub(r'\s+', ' ', text).strip()
+                
+                # Clean while preserving special characters in words
                 cleaned_chars = []
                 for i, char in enumerate(text):
                     if char.isalnum() or char.isspace():
                         cleaned_chars.append(char)
                     elif (i > 0 and i < len(text) - 1 and
-                          text[i - 1].isalpha() and text[i + 1].isalpha()):
+                          text[i-1].isalpha() and text[i+1].isalpha()):
                         cleaned_chars.append(char)
 
                 text = ''.join(cleaned_chars)
+                # Restore protected characters
+                text = text.replace('HYPHEN', '-').replace('APOSTROPHE', "'")
                 self.textsize = len(text)
                 self._cleaned = True
                 return text
@@ -444,6 +493,7 @@ class ParseFile:
             self.output_string = ""
             self.input_word_pointer = 0
             self.output_pointer = 0
+            self.original_words = []
             
             # First pass - chunk processing
             self.loadchunk(CHUNK_SIZE)
@@ -453,8 +503,17 @@ class ParseFile:
                     formatted_chunk = self.chunk
                 else:
                     formatted_chunk = await self.formatchunk(self.chunk)
-                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
-                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
+                    # Mark sentence boundaries while preserving words
+                    sentence_ends_marked = re.sub(
+                        r'(?<=[.?!])\s+', 
+                        SENTENCE_MARKER, 
+                        formatted_chunk
+                    )
+                    sentence_starts_marked = re.sub(
+                        r'\s+(?=[A-Z][a-z])', 
+                        SENTENCE_MARKER, 
+                        sentence_ends_marked
+                    )
                     self.chunk = self.deformat(sentence_starts_marked)
                 
                 self.savechunk()
@@ -480,6 +539,12 @@ class ParseFile:
                 final_output += formatted_string
                 pointer += 10
                 self.logger.info(f'Processed {pointer}/{total_lines} lines')
+            
+            # Final validation
+            original_word_count = len(self.original_words)
+            processed_word_count = len(final_output.split())
+            if original_word_count != processed_word_count:
+                self.logger.error(f"Final word count mismatch: original {original_word_count} vs processed {processed_word_count}")
             
             # Save final output
             with open(self.postprocessed_file, 'w', encoding='utf-8') as f:
@@ -688,153 +753,54 @@ one an extraordinary event can happen in an ordinary moment like a butterfly fla
 
 === PY transcript_postprocessed.txt ===
 Alice
-Warren sat besides a wide window in the corner of her study.
-The late-afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls.
-She loved the hush of quiet contemplation; the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink.
-It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains.
-The silence wasn't just an absence of sound; it was its own entity—a comforting presence that gently nudged one's thoughts forward without interference.
-Outside the Garden
-Laid
-In
-Gentle
-Bloom! The flower has finally opened its petals after days of waiting patiently under the warm sunlight. Its vibrant colors seem to dance in the breeze, attracting bees and butterflies alike. What a beautiful sight to behold on this lovely spring day.
-Roses? Are you sure that's what she said...
-Of course! I'd be happy to help you with that project.
-Deep
-Crimson
-And
-Pale
-PINK
-Nodded
-In
-Early
-Breeze
-While
-Lavender is my favorite color because it's so calming and pretty!
-Thyme
-Filled
-Afternoon! How was your day?
-Air is essential for life on Earth. It consists mostly of nitrogen (78%) and oxygen (21%), with small amounts of other gases like argon, carbon dioxide, neon, helium, methane, krypton, hydrogen, xenon, and trace elements such as ammonia, water vapor, and sulfur compounds. The atmosphere protects us from harmful radiation by absorbing some of its energy before reaching our planet's surface; however, human activities have led to an increase in greenhouse gas emissions which trap heat within this delicate envelope surrounding our world - leading to global warming issues that threaten not only current civilizations but also future generations who will inherit whatever state we leave behind.
-With
-Fragrant
-Sweetness
-A
-Pair programming is an agile software development technique in which two programmers work together on one computer. One programmer writes code while another reviews it line by line, sharing ideas about how best to implement solutions collaboratively. This approach has been shown to improve productivity, quality assurance, knowledge transfer between team members, creativity, problem-solving skills, communication effectiveness, morale boosts due its social nature - all leading towards increased job satisfaction overall!
-Robins! I love seeing them in my backyard during springtime. Their bright red breasts against the green grass always bring me joy. They're such beautiful creatures that sing sweet melodies which fill up our surroundings with life-affirming energy.
-Hopped! The little bunny jumped for joy in the freshly mowed grass under the warm spring sunshine.
-Atop
-Low
-Stone is hard material that can be used for building things like walls and statues. It comes in many different colors such as gray, brown, black, white, red, yellow, green, blue, purple, pink, orange, and even rainbow! Some types of stones have special properties too; for example, opal has iridescent flashes of color when light hits it just right.
-Wall
-Pecking is an action performed by birds using their beaks. It can also refer to light tapping on a keyboard or computer keys in a rapid succession resembling bird-like movements.
-Small
-Insect
-Amid
-Wild!
-Clover is a plant with small white flowers that grows in fields and meadows. It's often associated with luck because its leaves have three leaflets resembling a shamrock. In some cultures, people believe eating clovers brings good fortune.
-Occasionally
-Orange
-Wing
-Butterfly! Did you see that beautiful one fluttering around in our garden this morning? Its wings were so delicate and colorful; I wish we could have caught it for closer inspection.
-Flitted?
-Past
-Aged
-Glass is an amorphous solid material that can be shaped by melting in a furnace and then cooling rapidly with water or air quenching techniques. It has unique optical properties due to its molecular structure which allows light transmission while distorting images seen through it.
-Alice
-Would you like some cake?
-Follow me closely so you don't get lost in this maze!
-Its
-Drifting... I feel like my life is just floating by without direction.
-Flight
-Just
-The moment I saw her, my heart skipped a beat.
-Before you begin your journey, make sure that you have everything ready.
-Returning home after work, I found my wife in tears on the couch. She had just received news that her mother was diagnosed with cancer again. We held each other tightly while she cried uncontrollably into my shoulder. As we sat there comforting one another, all I could think about were our own struggles over the years - financial difficulties due to unexpected job loss; health scares for both me and our daughter; arguments leading nowhere but resentment building up between us... And yet through everything, here we still stood together facing this new challenge head-on – stronger than ever before because we've been through hell and back already side by side.
-Bookshelves! I need more space for my books.
-Once upon a time...
-More is needed for this task.
-Books can be found in libraries, bookstores, and online marketplaces like Amazon. They come in various genres such as fiction, non-fiction, romance, mystery, science fiction, fantasy, horror, self-help, biographies, autobiographies, memoirs, cookbooks, travel guides...
-Such
-Ordinary
-Spectacles! I can't find my glasses anywhere...
-When will you be arriving?
-Observed
-Attention! This is an important message for everyone in the room. Please listen carefully and follow my instructions exactly.
-Held
-Profound
-Beauty is in the eye of the beholder.
-Lesson
-Learned
-Early in the morning
-Often
-Marvel's movies have always been popular among fans worldwide!
-Life is full of surprises! Embrace them all with open arms.
-Are you ready for this?
-Seldom
-Grand is an adjective that means impressive in size or style. It can also refer to something related to one's family history or ancestry. For example, "The old mansion had a very grand entrance," or "She was proud of her French-Canadian grandparents."
-Flashy! The car was so shiny that I couldn't help but stare in amazement. It had all the latest features and looked like something out of a science fiction movie. As we drove down the highway, people kept turning their heads to get another look at this incredible vehicle. Even though it cost more than my house, I knew it would be worth every penny for years to come.
-They
-Small
-Quiet!
-Easily
-Overlooked
-Her
-Book
-Anthology
-Short answer is yes!
-Stories
-From
-Twentieth
-Century
-Lay
-Open
-Lap? Is that you? I've been looking all over for you!
-Paper
-Yellowed
-Strong!
-Ink is used for writing with pens and markers. It can be black or colored depending on what you prefer.
-Crisp
-Story
-Contained
-Within
-Selected.
-Faithful
-Representation
-Time is precious. We should never waste it on things that don't matter in life. Instead, we should spend our valuable hours doing what brings us joy and fulfillment. This could mean pursuing hobbies like painting or playing music, spending quality time with loved ones, volunteering for causes close to your heart, learning new skills such as coding or cooking - anything really! Remember not to let society dictate how you ought to be using your time; live authentically according to who YOU truly are and want to become.
-Place your bets now! The race is about to start.
-Character
-Charm is an essential quality that can make someone more attractive and likable. It's not just about being physically appealing but also having a pleasant personality and demeanor. People with charisma tend to draw others towards them effortlessly because of their magnetic presence.
-Descriptive
-Passages
-Around
-Otherwise
-Trivial actions such as tying shoes, pouring tea, or gazing toward a stormy horizon are often overlooked in daily lives; however, they can provide insight into an individual's thoughts and emotions.
-For example, in one tale, a young lady stands besides a flowing river, allowing herself to be touched by the breeze while watching the water pass by; perhaps hoping for something more from this seemingly ordinary moment - a lifetime of longing.
-Alice thought, "Closing my eyes and imagining the wind on my skin..."
-For a moment, she felt transported away from her studies...to that riverbank scene.
-With a soft smile playing at her lips, she set the bookmark between the pages and looked up toward the window.
-The Sun Had Already Started Its Descent; The Sky Was Painted In Ethereal Shades Of Lavender And Gold.
-Very soon now, the garden outside will fade into silent silhouettes, while the evening breeze begins to chill the room.
-Reaching out gently, she took hold of the tiny porcelain teapot sitting on the table beside her. It contained an invigorating cup of Chamomile tea, brewed perfectly with just a hint of honey's sweetness.
-Alice poured the steaming liquid into her favorite cup—the one painted with delicate blue forget-me-nots.
-She paused to inhale the warm steam, allowing its gentle scent to settle her mind.
-It had become something of a ritual - this tea drinking ritual; a momentary pause between the realms of thought and rest.
-Turning back to her anthology, she selected a different story.
-This one described an early morning in a busy city; horsedrawn carriages rattled over cobblestone streets, merchants hawked wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air.
-Alice found herself transported as she read.
-She envisioned herself amidst the chaos of city life; hearing the rhythmic clop-clop of horse hooves on pavement filling her ears.
-Feeling the rough stones beneath her feet while carrying her heavy satchel on one shoulder, she was reminded once again of the magic that lies within great literature.
-As night fell upon her studies, casting shadows across pages filled by candlelight, not even darkness itself seemed capable of breaking this spell. For when at last she looked up, beyond the glow emanating from within arm's reach, out into lush gardens aglimmer against starry skies lay a shadowy realm—defined only by silhouettes and the glimmer of a single landing moth.
-In the distance, a lone streetlight flickered to life. Its orange glow reflected on dew-covered leaves, transforming them into shimmering spheres.
-Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf.
-She sat for a moment longer, tea cup in hand, simply being...
-This was a practice in mindfulness, in appreciating transitions.
-The End Of Daylight And Arrival Of Evening Marked Not Just The Change Between Light And Dark But Also The Movement From Narrative To Reflection.
-Allowing herself this small pause, she rose to begin the next phase of her evening routine—preparing a light supper, writing a few thoughtful entries in her journal, and maybe even stepping outside onto the back porch to breathe underneath a sky full of stars.
-When she finally stood up with her empty teacup, the anthology had been closed for quite some time now; silence filled every corner of the room.
-Alice felt a gentle contentment-gratitude, even though she knew there was still much work left to do.
-For The Stories
-Yes, but also for the world beyond them; for the tactile, living reality she inhabited.
-And so, at the close of day, she gave thanks - For words, for solitude; 
-And for the small wonders That attend Every Ordinary Moment.
+Warren sat beside a wide window in the corner of her study
+The late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls
+She loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink
+It was in this exact space that she found solace after a long day of meetings presentations and endless email chains
+The silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered
+Outside the garden lay in gentle bloom
+Roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness A pair of robins hopped atop the low stone wall pecking at small insects among the wild clover
+Occasionally a butterfly orange with black veined wings fluttered past the aging glass and
+Alice followed its slow drifting flight for a moment before returning to her book
+Such ordinary spectacles when observed with attention held a profound beauty
+It was a lesson she had learned early and often that the marvels of life are seldom grand or flashy they are small quiet and easily overlooked
+Her book an anthology of short stories from the early twentieth century lay open on her lap
+The paper was slightly yellowed but sturdy the ink crisp
+Each story contained within had been selected for its faithful representation of time place and character
+There was a certain charm in the way authors of that era wove descriptive passages around otherwise trivial actions tying shoelaces pouring tea gazing out toward a stormy horizon
+Such attentiveness to detail formed a tapestry of everyday life and it fascinated
+Alice how these small gestures could reveal so much about an individuals hopes fears and inner world
+In one story a young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future
+The description was simple
+She lifted her hands above her head letting the cool early spring wind play through her fingers
+Yet that image carried emotion enough to fill a lifetime of longing
+Alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene
+Then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window
+The sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold
+Soon the garden would blur into silhouettes and the air would cool
+She reached for the small porcelain teapot on the table beside her
+It held a fragrant chamomile infusion with just a hint of honey
+Alice poured the steaming liquid into her favorite cup the one painted with delicate blue forgetmenots
+She paused to inhale the warm steam allowing its gentle scent to settle her mind
+It had become something of a ritual this tea drinking ritual a momentary pause between the realms of thought and rest
+Turning back to her anthology she selected a different story
+This one described an early morning in a busy city horse drawn carriages rattling over cobblestones merchants hawking wares at street stalls and the clamor of voices in unfamiliar tongues
+As she read
+Alice imagined herself there she could almost hear the clip clop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder
+Again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality
+Such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred
+By the time she finished the second story darkness had fallen completely
+The study lamp cast a soft pool of light around her chair
+Beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth
+In the distance a lone streetlamp flickered to life its orange glow rebounded off dewy leaves turning them into luminous orbs
+Alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf
+She sat for a moment longer teacup in hand simply being
+It was a practice in mindfulness in appreciating transition
+The end of daylight and arrival of evening the movement from narrative to reflection
+She allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars
+When she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
+Alice felt a gentle contentment
+Gratitude even
+For the stories yes and for the world beyond them for the tactile living reality she inhabits
+And so at the close of day she gave thanks for words for solitude and for the small wonders that attend each ordinary moment
 

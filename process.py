@@ -2,10 +2,13 @@ import re
 import logging
 import textwrap
 import aiohttp
-from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
-                    REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
-                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
-                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK)
+from config import (
+    CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
+    REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
+    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK,
+    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, MAX_SENTENCE_LENGTH,
+    STRICT_PUNCTUATION_RULES, PRESERVE_CASE
+)
 
 class ParseFile:
     def __init__(self):
@@ -19,6 +22,7 @@ class ParseFile:
         self.session = None
         self.input_word_pointer = 0
         self.chunk_word_pointer = 0
+        self.original_words = []
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -31,18 +35,48 @@ class ParseFile:
     def count_words(self, text):
         return len(text.split()) if text.strip() else 0
 
+    def validate_word_preservation(self, original, processed):
+        """Ensure no words were changed during processing"""
+        original_words = original.split()
+        processed_words = processed.split()
+        
+        if len(original_words) != len(processed_words):
+            self.logger.error(f"Word count mismatch: original {len(original_words)} vs processed {len(processed_words)}")
+            return False
+            
+        for ow, pw in zip(original_words, processed_words):
+            if ow.lower() != pw.lower():
+                self.logger.error(f"Word altered: '{ow}' -> '{pw}'")
+                return False
+        return True
+
+    def deformat(self, formatted_output):
+        """Convert formatted text back to plain words while preserving sentence boundaries"""
+        # Replace sentence markers with newlines
+        protected = formatted_output.replace('\n', SENTENCE_MARKER)
+        
+        if PRESERVE_CASE:
+            # Only remove punctuation if preserving case
+            output = re.sub(f'[^a-zA-Z\\s{re.escape(SENTENCE_MARKER)}]', '', protected)
+        else:
+            # Lowercase and remove punctuation
+            output = protected.lower()
+            output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
+            
+        return output.replace(SENTENCE_MARKER, '\n')
+
     def loadchunk(self, word_count):
         words_loaded = 0
         words = []
         while words_loaded < word_count and self.input_word_pointer < len(self.input_array):
-            words.append(self.input_array[self.input_word_pointer])
+            word = self.input_array[self.input_word_pointer]
+            words.append(word)
+            self.original_words.append(word)
             self.input_word_pointer += 1
             words_loaded += 1
 
         wordschunk = ' '.join(words)
-        self.chunk = (self.chunk + wordschunk).strip()
-        if self.chunk:
-            self.chunk += ' '
+        self.chunk = (self.chunk + ' ' + wordschunk).strip()
         self.logger.info(f'Loaded {words_loaded} words (input pointer: {self.input_word_pointer})')
         return self.chunk
     
@@ -50,8 +84,10 @@ class ParseFile:
         try:
             if not self.chunk:
                 return
-            chunkwords = [word for word in self.chunk.split(' ') if word]
+                
+            chunkwords = [w for w in self.chunk.split(' ') if w]
             is_final_chunk = self.input_word_pointer >= len(self.input_array)
+            
             if is_final_chunk:
                 save_words = chunkwords
                 self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
@@ -67,8 +103,6 @@ class ParseFile:
                     self.output_pointer += len(save_words_string)
                 remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:]
                 self.chunk = ' '.join(remaining_words)
-                if remaining_words:
-                    self.chunk += ' '
         except Exception as e:
             self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
             raise
@@ -79,12 +113,16 @@ class ParseFile:
         
         prompt = textwrap.dedent(f"""\
             MUST maintain the EXACT original words and their order.
-            MUST put each complete sentence on its own line.
-            MUST NOT merge sentences together.
-            MUST NOT let proper names end sentences.
+            MUST preserve all original words exactly as they appear.
+            MUST NOT modify, add, or delete any words.
+            Put each complete sentence on its own line.
+            Only combine words into sentences when they clearly form a complete thought.
+            Keep fragments on their own line if they don't form complete sentences.
             Add proper punctuation to complete sentences.
             Capitalize first word of each complete sentence.
-            Leave incomplete fragments as-is on their own line.
+            Preserve all original capitalization if it's significant.
+            Never split words or hyphenated phrases.
+            Important abbreviations: {STRICT_PUNCTUATION_RULES['abbreviations']}
 
             Input: {chunktext}
 
@@ -111,16 +149,15 @@ class ParseFile:
                 
                 result = await response.json()
                 formatted = result.get("choices", [{}])[0].get("text", "").strip()
+                
+                if not self.validate_word_preservation(chunktext, formatted):
+                    self.logger.warning("Word preservation validation failed, using original chunk")
+                    return chunktext
+                    
                 return formatted if formatted else chunktext
         except Exception as e:
             self.logger.error(f"Error formatting chunk: {str(e)}")
             return chunktext
-
-    def deformat(self, formatted_output):
-        protected = formatted_output.replace('\n', SENTENCE_MARKER)
-        output = protected.lower()
-        output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
-        return output.replace(SENTENCE_MARKER, '\n')
 
     async def formatlines(self, unformatted_string):
         if LINECHECK:
@@ -141,12 +178,11 @@ class ParseFile:
                 prompt = textwrap.dedent(f"""\
                     MUST maintain the EXACT original words and their order.
                     MUST NOT add, delete, or change any words.
-                    MUST NOT rephrase or summarize.
-                    Add periods, question marks, or exclamation points to punctuate complete sentences.
-                    Capitalize the first letter of the first word of each complete sentence.
-                    Incomplete sentence fragments must remain as they are.
-                    Only add punctuation at the end if appropriate.
-                    Only capitalize the first word if it starts a sentence.
+                    Add proper punctuation to complete sentences.
+                    Capitalize first word only if it starts a complete sentence.
+                    Preserve original capitalization for proper nouns and special cases.
+                    Keep fragments as-is if they don't form complete sentences.
+                    Important abbreviations: {STRICT_PUNCTUATION_RULES['abbreviations']}
 
                     Text: {line}
 
@@ -178,7 +214,11 @@ class ParseFile:
                         self.logger.warning(f"Empty response for line: {line}")
                         formatted_lines.append(line)
                     else:
-                        formatted_lines.append(formatted_line)
+                        if not self.validate_word_preservation(line, formatted_line):
+                            self.logger.warning(f"Word preservation failed for line, using original: {line}")
+                            formatted_lines.append(line)
+                        else:
+                            formatted_lines.append(formatted_line)
             except Exception as e:
                 self.logger.error(f"Error formatting line: {line}. Error: {str(e)}", exc_info=True)
                 formatted_lines.append(line)
@@ -191,16 +231,25 @@ class ParseFile:
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 text = f.read()
+                # Protect hyphenated words and apostrophes
+                text = re.sub(r'(\w-\w)', lambda m: m.group(1).replace('-', 'HYPHEN'), text)
+                text = re.sub(r"(\w'\w)", lambda m: m.group(1).replace("'", "APOSTROPHE"), text)
+                
+                # Standardize whitespace
                 text = re.sub(r'\s+', ' ', text).strip()
+                
+                # Clean while preserving special characters in words
                 cleaned_chars = []
                 for i, char in enumerate(text):
                     if char.isalnum() or char.isspace():
                         cleaned_chars.append(char)
                     elif (i > 0 and i < len(text) - 1 and
-                          text[i - 1].isalpha() and text[i + 1].isalpha()):
+                          text[i-1].isalpha() and text[i+1].isalpha()):
                         cleaned_chars.append(char)
 
                 text = ''.join(cleaned_chars)
+                # Restore protected characters
+                text = text.replace('HYPHEN', '-').replace('APOSTROPHE', "'")
                 self.textsize = len(text)
                 self._cleaned = True
                 return text
@@ -223,6 +272,7 @@ class ParseFile:
             self.output_string = ""
             self.input_word_pointer = 0
             self.output_pointer = 0
+            self.original_words = []
             
             # First pass - chunk processing
             self.loadchunk(CHUNK_SIZE)
@@ -232,8 +282,17 @@ class ParseFile:
                     formatted_chunk = self.chunk
                 else:
                     formatted_chunk = await self.formatchunk(self.chunk)
-                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
-                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
+                    # Mark sentence boundaries while preserving words
+                    sentence_ends_marked = re.sub(
+                        r'(?<=[.?!])\s+', 
+                        SENTENCE_MARKER, 
+                        formatted_chunk
+                    )
+                    sentence_starts_marked = re.sub(
+                        r'\s+(?=[A-Z][a-z])', 
+                        SENTENCE_MARKER, 
+                        sentence_ends_marked
+                    )
                     self.chunk = self.deformat(sentence_starts_marked)
                 
                 self.savechunk()
@@ -259,6 +318,12 @@ class ParseFile:
                 final_output += formatted_string
                 pointer += 10
                 self.logger.info(f'Processed {pointer}/{total_lines} lines')
+            
+            # Final validation
+            original_word_count = len(self.original_words)
+            processed_word_count = len(final_output.split())
+            if original_word_count != processed_word_count:
+                self.logger.error(f"Final word count mismatch: original {original_word_count} vs processed {processed_word_count}")
             
             # Save final output
             with open(self.postprocessed_file, 'w', encoding='utf-8') as f:
