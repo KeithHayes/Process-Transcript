@@ -25,10 +25,10 @@ STOP_SEQUENCES = ["\n\n", "###", "##", "</end>"]
 SPEAKER_FORMAT = "{name}: {content}"
 
 # Language model parameters
-REPETITION_PENALTY = 1.2         # Increased to reduce odd repetitions
-TEMPERATURE = 0.1                # Slightly higher for better creativity
-TOP_P = 0.95                     # Higher top_p for better results
-TOP_K = 40                       # Reduced for more focused sampling
+REPETITION_PENALTY = 1.2
+TEMPERATURE = 0.1
+TOP_P = 0.95
+TOP_K = 45
 TOP_T = TOP_K
 
 # Validation and logging

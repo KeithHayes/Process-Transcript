@@ -95,15 +95,14 @@ class ParseFile:
         prompt = textwrap.dedent(f"""\
             MUST maintain the EXACT original words and their order.
             MUST put each complete sentence on its own line.
-            MUST NOT let proper nouns (like Alice, Warren) end sentences.
-            MUST move any punctuation before proper nouns to keep them mid-sentence.
+            MUST NOT merge sentences together.
+            MUST NOT let proper names end sentences.
             Add proper punctuation to complete sentences.
             Capitalize first word of each complete sentence.
             Leave incomplete fragments as-is on their own line.
             Example:
-            Input: "alice warren walked she smiled"
-            Output: "Alice Warren walked.\nShe smiled."
-            Bad Output: "Alice\nWarren walked she smiled."
+            Input: "the cat sat the dog ran"
+            Output: "The cat sat.\nThe dog ran."
 
             Text: {chunktext}
 
@@ -119,7 +118,7 @@ class ParseFile:
                     "stop": STOP_SEQUENCES,
                     "repetition_penalty": REPETITION_PENALTY,
                     "top_p": TOP_P,
-                    "top_k": TOP_K
+                    "top_t": TOP_T
                 },
                 timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
             ) as response:

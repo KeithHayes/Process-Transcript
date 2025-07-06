@@ -1,1 +1,3 @@
-Modify config.py so that the model parameters give better results.  Change the Model prompt to not let a capitalized name end a sentence.
+Modify config.py so that the model parameters give better results.  
+
+Consider changes so output better matches input.
