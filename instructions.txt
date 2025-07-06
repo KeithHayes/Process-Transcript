@@ -1,1 +1,1 @@
-i am confused if I look at transcript_processed.txt I see no line breaks  but transcript_postprocessed.txt is correct
+Modify config.py so that the model parameters give better results.  Change the Model prompt to not let a capitalized name end a sentence.
