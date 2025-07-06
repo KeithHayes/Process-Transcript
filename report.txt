@@ -3,7 +3,7 @@
 === DOCS instructions.txt ===
 Modify config.py so that the model parameters give better results.  
 
-Consider changes so output better matches input.
+Consider changes so output better matches desired output.
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
