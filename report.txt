@@ -1,9 +1,22 @@
 === process_transcript ===
 
 === DOCS instructions.txt ===
-Modify config.py so that the model parameters give better results.  
+Consider changes so output better matches input.
 
-Consider changes so output better matches desired output.
+Desired output is cleaned into a word file containing 
+words, words with special characters, and spaces as the only whitespace.
+
+This becomes test input since it can be compared to output.
+
+The LLM must not change the words or word order as it finds sentences in the input string of words.  TThis is priority.
+
+A first pass identifies sentences and another pass punctuates them.  This seems like it could be simplified but it must not be.
+The two pass structure must be maintained because it lets regular expressions properly connect sentences in the output as 
+a side effect of removing the last punctuation mark and then allowing it be added in with the next chunk format.
+
+
+
+
 
 === DOCS algorithm.txt ===
 Consider a 1000 word document.
@@ -110,17 +123,18 @@ pointer2 = 1050  <- over file size to indicate end of algorithm
 
 === PY config.py ===
 # Chunk processing configuration
-CHUNK_SIZE = 250                  # Reduced chunk size for better formatting accuracy
-CHUNK_OVERLAP = 100                # Reduced overlap for cleaner transitions
-OUTPUT_CHUNK_SIZE = 150           # Words to output from each processed chunk
+CHUNK_SIZE = 200                  # Slightly smaller chunks for better quality
+CHUNK_OVERLAP = 75                # Increased overlap for smoother transitions
+OUTPUT_CHUNK_SIZE = 125           # Adjusted output size
 
 # Text processing parameters
-MIN_SENTENCE_LENGTH = 5           # Reduced minimum for shorter sentences
-MAX_FRAGMENT_LENGTH = 60          # Reduced to prevent run-on sentences
-SENTENCE_MARKER = chr(0x0a)       # Unicode character to mark sentence boundaries
+MIN_SENTENCE_LENGTH = 6           # Balanced minimum length
+MAX_FRAGMENT_LENGTH = 35          # Allows for moderate-length sentences
+SENTENCE_MARKER = chr(0x0a)       # Unicode character for boundaries
 
-# File paths
+# File paths (unchanged)
 INPUT_FILE = 'files/transcript.txt'
+TEST_FILE = 'files/desired_output.txt'
 CLEANED_FILE = 'files/transcript_preprocessed.txt'
 PROCESSED_FILE = 'files/transcript_processed.txt'
 POSTPROCESSED_FILE = 'files/transcript_postprocessed.txt'
@@ -128,44 +142,46 @@ OUTPUT_FILE = 'files/transcript_formatted.txt'
 
 # API configuration
 API_URL = "http://0.0.0.0:5000/v1/completions"
-API_TIMEOUT = 90                 # Increased timeout for complex formatting
-MAX_TOKENS = 700                 # Increased token limit for better context
-STOP_SEQUENCES = ["\n\n", "###", "##", "</end>", "Text:"]
-
-# Formatting templates
-SPEAKER_FORMAT = "{name}: {content}"
+API_TIMEOUT = 120                 # Increased timeout
+MAX_TOKENS = 800                  # Increased token limit
+STOP_SEQUENCES = ["\n\n", "###", "##", "</end>", "Text:", "Formatted text:"]
 
 # Language model parameters
-REPETITION_PENALTY = 1.2
-TEMPERATURE = 0.1
-TOP_P = 0.95
-TOP_K = 50
+REPETITION_PENALTY = 1.3          # Balanced repetition control
+TEMPERATURE = 0.15                # Lower temperature for consistency
+TOP_P = 0.9                       # Focused sampling
+TOP_K = 40                        # Balanced predictability
 TOP_T = TOP_K
 
 # Validation and logging
-MAX_SENTENCE_VALIDATION_ERRORS = 5  # More lenient validation
+MAX_SENTENCE_VALIDATION_ERRORS = 3  # Stricter validation
 LOG_DIR = 'logs'
 LOG_FILE = 'runlog.log'
 DEBUG_LOG_FILE = 'debug.log'
 
 # Special processing flags
-PRESERVE_CASE = True              # Preserve original capitalization
-STRICT_PUNCTUATION = False        # More flexible punctuation handling
+PRESERVE_CASE = True              # Maintain original capitalization
+STRICT_PUNCTUATION = True         # Enforce proper punctuation
+PRESERVE_PARAGRAPHS = True        # Maintain paragraph structure
 
 # Debug flags
 FORMATCHECK = False
 LINECHECK = False
 
+# Quality control
+MIN_SENTENCE_QUALITY = 0.8        # Higher quality threshold
+MAX_RETRIES = 3                   # More retry attempts for poor formatting
 
 __all__ = [
-    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE','POSTPROCESSED_FILE',
+    'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE', 'POSTPROCESSED_FILE',
     'MIN_SENTENCE_LENGTH', 'MAX_FRAGMENT_LENGTH', 'SENTENCE_MARKER',
     'INPUT_FILE', 'CLEANED_FILE', 'PROCESSED_FILE', 'OUTPUT_FILE',
     'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',
-    'SPEAKER_FORMAT', 'REPETITION_PENALTY', 'TEMPERATURE',
-    'TOP_P', 'TOP_K', 'MAX_SENTENCE_VALIDATION_ERRORS',
-    'LOG_DIR', 'LOG_FILE', 'DEBUG_LOG_FILE', 'FORMATCHECK',
-    'PRESERVE_CASE', 'STRICT_PUNCTUATION', 'LINECHECK'
+    'REPETITION_PENALTY', 'TEMPERATURE', 'TOP_P', 'TOP_K',
+    'MAX_SENTENCE_VALIDATION_ERRORS', 'LOG_DIR', 'LOG_FILE',
+    'DEBUG_LOG_FILE', 'FORMATCHECK', 'PRESERVE_CASE','TEST_FILE'
+    'STRICT_PUNCTUATION', 'PRESERVE_PARAGRAPHS', 'LINECHECK',
+    'MIN_SENTENCE_QUALITY', 'MAX_RETRIES'
 ]
 
 === PY logger.py ===
@@ -191,7 +207,6 @@ def configure_logging():
     )
 
 === PY process.py ===
-import os
 import re
 import logging
 import textwrap
@@ -274,8 +289,6 @@ class ParseFile:
                 self.chunk = ' '.join(remaining_words)
                 if remaining_words:  # Add space only if there are remaining words
                     self.chunk += ' '
-                    
-            self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
             
         except Exception as e:
             self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
@@ -418,14 +431,28 @@ class ParseFile:
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 text = f.read()
                 text = re.sub(r'\s+', ' ', text).strip()
+                cleaned_chars = []
+                for i, char in enumerate(text):
+                    if char.isalnum() or char.isspace():
+                        cleaned_chars.append(char)
+                    elif (
+                        i > 0 and i < len(text) - 1 and
+                        text[i - 1].isalpha() and text[i + 1].isalpha()
+                    ):
+                        cleaned_chars.append(char)
+                    # else: skip the character
+
+                text = ''.join(cleaned_chars)
                 self.textsize = len(text)
+
             self._cleaned = True
             self.logger.debug(f'Cleaned file saved: {CLEANED_FILE}')
-            return(text)
+            return text
 
         except Exception as e:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
+
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
@@ -510,13 +537,13 @@ class ParseFile:
 import asyncio
 import logging
 from logger import configure_logging
-from config import INPUT_FILE
+from config import INPUT_FILE, TEST_FILE
 from process import ParseFile
 
 async def prepare_data():
     configure_logging()
     async with ParseFile() as filerunner:
-        await filerunner.process(INPUT_FILE)
+        await filerunner.process(TEST_FILE)
 
 async def main():
     configure_logging()
@@ -725,65 +752,67 @@ warren sat beside a wide window in the corner of her study
 the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls
 she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink
 it was in this exact space that she found solace after a long day of meetings presentations and endless email chains
-the silence was not merely an absence of noise it was a presence in itselfa companion that whispered in comfortable tones and allowed thoughts to drift unencumbered
-outside the garden laid in gentle bloom
-roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air with fragrant sweetness
-a pair of robins hopped atop the low stone wall pecking at small insects among the wild clover
-occasionally a butterflyorange with black veined wingsfluttered the formatted output should be like this alices
-adventures in
-wonderland by
-lewis
-carroll early morning in a busy city horsedrawn carriages rattled over cobblestones
-merchants hawked wares at street stalls and the clamor of voices in unfamiliar tongues filled the air
-as she read
-alice imagined herself there she could almost hear the clipclop of hooves and feel the rough stone underfoot
-the weight of her satchel on her shoulder once more she closed her eyes letting the sounds and textures swirl around her senses
-until she could scarcely distinguish them from her own reality
-such was the power of fine writing it created an illusion so vivid so grounded that the line between reader and narrator blurred
+the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered
+outside the garden lay in gentle bloom
+roses of deep crimson and pale pink nodded in the early breeze while lavender and thyme filled the afternoon air a pair of robins with fragrant sweetness hopped onto the low stone wall and began pecking at small insects amidst the wild clover
+occasionally an
+orange
+butterfly would flutter by passing through the aged glass panes
+alice watched this delicate creatures dance for just a brief moment before returning her focus back upon her reading material 
+an
+anthology filled exclusively with tales spun during those very same years which now seemed like yesterday themselves young woman stood at the edge of a river watching the current drift by as though it carried with it unspoken promises of a distant future
+the description was simple she lifted her hands above her head letting the cool early spring wind play through her fingers
+yet that image carried emotion enough to fill a lifetime of longing
+alice closed her eyes imagining the wind on her skin and for a moment she felt transported away from her study to that riverside scene
+then she opened her eyes again setting the bookmark between the pages and raised her gaze to the window
+the sun had sunk lower the sky had begun to shift to ethereal shades of lavender and gold
+soon the garden would be bathed in twilights soft glow the formatted output should be like below where every sentence is separated by periods or other appropriate punctuations she read
+alice imagined herself there she could almost hear the clipclop of hooves and feel the rough stone underfoot the weight of her satchel on her shoulder
+again she closed her eyes letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality
+such was the power of fine writingit created an illusion so vivid so grounded that the line between reader and narrator blurred
 by the time she finished the second story darkness had fallen completely
 the study lamp cast a soft pool of light around her chair
-beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth the distance a lone streetlamp flickered its orange glow rebounded off dewy leaves turning them into luminous orbs
-alice closed the anthology pressed a finger against the spine and slid the book into its place on the shelf
-she sat for a moment longer teacup in hand simply beingit was a practice in mindfulness in appreciating transition the end of daylight and arrival of evening the movement from narrative to reflection
-she allowed herself this small pause before rising to begin the next phase of her evening routine preparing a light supper writing a few thoughtful entries in her journal and perhaps stepping out onto the back porch to breathe beneath a sky of stars
-when she finally stood the teacup empty the anthology closed and the quiet settled deeply over the room
-alice felt a gentle contentment gratitude even for the storiesand for the silence that followed world beyond them for the tactile living reality she inhabits
-so at the close of day she gave thanks 
-for words for solitude
-and for the small wonders
-that attend each ordinary moment
+beyond the window the garden was now a shadowy realm defined only by silhouettes and the glimmer of a single landing moth
+in the distance crickets chirped in unison like tiny violins playing a haunting melody a lonely street lamp flickered to life its orange glow reflected upon dew drops transforming them into luminescent orbs
+alice carefully placed anthology closing it softly with an audible thud that echoed through the silent room
+sitting still for another minute tea cup resting delicately between fingers eyes fixed upon nothing but thoughts drifting aimlessly within her head 
+this is where serenity resides
+in these moments when time stands still yet everything around you moves forward at breakneck speed
+as darkness descends upon ushering in nightfall like clockwork precision so too does our heroine rise up ready take on whatever challenges lie ahead be they mundane chores such as cooking dinner or more profound endeavors involving selfreflection via penning down personal musings within pages bound by leather the cover was adorned by golden letters which read journal
+after an age seemingly passed in wandering through cloudy heights far from any semblance of grounding or connection to her mundane life below she finally stood upright amidst warming amber light filling up the space around her its origin still unclear but slowly becoming more apparent as it grew stronger revealing itself eventually as nothing other than a simple window casti
 
 === PY transcript_postprocessed.txt ===
 Alice
-Warren sat beside a wide window in the corner of her study.
+Warren sat besides a wide window in the corner of her study.
 The late afternoon light slanted gently across the hardwood floor, illuminating endless rows of books that lined the walls.
-She loved the hush of quiet contemplation, the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink.
+She loved the hush of quiet contemplation; the soft rustle of turning pages, and the subtle comfort of stories held within paper and ink.
 It was in this exact space that she found solace after a long day of meetings, presentations, and endless email chains.
-The silence wasn't just an absence of sound; it was its own entity—a companion that whispered softly, allowing thoughts to wander freely without interruption.
-Outside the garden lay in gentle bloom.
-Roses of deep crimson and pale pink nodded in the early breeze, while lavender and thyme filled the afternoon air with fragrant sweetness.
-A pair of robins hopped atop the low stone wall, pecking at small insects amidst the wild clover.
-Occasionally, Alice saw an orange-colored butterfly with black veins on its wings flutter by.
-Adventures in
-Wonderland... By Lewis Carroll
-Lewis is my favorite author. He writes amazing books!
-Carroll woke up early in the morning to the sound of horses' hooves clattering against the cobblestone streets outside his window. The bustling city was already alive with activity; carriage drivers shouted to one another as they navigated through the crowded thoroughfares.
-Merchants hawked wares at street stalls, and the clamor of voices in unfamiliar tongues filled the air.
-As she read...
-Alice imagined herself there; she could almost hear the clip-clop of hooves and feel the rough stone underfoot.
-The weight of her satchel on her shoulder, once more she closed her eyes. Letting the sounds and textures swirl around her senses.
-Until she could scarcely distinguish them from her own reality...
+The silence wasn't just an empty space; rather, it had its own voice - soft whispers comforting one's mind while allowing free-flowing thought processes without interruption.
+Outside the Garden Lay in Gentle Bloom
+Roses of deep crimson and pale pink nodded in the early breeze, while lavender and thyme filled the afternoon air. A pair of robins, with fragrant sweetness, hopped onto the low stone wall and began pecking at small insects amongst the wild clover.
+Occasionally, an
+Orange is my favorite color because it's bright and cheerful!
+Butterfly would flutter by, passing through the aged glass panes!
+Alice watched this delicate creature's dance for just a brief moment before returning her focus back upon her reading material.
+An
+An anthology filled exclusively with tales spun during those very same years—which now seemed like yesterday themself—a young woman stood at the edge of a river, watching the current drift by as though it carried with it unspoken promises of a distant future.
+The description was simple; she lifted her hands above her head, letting the cool early-spring wind play through her fingers.
+Yet that image carried emotion enough to fill a lifetime of longing.
+Alice closed her eyes, imagining the wind on her skin. For a moment, she felt transported away from her study to that river's side scene.
+Then she opened her eyes again, setting the bookmark between the pages, and raised her gaze to the window.
+The Sun Had Sunk Lower; The Sky Had Begun To Shift To Ethereal Shades Of Lavender And Gold
+Soon, the garden would be bathed in twilight's soft glow. She read.
+Alice imagined herself there; she could almost hear the clip-clop of hooves and feel the rough stone underfoot. The weight of her satchel was on her shoulder.
+Again, she closed her eyes, letting the sounds and textures swirl around her senses until she could scarcely distinguish them from her own reality.
 Such was the power of fine writing; it created an illusion so vivid, so grounded, that the line between reader and narrator blurred.
 By the time she finished the second story, darkness had fallen completely.
 The study lamp cast a soft pool of light around her chair.
-Beyond the window, the garden was now a shadowy realm, defined only by silhouettes and the glimmer of a single landing moth. The distance, a lone streetlamp flickered its orange glow; reflected off dewy leaves, turning them into luminous orbs.
-Alice closed the anthology, pressed a finger against the spine, and slid the book into its place on the shelf.
-She sat for a moment longer, teacup in hand, simply being. It was a practice in mindfulness—in appreciating the transition from the end of daylight to the arrival of evening, from narrative to reflection.
-She allowed herself this small pause before rising to begin the next phase of her evening routine—preparing a light supper, writing a few thoughtful entries in her journal, and perhaps stepping out onto the back porch to breathe beneath a sky of stars.
-When she finally stood the teacup empty, the anthology closed, and the quiet settled deeply over the room.
-Alice felt a gentle contentment and gratitude, even for the stories and for the silence that followed. She was grateful for the world beyond them and the tactile, living reality she inhabited.
-So at the close of day, she gave thanks.
-For words for solitude?
-And for the small wonders...
-That attend each ordinary moment!
+Beyond the window, the garden was now a shadowy realm; defined only by silhouettes and the glimmer of a single landing moth.
+In the distance, crickets chimed together, creating an eerie symphony that echoed through the night sky. A lone streetlamp flickered on, casting an amber hue over everything within its reach. The dewdrops sparkled underneath this new light source; they appeared almost magical—like miniature diamonds scattered across nature's canvas.
+Alice carefully placed her favorite book on the shelf, gently shutting its cover with a sound so quiet you could hear a pin drop in the otherwise still library.
+Sitting still for another minute, the teacup was resting delicately between her fingers while she gazed off into space with no particular focus in sight; lost amidst wandering thoughts that danced around inside her mind like leaves blown by an autumn breeze...
+This is where Serenity resides.
+In these moments, when time seems to stand still but everything else is moving forward at breakneck speed...
+As darkness descends, ushering in nightfall with clockwork precision, so too does our heroine rise up, ready to take on whatever challenges lie ahead—be they mundane chores such as cooking dinner or more profound endeavors involving self-reflection via penning down personal musings within pages bound by leather. The cover was adorned by golden letters that read "Journal."
+After an age seemingly passed in wandering through cloudy heights far from any semblance of grounding or connection to her mundane life below, she finally stood upright amidst warming amber light filling up the space around her. Its origin was still unclear but slowly becoming more apparent as it grew stronger, revealing itself eventually as nothing other than a simple window casting illumination upon this ethereal realm.
 

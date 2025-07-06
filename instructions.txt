@@ -1,3 +1,15 @@
-Modify config.py so that the model parameters give better results.  
-
 Consider changes so output better matches input.
+
+Desired output is cleaned into a word file containing 
+words, words with special characters, and spaces as the only whitespace.
+
+This becomes test input since it can be compared to output.
+
+The LLM must not change the words or word order as it finds sentences in the input string of words.  TThis is priority.
+
+A first pass identifies sentences and another pass punctuates them.  This seems like it could be simplified but it must not be.
+The two pass structure must be maintained because it lets regular expressions properly connect sentences in the output as 
+a side effect of removing the last punctuation mark and then allowing it be added in with the next chunk format.
+
+
+

@@ -1,4 +1,3 @@
-import os
 import re
 import logging
 import textwrap
@@ -81,8 +80,6 @@ class ParseFile:
                 self.chunk = ' '.join(remaining_words)
                 if remaining_words:  # Add space only if there are remaining words
                     self.chunk += ' '
-                    
-            self.logger.debug(f'Saved {len(save_words)} words. Remaining in chunk: {len(self.chunk.split())}')
             
         except Exception as e:
             self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
@@ -225,14 +222,28 @@ class ParseFile:
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 text = f.read()
                 text = re.sub(r'\s+', ' ', text).strip()
+                cleaned_chars = []
+                for i, char in enumerate(text):
+                    if char.isalnum() or char.isspace():
+                        cleaned_chars.append(char)
+                    elif (
+                        i > 0 and i < len(text) - 1 and
+                        text[i - 1].isalpha() and text[i + 1].isalpha()
+                    ):
+                        cleaned_chars.append(char)
+                    # else: skip the character
+
+                text = ''.join(cleaned_chars)
                 self.textsize = len(text)
+
             self._cleaned = True
             self.logger.debug(f'Cleaned file saved: {CLEANED_FILE}')
-            return(text)
+            return text
 
         except Exception as e:
             self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
             raise
+
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)

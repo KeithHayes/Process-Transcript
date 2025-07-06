@@ -1,13 +1,13 @@
 import asyncio
 import logging
 from logger import configure_logging
-from config import INPUT_FILE
+from config import INPUT_FILE, TEST_FILE
 from process import ParseFile
 
 async def prepare_data():
     configure_logging()
     async with ParseFile() as filerunner:
-        await filerunner.process(INPUT_FILE)
+        await filerunner.process(TEST_FILE)
 
 async def main():
     configure_logging()
