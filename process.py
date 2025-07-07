@@ -3,10 +3,11 @@ import re
 import logging
 import textwrap
 import aiohttp
-from config import (CLEANED_FILE, API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
+import shutil
+from config import (API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
                     CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
-                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK)
+                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, SAVEDCHUNKS)
 
 class ParseFile:
     def __init__(self):
@@ -216,30 +217,37 @@ class ParseFile:
         return '\n'.join(formatted_lines)
 
     def preprocess(self, input_file):
-        self.input_file = input_file
-        self.logger.debug(f'Preprocessing: {self.input_file}')
-        try:
-            with open(self.input_file, 'r', encoding='utf-8') as f:
-                text = f.read()
-                # Standardize whitespace
-                text = re.sub(r'\s+', ' ', text).strip()
-                
-                # Clean while preserving special characters in words
-                cleaned_chars = []
-                for i, char in enumerate(text):
-                    if char.isalnum() or char.isspace() or char in "-'":
-                        cleaned_chars.append(char)
-                    elif (i > 0 and i < len(text) - 1 and
-                          text[i-1].isalpha() and text[i+1].isalpha()):
-                        cleaned_chars.append(char)
+            self.input_file = input_file
+            self.logger.debug(f'Preprocessing: {self.input_file}')
+            try:
+                with open(self.input_file, 'r', encoding='utf-8') as f:
+                    text = f.read()
 
-                text = ''.join(cleaned_chars)
-                self.textsize = len(text)
+                # Normalize smart apostrophes and quotes to ASCII
+                text = text.replace("’", "'").replace("“", '"').replace("”", '"')
+                text = text.replace("—", " -- ") # Normalize em-dashes to spaces or consistent markers
+
+                # Replace all non-alphanumeric, non-apostrophe, non-hyphen characters with spaces.
+                # This is a more robust way to handle punctuation.
+                # Keep letters, numbers, hyphens, and apostrophes within words.
+                # Everything else becomes a space.
+                text = re.sub(r"[^A-Za-z0-9'\-]+", " ", text)
+
+                # Normalize all whitespace (including multiple spaces from previous step) to single spaces
+                text = re.sub(r'\s+', ' ', text).strip()
+
+                # Now, split the text into words. This should be cleaner.
+                # We'll rely on the split for tokenization and ensure individual tokens are not empty.
+                words = [word for word in text.split(' ') if word]
+
+                cleaned_text = ' '.join(words)
+                self.textsize = len(cleaned_text)
                 self._cleaned = True
-                return text
-        except Exception as e:
-            self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
-            raise
+                return cleaned_text
+
+            except Exception as e:
+                self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
+                raise
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
@@ -258,15 +266,29 @@ class ParseFile:
             self.output_string = ""
             self.input_word_pointer = 0
             self.output_pointer = 0
-            
-            # Load initial chunk
+
+            chunkcount = 0
+            if os.path.exists(SAVEDCHUNKS):
+                shutil.rmtree(SAVEDCHUNKS)
+            os.makedirs(SAVEDCHUNKS, exist_ok=True)
+
             self.loadchunk(CHUNK_SIZE)
 
             while True:
                 if FORMATCHECK:
                     formatted_chunk = self.chunk
                 else:
+                    
+                    chunkcount += 1
+                    filename = 'chunk_' + str(chunkcount)
+                    filepath = os.path.join(SAVEDCHUNKS, filename)
+                    if not os.path.exists(filepath):
+                        with open(filepath, 'a') as f:
+                            f.write(self.chunk)
+                            f.close()
+
                     formatted_chunk = await self.formatchunk(self.chunk)
+
                     sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
                     sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
                     self.chunk = self.deformat(sentence_starts_marked)

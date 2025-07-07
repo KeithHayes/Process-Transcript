@@ -9,6 +9,7 @@ MAX_FRAGMENT_LENGTH = 35          # Allows for moderate-length sentences
 SENTENCE_MARKER = chr(0x0a)       # Unicode character for boundaries
 
 # File paths (unchanged)
+SAVEDCHUNKS = 'files/savedchunks'
 INPUT_FILE = 'files/transcript.txt'
 TEST_FILE = 'files/desired_output.txt'
 CLEANED_FILE = 'files/transcript_preprocessed.txt'

@@ -1,18 +1,4 @@
-Consider changes so output better matches input.
+Understand that this is a work in progress and changes to code must be limited to those requested.  Architecture must be respected.
 
-Desired output is cleaned into a word file containing 
-words, words with special characters, and spaces as the only whitespace.
-
-This becomes test input since it can be compared to output.
-
-The LLM must not change the words or word order as it finds sentences in the input string of words.  This is priority.
-
-A first pass identifies sentences and another pass punctuates them.  This seems like it could be simplified but it must not be.
-
-The two pass structure must be maintained because it lets regular expressions properly connect sentences in the output as 
-a side effect of removing the last punctuation mark in the new format and then allowing it be added in with the next chunk 
-loaded and formated.
-
-framents of sentences should be collected on a line if they follow each other or they should be on the line by itself
-
-
+Currently the LLM prompts and possible LLM config parameters are to be adjusted so that the transcript_postprocessed output 
+resembles the desired_output better and without the injected error text as is now present.
