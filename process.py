@@ -91,13 +91,19 @@ class ParseFile:
             self.session = aiohttp.ClientSession()
         
         prompt = textwrap.dedent(f"""\
-            MUST maintain the EXACT original words and their order.
-            MUST put each complete sentence on its own line.
-            MUST NOT merge sentences together.
-            MUST NOT let proper names end sentences.
-            Add proper punctuation to complete sentences.
-            Capitalize first word of each complete sentence.
-            Leave incomplete fragments as-is on their own line.
+            Your task is to reformat the provided text.
+            Strictly adhere to the following rules:
+            - Maintain the EXACT original words and their order.
+            - NEVER add, delete, rephrase, or summarize any words.
+            - Put each complete sentence on its own line.
+            - Do NOT merge sentences together.
+            - Do NOT let proper names end sentences if they are part of an ongoing thought.
+            - Add proper punctuation (periods, question marks, exclamation points) to complete sentences only at their end.
+            - Capitalize the first word of each complete sentence.
+            - Leave incomplete fragments as-is on their own line.
+            - ONLY output the reformatted text. DO NOT include any additional commentary, explanations, or instructions.
+            - Ensure there are no extra spaces before or after any punctuation mark.
+
             Example:
             Input: "the cat sat the dog ran"
             Output: "The cat sat.\nThe dog ran."
@@ -169,18 +175,22 @@ class ParseFile:
                 
             try:
                 prompt = textwrap.dedent(f"""\
-                    MUST maintain the EXACT original words and their order.
-                    MUST NOT add, delete, or change any words.
-                    MUST NOT rephrase or summarize.
-                    Add periods, question marks, or exclamation points to punctuate complete sentences.
-                    Capitalize the first letter of the first word of each complete sentence.
-                    Incomplete sentence fragments must remain as they are.
-                    Only add punctuation at the end if appropriate.
-                    Only capitalize the first word if it starts a sentence.
+                    Your task is to punctuate and capitalize the provided line of text.
+                    Strictly adhere to the following rules:
+                    - Maintain the EXACT original words and their order.
+                    - NEVER add, delete, rephrase, or summarize any words.
+                    - Add periods, question marks, or exclamation points to punctuate complete sentences only at their end.
+                    - Capitalize the first letter of the first word of each complete sentence.
+                    - Incomplete sentence fragments must remain as they are, without added punctuation or capitalization unless they are a proper noun.
+                    - Only add punctuation at the very end of a complete sentence.
+                    - Only capitalize the first word if it starts a sentence.
+                    - ONLY output the reformatted text. DO NOT include any additional commentary, explanations, or instructions.
+                    - Ensure there are no extra spaces before or after any punctuation mark.
 
                     Text: {line}
 
                     Formatted text:""")
+
 
                 async with self.session.post(
                     self.api_url,
