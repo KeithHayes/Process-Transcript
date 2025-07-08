@@ -1,19 +1,22 @@
 # Transcript Formatter
 
 ## Overview
-This project processes long passages of unformatted text (such as audio transcripts) and converts them into properly formatted content with complete sentences and paragraphs, while maintaining faithfulness to the original content.
+This project processes long unformatted text files (such as audio transcripts) and converts them into properly formatted content with complete sentences.
+
+Future processing intends to use cosine similarity to build paragraphs from sentences.
 
 ## Key Features
-- Converts raw transcripts into readable, well-structured text
-- Maintains original meaning while improving formatting
-- Handles text of any length using chunked processing
-- Produces essay-style output with proper punctuation and paragraphs
+
+- Converts raw unformatted transcripts into readable, well-structured text.
+- Maintains content without change.
+- Handles text of any length using chunked processing.
+- Produces output with proper punctuation of sentences and un-formatted fragments.
 
 ## Installation & Setup
 
 ### Prerequisites
 - Python 3.8+
-- Virtual environment (recommended)
+- The text-generation-webui sever and a loaded model, currently developing with mythomax gguf variants.
 
 ### Server Setup
 
@@ -25,11 +28,13 @@ This project processes long passages of unformatted text (such as audio transcri
 2. The OpenAI-compatible API will be available at:
    ```
    http://0.0.0.0:5000
+
+3. Use the webui to load a model.
    ```
 
 ### Running the Formatter
 
-1. Activate your virtual environment:
+1. Activate your virtual environment if you build one:
 
    **Linux/Mac:**
    ```bash
@@ -56,13 +61,9 @@ This project processes long passages of unformatted text (such as audio transcri
 
 ### Output Format:
 - Proper sentence structure with correct punctuation  
-- Logical paragraph breaks  
-- Speaker identification (when present in source)  
-- Removal of filler words (uh, um, etc.)  
-- Consistent capitalization  
+
 
 ### Technical Approach:
 - Uses chunked processing to handle unlimited length input  
 - Maintains overlap between chunks for seamless transitions  
-- Applies post-processing for consistent formatting  
-- Includes fallback basic formatting if LLM processing fails  
+

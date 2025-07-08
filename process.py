@@ -251,6 +251,12 @@ class ParseFile:
 
                     formatted_chunk = await self.formatchunk(self.chunk)
 
+                    # TODO if the last sentence end matches the end of the chunk, the line break will be removed to give the 
+                    # sentence the chance to be extended.
+                    # building this in correctly now is essential as LoRA training can't start until this method is correct.
+                    # the end of the chunk \n and the [.?!] in front of it are removed at the end of the chunk.
+                    # connection is not yet seamless 
+
                     sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
                     sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
                     self.chunk = self.deformat(sentence_starts_marked)
