@@ -49,6 +49,7 @@ Future processing intends to use cosine similarity to build paragraphs from sent
 2. Run the formatter:
    ```bash
    python run.py
+   * config.py defines file paths
    ```
 
 ## How It Works
