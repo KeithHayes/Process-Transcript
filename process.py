@@ -48,44 +48,6 @@ class ParseFile:
         self.logger.info(f'Loaded {words_loaded} words (input pointer: {self.input_word_pointer})')
         return self.chunk
     
-    def savechunk(self):
-        try:
-            if not self.chunk:
-                return
-            chunkwords = [word for word in self.chunk.split(' ') if word]
-
-            # Special handling for final chunk
-            is_final_chunk = self.input_word_pointer >= len(self.input_array)
-            if is_final_chunk:
-                save_words = chunkwords  # Save ALL remaining words
-                self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
-                
-                # Join with spaces but preserve original formatting (including newlines)
-                save_words_string = ' '.join(save_words)
-                # Don't add trailing space for final chunk
-                self.output_string += save_words_string
-                self.output_pointer += len(save_words_string)
-
-                # Clear the chunk as we've processed everything
-                self.chunk = ''
-            else:
-                # Normal chunk processing
-                save_words = chunkwords[:OUTPUT_CHUNK_SIZE]
-                if save_words:
-                    save_words_string = ' '.join(save_words) + ' '
-                    self.output_string += save_words_string
-                    self.output_pointer += len(save_words_string)
-                    
-                # Keep overlap if there's more input to process
-                remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
-                self.chunk = ' '.join(remaining_words)
-                if remaining_words:  # Add space only if there are remaining words
-                    self.chunk += ' '
-
-        except Exception as e:
-            self.logger.error(f'Save of chunk failed: {e}', exc_info=True)
-            raise
-
     async def formatchunk(self, chunktext: str) -> str:
         if self.session is None:
             self.session = aiohttp.ClientSession()
@@ -233,23 +195,13 @@ class ParseFile:
                 with open(self.input_file, 'r', encoding='utf-8') as f:
                     text = f.read()
 
-                # Normalize smart apostrophes and quotes to ASCII
+                text = text.lower()
                 text = text.replace("’", "'").replace("“", '"').replace("”", '"')
-                text = text.replace("—", " -- ") # Normalize em-dashes to spaces or consistent markers
-
-                # Replace all non-alphanumeric, non-apostrophe, non-hyphen characters with spaces.
-                # This is a more robust way to handle punctuation.
-                # Keep letters, numbers, hyphens, and apostrophes within words.
-                # Everything else becomes a space.
+                text = text.replace("—", " -- ") # Normalize em-dashes to spaces
                 text = re.sub(r"[^A-Za-z0-9'\-]+", " ", text)
-
-                # Normalize all whitespace (including multiple spaces from previous step) to single spaces
                 text = re.sub(r'\s+', ' ', text).strip()
 
-                # Now, split the text into words. This should be cleaner.
-                # We'll rely on the split for tokenization and ensure individual tokens are not empty.
                 words = [word for word in text.split(' ') if word]
-
                 cleaned_text = ' '.join(words)
                 self.textsize = len(cleaned_text)
                 self._cleaned = True
@@ -303,9 +255,39 @@ class ParseFile:
                     sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
                     self.chunk = self.deformat(sentence_starts_marked)
                 
-                self.savechunk()
+                    chunkwords = [word for word in self.chunk.split(' ') if word]
+
+                    # Special handling for final chunk
+                    is_final_chunk = self.input_word_pointer >= len(self.input_array)
+                    if is_final_chunk:
+                        save_words = chunkwords  # Save ALL remaining words
+                        self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
+                        
+                        # Join with spaces but preserve original formatting (including newlines)
+                        save_words_string = ' '.join(save_words)
+                        # Don't add trailing space for final chunk
+                        self.output_string += save_words_string
+                        self.output_pointer += len(save_words_string)
+
+                        # Clear the chunk as we've processed everything
+                        self.chunk = ''
+                    else:
+                        # Normal chunk processing
+                        save_words = chunkwords[:OUTPUT_CHUNK_SIZE]
+                        if save_words:
+                            save_words_string = ' '.join(save_words) + ' '
+                            self.output_string += save_words_string
+                            self.output_pointer += len(save_words_string)
+                            
+                        # Keep overlap if there's more input to process
+                        remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
+                        self.chunk = ' '.join(remaining_words)
+                        if remaining_words:  # Add space only if there are remaining words
+                            self.chunk += ' '
+
+                    # Save the output chunk or whatever we need after chunk processing.
                 
-                # Exit condition
+                # Exit condition (moved after the inlined savechunk logic to ensure chunk is processed)
                 if self.input_word_pointer >= len(self.input_array) and not self.chunk.strip():
                     break
                     
