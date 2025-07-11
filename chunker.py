@@ -28,7 +28,7 @@ def get_text_chunk(filepath, index, size):
 def preprocess(text):
     text = text.lower()
     text = text.replace("’", "'").replace("“", '"').replace("”", '"')
-    text = text.replace("—", " -- ") # Normalize em-dashes to spaces
+    text = text.replace("—", " -- ")
     text = re.sub(r"[^A-Za-z0-9'\-]+", " ", text)
     text = re.sub(r'\s+', ' ', text).strip()
     words = [word for word in text.split(' ') if word]
@@ -37,73 +37,33 @@ def preprocess(text):
 
 
 if __name__ == "__main__":
-    # Ensure output directory exists
     os.makedirs("chunk_document", exist_ok=True)
+    with open('files/desired_output.txt', 'r', encoding='utf-8') as f:
+        text = f.read()
+        matches = list(re.finditer(r'\S+', text))
 
-    # Write chunk to file
-    chunk = get_text_chunk('files/desired_output.txt', 0, 200)
-    deformatted = preprocess(chunk)
-    with open("chunk_document/output_chunk_1.txt", "w", encoding='utf-8') as f:
-        f.write(chunk)
-    with open("chunk_document/input_chunk_1.txt", "w", encoding='utf-8') as f:
-        f.write(deformatted)
+    chunk_size = 200
+    start_indices = range(0, len(matches), 125) 
 
+    for i, start_index in enumerate(start_indices):
+        chunk_number = i + 1
+        chunk = get_text_chunk('files/desired_output.txt', start_index, chunk_size)
+        
+        if chunk and not chunk.startswith("Error"):
+            deformatted = preprocess(chunk)
+            
+            output_filename = f"chunk_document/output_chunk_{chunk_number}.txt"
+            input_filename = f"chunk_document/input_chunk_{chunk_number}.txt"
 
-    chunk = get_text_chunk('files/desired_output.txt', 125, 200)
-    deformatted = preprocess(chunk)
-    with open("chunk_document/output_chunk_2.txt", "w", encoding='utf-8') as f:
-        f.write(chunk)
-    with open("chunk_document/input_chunk_2.txt", "w", encoding='utf-8') as f:
-        f.write(deformatted)
-
-    chunk = get_text_chunk('files/desired_output.txt', 250, 200)
-    deformatted = preprocess(chunk)
-    with open("chunk_document/output_chunk_3.txt", "w", encoding='utf-8') as f:
-        f.write(chunk)
-    with open("chunk_document/input_chunk_3.txt", "w", encoding='utf-8') as f:
-        f.write(deformatted)
-
-
-    chunk = get_text_chunk('files/desired_output.txt', 375, 200)
-    deformatted = preprocess(chunk)
-    with open("chunk_document/output_chunk_4.txt", "w", encoding='utf-8') as f:
-        f.write(chunk)
-    with open("chunk_document/input_chunk_4.txt", "w", encoding='utf-8') as f:
-        f.write(deformatted)
-
-    chunk = get_text_chunk('files/desired_output.txt', 500, 200)
-    deformatted = preprocess(chunk)
-    with open("chunk_document/output_chunk_5.txt", "w", encoding='utf-8') as f:
-        f.write(chunk)
-    with open("chunk_document/input_chunk_5.txt", "w", encoding='utf-8') as f:
-        f.write(deformatted)
+            with open(output_filename, "w", encoding='utf-8') as f:
+                f.write(chunk)
+            with open(input_filename, "w", encoding='utf-8') as f:
+                f.write(deformatted)
+        elif chunk.startswith("Error"):
+            print(f"Skipping chunk {chunk_number} due to error: {chunk}")
+        else:
+            print(f"Skipping chunk {chunk_number} as no text was extracted from index {start_index}.")
 
 
-    chunk = get_text_chunk('files/desired_output.txt', 625, 200)
-    deformatted = preprocess(chunk)
-    with open("chunk_document/output_chunk_6.txt", "w", encoding='utf-8') as f:
-        f.write(chunk)
-    with open("chunk_document/input_chunk_6.txt", "w", encoding='utf-8') as f:
-        f.write(deformatted)
-
-    chunk = get_text_chunk('files/desired_output.txt', 750, 200)
-    deformatted = preprocess(chunk)
-    with open("chunk_document/output_chunk_7.txt", "w", encoding='utf-8') as f:
-        f.write(chunk)
-    with open("chunk_document/input_chunk_7.txt", "w", encoding='utf-8') as f:
-        f.write(deformatted)
-
-
-    chunk = get_text_chunk('files/desired_output.txt', 875, 200)
-    deformatted = preprocess(chunk)
-    with open("chunk_document/output_chunk_8.txt", "w", encoding='utf-8') as f:
-        f.write(chunk)
-    with open("chunk_document/input_chunk_8.txt", "w", encoding='utf-8') as f:
-        f.write(deformatted)
-
-
-    # Test output
-    print("Sample chunks written")
-
-
-
+    # word count
+    print(f"Sample chunks written, word count = {len(matches)}")

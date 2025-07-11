@@ -251,6 +251,8 @@ class ParseFile:
 
                     formatted_chunk = await self.formatchunk(self.chunk)
 
+                    # TODO move the FORMATCHECK switch here where the formatting is actually done.
+                    # then write a new savechunk function  
                     # TODO if the last sentence end matches the end of the chunk, the line break will be removed to give the 
                     # sentence the chance to be extended.
                     # building this in correctly now is essential as LoRA training can't start until this method is correct.
