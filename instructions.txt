@@ -4,3 +4,43 @@ Savechunks() has been removed and the functionality is inlined.  Merging chunks 
 on each format event to verify the outpput file is being worked out.
 
 The output to check on each cycle will be determined when the five training LoRA events are worked out.
+
+..............
+
+
+DOCUMENTSIZE = 884
+CHUNKSIZE = 125
+OVERLAP = 75
+inputpointer = 0
+contextwindow = ""
+outputstring = ""
+
+
+
+load contextwindow with CHUNKSIZE + OVERLAP from  inputpointer
+inputpointer += CHUNKSIZE + OVERLAP //  200
+format()
+
+split the context window and save the lower half in the outputstring keep the upper half and add a new chunk to it.
+inputpointer += CHUNKSIZE // 325
+format()
+check to see if inputpointer > DOCUMENTSIZE go to Exit if if is
+
+split the context window and save the lower half in the outputstring keep the upper half and add a new chunk to it.
+inputpointer += CHUNKSIZE // 450
+format()
+check to see if inputpointer > DOCUMENTSIZE go to Exit if if is
+
+split the context window and save the lower half in the outputstring keep the upper half and add a new chunk to it.
+inputpointer += CHUNKSIZE // 575 700 825 *884
+format()
+check to see if inputpointer > DOCUMENTSIZE go to Exit if if is
+
+
+
+
+
+
+
+Exit: save the context window in the outputstring
+

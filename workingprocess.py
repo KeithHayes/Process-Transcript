@@ -48,7 +48,7 @@ class ParseFile:
         self.logger.info(f'Loaded {words_loaded} words (input pointer: {self.input_word_pointer})')
         return self.chunk
     
-    async def formatchunk1(self, chunktext: str) -> str:
+    async def formatchunk(self, chunktext: str) -> str:
         if self.session is None:
             self.session = aiohttp.ClientSession()
         
@@ -211,62 +211,17 @@ class ParseFile:
                 self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
                 raise
 
-    # the entry point 
-
-    def format(self, text):
-        return text
-    
-    def find_first_mismatch(self, str1, str2):
-        min_len = min(len(str1), len(str2))
-        for i in range(min_len):
-            if str1[i] != str2[i]:
-                return f"Mismatch at index {i}: '{str1[i]}' != '{str2[i]}'"
-        if len(str1) != len(str2):
-            return f"Mismatch at index {min_len}: One string is longer"
-        return "Strings are identical"
-
-    
-
-    def split_into_two_chunks(self, text, n):
-        words = text.split()
-        first_chunk = ' '.join(words[:n]) if words else ""
-        second_chunk = ' '.join(words[n:]) if words else ""
-        return first_chunk, second_chunk
-
-
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
-        # file paths defined
-        self.cleanedinput_file = PROCESSED_FILE
-        self.output_file = POSTPROCESSED_FILE
+        self.processed_file = PROCESSED_FILE
+        self.postprocessed_file = POSTPROCESSED_FILE
 
         if not self._cleaned:
             raise RuntimeError("Must call preprocess() before process()")
             
-        self.logger.debug(f'Processing to: {self.output_file}')
+        self.logger.debug(f'Processing to: {self.postprocessed_file}')
             
         try:
-
-            input_string = self.input_string
-            output_string = ""
-            context_window = ""
-            chunk_size = OUTPUT_CHUNK_SIZE
-            overlap_size = CHUNK_OVERLAP
-            total_chunk_size = chunk_size + overlap_size
-            first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
-            context_window = first_chunk
-            while remaining_input:
-                output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
-                output_string += output_part
-                next_chunk, remaining_input = self.split_into_two_chunks(remaining_input, chunk_size)
-                context_window = overlap_part + " " + next_chunk if overlap_part else next_chunk
-                context_window = self.format(context_window)
-                output_string += "" + context_window if output_string else context_window
-
-            result = self.find_first_mismatch(self.input_string, output_string)
-            print(result)  # Output: Mismatch at index 3: 'd' != 'x'
-
-
             self.logger.info(f'Loaded {len(self.input_string)} chars, {len(self.input_string.split())} words')
             self.input_array = self.input_string.split()
             self.chunk = ""
@@ -294,7 +249,7 @@ class ParseFile:
                             f.write(self.chunk)
                             f.close()
 
-                    formatted_chunk = await self.formatchunk1(self.chunk)
+                    formatted_chunk = await self.formatchunk(self.chunk)
 
                     # TODO move the FORMATCHECK switch here where the formatting is actually done.
                     # then write a new savechunk function  
@@ -357,9 +312,9 @@ class ParseFile:
                 self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
 
             # Processed file
-            with open(self.cleanedinput_file, 'w', encoding='utf-8') as f:
+            with open(self.processed_file, 'w', encoding='utf-8') as f:
                 f.write(self.output_string)
-                self.logger.info(f'Saved {len(self.output_string)} chars to {self.cleanedinput_file}')
+                self.logger.info(f'Saved {len(self.output_string)} chars to {self.processed_file}')
 
             # Process unformatted lines
             final_output = ''
@@ -376,12 +331,12 @@ class ParseFile:
                     formatted_string = '\n' + formatted_string
                 final_output += formatted_string
                 pointer += 10
-                self.logger.info(f'Saved {pointer} lines to {self.output_file}')
+                self.logger.info(f'Saved {pointer} lines to {self.postprocessed_file}')
             
             # Final output
-            with open(self.output_file, 'w', encoding='utf-8') as f:
+            with open(self.postprocessed_file, 'w', encoding='utf-8') as f:
                 f.write(final_output)
-                self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')
+                self.logger.info(f'Saved {len(final_output)} chars to {self.postprocessed_file}')
                 
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
