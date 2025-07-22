@@ -213,67 +213,70 @@ class ParseFile:
     # the entry point
 
     def getdesiredchunk(self, text):
-            """
-            Given a chunk from self.input_string (which has no punctuation),
-            find its word index in self.input_string,
-            then extract a chunk of the same word length starting at that index from files/desired_output.txt,
-            preserving original line breaks.
-            """
-            try:
-                # Tokenize by space
-                target_words = text.strip().split()
-                num_words = len(target_words)
+        """
+        Given a chunk from self.input_string (which has no punctuation),
+        find its word index in self.input_string,
+        then extract a chunk of the same word length starting at that index from files/desired_output.txt,
+        preserving original line breaks.
+        """
+        try:
+            # Tokenize by space
+            target_words = text.strip().split()
+            num_words = len(target_words)
 
-                # Tokenize self.input_string
-                input_words = self.input_string.strip().split()
-                for i in range(len(input_words) - num_words + 1):
-                    if input_words[i:i + num_words] == target_words:
-                        start_word_index = i
-                        break
-                else:
-                    raise ValueError("Chunk not found in input_string.")
+            # Tokenize self.input_string
+            input_words = self.input_string.strip().split()
+            for i in range(len(input_words) - num_words + 1):
+                if input_words[i:i + num_words] == target_words:
+                    start_word_index = i
+                    break
+            else:
+                raise ValueError("Chunk not found in input_string.")
 
-                # Load desired_output with original line breaks
-                with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
-                    lines = f.readlines()
+            # Load desired_output with original line breaks
+            with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
+                lines = f.readlines()
 
-                # Flatten words across lines while keeping mapping: word index → (line index, word index in line)
-                word_locations = []
-                for line_index, line in enumerate(lines):
-                    words_in_line = line.strip().split()
-                    for word_index, word in enumerate(words_in_line):
-                        word_locations.append((line_index, word_index))
+            # Flatten words across lines while keeping mapping: word index → (line index, word index in line)
+            word_locations = []
+            for line_index, line in enumerate(lines):
+                words_in_line = line.strip().split()
+                for word_index, word in enumerate(words_in_line):
+                    word_locations.append((line_index, word_index))
 
-                if start_word_index + num_words > len(word_locations):
-                    raise ValueError("Chunk exceeds length of desired output.")
+            if start_word_index + num_words > len(word_locations):
+                raise ValueError("Chunk exceeds length of desired output.")
 
-                # Collect the chunk words with their line positions
-                chunk_locations = word_locations[start_word_index:start_word_index + num_words]
+            # Collect the chunk words with their line positions
+            chunk_locations = word_locations[start_word_index:start_word_index + num_words]
 
-                # Reconstruct the chunk with preserved line breaks
-                line_buffer = {}
-                for line_index, word_index in chunk_locations:
-                    line = lines[line_index].strip().split()
-                    word = line[word_index]
-                    line_buffer.setdefault(line_index, []).append(word)
+            # Reconstruct the chunk with preserved line breaks
+            line_buffer = {}
+            for line_index, word_index in chunk_locations:
+                line = lines[line_index].strip().split()
+                word = line[word_index]
+                line_buffer.setdefault(line_index, []).append(word)
 
-                # Combine the chunk lines in order
-                ordered_lines = [line_buffer[i] for i in sorted(line_buffer)]
-                desired_chunk = '\n'.join(' '.join(words) for words in ordered_lines)
+            # Combine the chunk lines in order
+            ordered_lines = [line_buffer[i] for i in sorted(line_buffer)]
+            desired_chunk = '\n'.join(' '.join(words) for words in ordered_lines)
 
-                return desired_chunk
+            return desired_chunk
 
-            except Exception as e:
-                self.logger.error(f'getdesiredchunk failed: {e}', exc_info=True)
-                return text  # fallback
+        except Exception as e:
+            self.logger.error(f'getdesiredchunk failed: {e}', exc_info=True)
+            return text  # fallback
+
+
+        
 
     async def format(self, text):
-        TEST_MODE = 'desiredoutput'
+        TEST_MODE = 'builddataset'
         match TEST_MODE:
-            case "unformatted":
+            case "noformat":
                 return text
-            case "desiredoutput":
-                print("Desired output mode")
+            case "builddataset":
+                print("Generates training data.")
                 newtext = self.getdesiredchunk(text)
 
 
@@ -302,54 +305,63 @@ class ParseFile:
         return first_chunk, second_chunk
 
 
-    async def process(self, input_file: str):
-        self.input_string = self.preprocess(input_file)
-        # file paths defined
-        self.cleanedinput_file = PROCESSED_FILE
-        self.output_file = POSTPROCESSED_FILE
+async def process(self, input_file: str):
+    self.input_string = self.preprocess(input_file)
+    self.cleanedinput_file = PROCESSED_FILE
+    self.output_file = POSTPROCESSED_FILE
 
-        if not self._cleaned:
-            raise RuntimeError("Must call preprocess() before process()")
+    if not self._cleaned:
+        raise RuntimeError("Must call preprocess() before process()")
+        
+    self.logger.debug(f'Processing to: {self.output_file}')
+    
+    try:
+        input_words = self.input_string.split()
+        chunk_size = OUTPUT_CHUNK_SIZE
+        overlap_size = CHUNK_OVERLAP
+        
+        formatted_chunks = []
+        input_pointer = 0
+        total_words = len(input_words)
+
+        while input_pointer < total_words:
+            end_pointer = min(input_pointer + chunk_size + overlap_size, total_words)
+            chunk_words = input_words[input_pointer:end_pointer]
+            chunk_text = ' '.join(chunk_words)
             
-        self.logger.debug(f'Processing to: {self.output_file}')
+            formatted = await self.format(chunk_text)
+            formatted_chunks.append(formatted)
             
-        try:
+            input_pointer += chunk_size  # move by chunk_size only
 
-            input_string = self.input_string
-            output_string = ""
-            context_window = ""
-            chunk_size = OUTPUT_CHUNK_SIZE
-            overlap_size = CHUNK_OVERLAP
-            total_chunk_size = chunk_size + overlap_size
-            first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
-            context_window = await self.format(first_chunk)
-            while remaining_input:
-                output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
-                output_string += output_part + " "
-                next_chunk, remaining_input = self.split_into_two_chunks(remaining_input, chunk_size)
-                context_window = overlap_part + " " + next_chunk
-                context_window = await self.format(context_window)
+        # Step 2: Merge chunks by removing overlaps (string based)
+        # We'll keep the first chunk whole,
+        # then for each subsequent chunk, remove any prefix that matches a suffix of the previous output.
 
-            output_string += context_window
-            
+        def remove_overlap(prev: str, curr: str) -> str:
+            # Try to find the longest overlap where prev's suffix matches curr's prefix
+            max_overlap_len = min(len(prev), len(curr))
+            for olap_len in range(max_overlap_len, 0, -1):
+                if prev.endswith(curr[:olap_len]):
+                    return curr[olap_len:]
+            return curr  # no overlap
 
+        merged_text = formatted_chunks[0]
+        for chunk in formatted_chunks[1:]:
+            chunk_no_overlap = remove_overlap(merged_text, chunk)
+            # Join with two newlines to preserve paragraph breaks clearly
+            merged_text += "\n\n" + chunk_no_overlap.strip()
 
-            with open(os.path.join("files", "testinput.txt"), "w") as f:
-                f.write(self.input_string)
-            with open(os.path.join("files", "testoutput.txt"), "w") as f:
-                f.write(output_string)
+        # Step 3: Save input and output for debugging
+        with open(os.path.join("files", "testinput.txt"), "w", encoding='utf-8') as f:
+            f.write(self.input_string)
+        with open(os.path.join("files", "testoutput.txt"), "w", encoding='utf-8') as f:
+            f.write(merged_text)
 
-            #result = self.find_first_mismatch(self.input_string, output_string)
+        # Step 4: Optionally check differences (you already have this)
+        result = self.find_first_mismatch(self.input_string, merged_text)
+        print(result)
 
-            with open(os.path.join("files", "desired_output.txt"), "r", encoding="utf-8") as f:
-                desiredcontent = f.read()
-
-            result = self.find_first_mismatch(desiredcontent, output_string)
-            
-            print(result)  # Output: Mismatch at index 3: 'd' != 'x'
-
-
-                
-        except Exception as e:
-            self.logger.error(f'Processing failed: {e}', exc_info=True)
-            raise
+    except Exception as e:
+        self.logger.error(f'Processing failed: {e}', exc_info=True)
+        raise
