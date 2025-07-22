@@ -213,7 +213,8 @@ class ParseFile:
 
     # the entry point 
 
-    def format(self, text):
+    async def format(self, text):
+        formatted_chunk = await self.formatchunk1(text)
         return text
     
     def find_first_mismatch(self, str1, str2):
@@ -254,13 +255,13 @@ class ParseFile:
             overlap_size = CHUNK_OVERLAP
             total_chunk_size = chunk_size + overlap_size
             first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
-            context_window = self.format(first_chunk)
+            context_window = await self.format(first_chunk)
             while remaining_input:
                 output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
                 output_string += output_part + " "
                 next_chunk, remaining_input = self.split_into_two_chunks(remaining_input, chunk_size)
                 context_window = overlap_part + " " + next_chunk
-                context_window = self.format(context_window)
+                context_window = await self.format(context_window)
 
             output_string += context_window
             
@@ -276,121 +277,6 @@ class ParseFile:
             print(result)  # Output: Mismatch at index 3: 'd' != 'x'
 
 
-            self.logger.info(f'Loaded {len(self.input_string)} chars, {len(self.input_string.split())} words')
-            self.input_array = self.input_string.split()
-            self.chunk = ""
-            self.output_string = ""
-            self.input_word_pointer = 0
-            self.output_pointer = 0
-
-            chunkcount = 0
-            if os.path.exists(SAVEDCHUNKS):
-                shutil.rmtree(SAVEDCHUNKS)
-            os.makedirs(SAVEDCHUNKS, exist_ok=True)
-
-            self.loadchunk(CHUNK_SIZE)
-
-            while True:
-                if FORMATCHECK:
-                    formatted_chunk = self.chunk
-                else:
-                    
-                    chunkcount += 1
-                    filename = 'chunk_' + str(chunkcount)
-                    filepath = os.path.join(SAVEDCHUNKS, filename)
-                    if not os.path.exists(filepath):
-                        with open(filepath, 'a') as f:
-                            f.write(self.chunk)
-                            f.close()
-
-                    formatted_chunk = await self.formatchunk1(self.chunk)
-
-                    # TODO move the FORMATCHECK switch here where the formatting is actually done.
-                    # then write a new savechunk function  
-                    # TODO if the last sentence end matches the end of the chunk, the line break will be removed to give the 
-                    # sentence the chance to be extended.
-                    # building this in correctly now is essential as LoRA training can't start until this method is correct.
-                    # the end of the chunk \n and the [.?!] in front of it are removed at the end of the chunk.
-                    # connection is not yet seamless 
-
-                    sentence_ends_marked = re.sub(r'(?<=[.?!])\s+', SENTENCE_MARKER, formatted_chunk)
-                    sentence_starts_marked = re.sub(r'\s+(?=[A-Z])', SENTENCE_MARKER, sentence_ends_marked)
-                    self.chunk = self.deformat(sentence_starts_marked)
-                
-                    chunkwords = [word for word in self.chunk.split(' ') if word]
-
-                    # Special handling for final chunk
-                    is_final_chunk = self.input_word_pointer >= len(self.input_array)
-                    if is_final_chunk:
-                        save_words = chunkwords  # Save ALL remaining words
-                        self.logger.debug(f'Final chunk detected - saving all {len(save_words)} words')
-                        
-                        # Join with spaces but preserve original formatting (including newlines)
-                        save_words_string = ' '.join(save_words)
-                        # Don't add trailing space for final chunk
-                        self.output_string += save_words_string
-                        self.output_pointer += len(save_words_string)
-
-                        # Clear the chunk as we've processed everything
-                        self.chunk = ''
-                    else:
-                        # Normal chunk processing
-                        save_words = chunkwords[:OUTPUT_CHUNK_SIZE]
-                        if save_words:
-                            save_words_string = ' '.join(save_words) + ' '
-                            self.output_string += save_words_string
-                            self.output_pointer += len(save_words_string)
-                            
-                        # Keep overlap if there's more input to process
-                        remaining_words = chunkwords[OUTPUT_CHUNK_SIZE:] if len(chunkwords) > OUTPUT_CHUNK_SIZE else []
-                        self.chunk = ' '.join(remaining_words)
-                        if remaining_words:  # Add space only if there are remaining words
-                            self.chunk += ' '
-
-                    # Save the output chunk or whatever we need after chunk processing.
-                
-                # Exit condition (moved after the inlined savechunk logic to ensure chunk is processed)
-                if self.input_word_pointer >= len(self.input_array) and not self.chunk.strip():
-                    break
-                    
-                # Load next chunk if more exists
-                if self.input_word_pointer < len(self.input_array):
-                    self.loadchunk(CHUNK_SIZE - CHUNK_OVERLAP)
-            
-            # Final validation
-            input_words = len(self.input_array)
-            output_words = len(self.output_string.split())
-            self.logger.info(f'Processed {output_words}/{input_words} words')
-            
-            if input_words != output_words:
-                self.logger.warning(f'Word count mismatch! Input: {input_words}, Output: {output_words}')
-
-            # Processed file
-            with open(self.cleanedinput_file, 'w', encoding='utf-8') as f:
-                f.write(self.output_string)
-                self.logger.info(f'Saved {len(self.output_string)} chars to {self.cleanedinput_file}')
-
-            # Process unformatted lines
-            final_output = ''
-            lines = self.output_string.split('\n')
-            total_lines = len(lines)
-            pointer = 0
-
-            while pointer < total_lines:
-                # Get next 10 lines (or remaining lines if less than 10)
-                chunk_lines = lines[pointer:pointer+10]
-                unformatted_string = '\n'.join(chunk_lines)
-                formatted_string = await self.formatlines(unformatted_string)
-                if final_output:  # add newline after first line
-                    formatted_string = '\n' + formatted_string
-                final_output += formatted_string
-                pointer += 10
-                self.logger.info(f'Saved {pointer} lines to {self.output_file}')
-            
-            # Final output
-            with open(self.output_file, 'w', encoding='utf-8') as f:
-                f.write(final_output)
-                self.logger.info(f'Saved {len(final_output)} chars to {self.output_file}')
                 
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
