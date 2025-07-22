@@ -56,6 +56,7 @@ LINECHECK = False
 # Quality control
 MIN_SENTENCE_QUALITY = 0.8        # Higher quality threshold
 MAX_RETRIES = 3                   # More retry attempts for poor formatting
+TEST_MODE = "run"
 
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE', 'POSTPROCESSED_FILE',
@@ -66,5 +67,5 @@ __all__ = [
     'MAX_SENTENCE_VALIDATION_ERRORS', 'LOG_DIR', 'LOG_FILE',
     'DEBUG_LOG_FILE', 'FORMATCHECK', 'PRESERVE_CASE',
     'STRICT_PUNCTUATION', 'PRESERVE_PARAGRAPHS', 'LINECHECK',
-    'MIN_SENTENCE_QUALITY', 'MAX_RETRIES'
+    'MIN_SENTENCE_QUALITY', 'MAX_RETRIES', 'TEST_MODE'
 ]

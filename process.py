@@ -3,8 +3,8 @@ import re
 import logging
 import textwrap
 import aiohttp
-import shutil
-from config import (API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES,
+import hashlib
+from config import (API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, TEST_MODE,
                     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
                     CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
                     PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, SAVEDCHUNKS)
@@ -211,11 +211,26 @@ class ParseFile:
                 self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
                 raise
 
-    # the entry point 
+    # the entry point
+
+    def checksum_md5(text):
+        return hashlib.md5(text.encode('utf-8')).hexdigest()
 
     async def format(self, text):
-        formatted_chunk = await self.formatchunk1(text)
-        return text
+        TEST_MODE = 'unfiltered'
+        match TEST_MODE:
+            case "unfiltered":
+                return text
+            case "desired":
+                print("Running in desired mode.")
+                checksum = checksum_md5(text)
+
+                return text
+            case "run":
+                formatted_chunk = await self.formatchunk1(text)
+                return text
+            case _:
+                return text
     
     def find_first_mismatch(self, str1, str2):
         min_len = min(len(str1), len(str2))
