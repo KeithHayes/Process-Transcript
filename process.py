@@ -254,16 +254,25 @@ class ParseFile:
             overlap_size = CHUNK_OVERLAP
             total_chunk_size = chunk_size + overlap_size
             first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
-            context_window = first_chunk
+            context_window = self.format(first_chunk)
             while remaining_input:
                 output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
-                output_string += output_part
+                output_string += output_part + " "
                 next_chunk, remaining_input = self.split_into_two_chunks(remaining_input, chunk_size)
-                context_window = overlap_part + " " + next_chunk if overlap_part else next_chunk
+                context_window = overlap_part + " " + next_chunk
                 context_window = self.format(context_window)
-                output_string += "" + context_window if output_string else context_window
+
+            output_string += context_window
+            
+
+
+            with open(os.path.join("files", "testinput.txt"), "w") as f:
+                f.write(self.input_string)
+            with open(os.path.join("files", "testoutput.txt"), "w") as f:
+                f.write(output_string)
 
             result = self.find_first_mismatch(self.input_string, output_string)
+            
             print(result)  # Output: Mismatch at index 3: 'd' != 'x'
 
 
