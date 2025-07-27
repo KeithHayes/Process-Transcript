@@ -44,7 +44,7 @@ class ParseFile:
         self.logger.info(f'Loaded {words_loaded} words (input pointer: {self.input_word_pointer})')
         return self.chunk
     
-    async def formatchunk1(self, chunktext: str) -> str:
+    async def formatchunk(self, chunktext: str) -> str:
         if self.session is None:
             self.session = aiohttp.ClientSession()
         
@@ -142,7 +142,7 @@ class ParseFile:
             target_words = stripped_text.split()
             num_words = len(target_words)
 
-            input_words = self.input_string.strip().split()
+            input_words = self.deformat(self.input_string).strip().split()
             for i in range(len(input_words) - num_words + 1):
                 if input_words[i:i + num_words] == target_words:
                     start_word_index = i
@@ -190,15 +190,16 @@ class ParseFile:
 
     async def format(self, text):
         formatted = ""
+        chunk = self.deformat(text)
         match TEST_MODE:
             case "unformatted":
-                formatted = text
+                formatted = chunk
             case "desiredoutput":
-                formatted = self.getdesiredchunk(text)
+                formatted = self.getdesiredchunk(chunk)
             case "run":
-                formatted = await self.formatchunk1(text)
+                formatted = await self.formatchunk(chunk)
             case _:
-                formatted = text
+                formatted = chunk
         return formatted
     
     def find_first_mismatch(self, str1, str2):
@@ -274,11 +275,10 @@ class ParseFile:
                 output_string += ' '
             output_string += context_window
 
-            # Clean up any double spaces
-            output_string = re.sub(r' +', ' ', output_string)
             
             with open(TEST_INPUT, "w", encoding='utf-8') as f:
                 f.write(self.input_string)
+
             with open(TEST_OUTPUT, "w", encoding='utf-8') as f:
                 f.write(output_string.strip())
 
