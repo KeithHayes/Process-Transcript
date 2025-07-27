@@ -6,8 +6,8 @@ import aiohttp
 from config import (
     API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, TEST_MODE,
     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
-    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK,
-    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, SAVEDCHUNKS
+    CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, TEST_INPUT, TEST_OUTPUT,
+    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK
 )
 
 class ParseFile:
@@ -271,8 +271,12 @@ class ParseFile:
 
     def split_into_two_chunks(self, text, n):
         try:
+            if not text.strip():
+                return "", ""
+                
             lines = text.splitlines(keepends=True)
             
+            # Build word position mapping
             word_locations = []
             words_in_lines = []
             for line_index, line in enumerate(lines):
@@ -281,19 +285,22 @@ class ParseFile:
                 for word_index in range(len(words_in_line)):
                     word_locations.append((line_index, word_index))
             
-            if n > len(word_locations):
-                raise ValueError("Split index exceeds total word count")
+            # Handle case where n exceeds word count
+            if n >= len(word_locations):
+                return text, ""
             
+            # Get locations for both chunks
             first_chunk_locs = word_locations[:n]
             second_chunk_locs = word_locations[n:]
             
             def build_chunk(locations):
+                """Helper to reconstruct text with original line breaks"""
                 line_buffer = {}
                 for line_index, word_index in locations:
-                    words = words_in_lines[line_index]
-                    word = words[word_index]
+                    word = words_in_lines[line_index][word_index]
                     line_buffer.setdefault(line_index, []).append(word)
                 
+                # Reconstruct lines in original order
                 ordered_lines = []
                 for line_index in sorted(line_buffer):
                     original_line = lines[line_index]
@@ -345,10 +352,13 @@ class ParseFile:
 
             output_string += context_window
 
-            with open(os.path.join("files", "testinput.txt"), "w") as f:
+            with open(os.path.join(TEST_INPUT), "w") as f:
                 f.write(self.input_string)
-            with open(os.path.join("files", "testoutput.txt"), "w") as f:
+            with open(os.path.join(TEST_OUTPUT), "w") as f:
                 f.write(output_string)
+
+            with open(os.path.join("files", "testinput.txt"), "r", encoding="utf-8") as f:
+                inputext = f.read()
 
             with open(os.path.join("files", "desired_output.txt"), "r", encoding="utf-8") as f:
                 desiredcontent = f.read()

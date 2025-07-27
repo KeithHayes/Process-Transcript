@@ -16,6 +16,8 @@ CLEANED_FILE = 'files/transcript_preprocessed.txt'
 PROCESSED_FILE = 'files/transcript_processed.txt'
 POSTPROCESSED_FILE = 'files/transcript_postprocessed.txt'
 OUTPUT_FILE = 'files/transcript_formatted.txt'
+TEST_INPUT = 'files/testintput.txt'
+TEST_OUTPUT = 'files/testoutput.txt'
 
 # API configuration
 API_URL = "http://0.0.0.0:5000/v1/completions"
@@ -56,7 +58,7 @@ LINECHECK = False
 # Quality control
 MIN_SENTENCE_QUALITY = 0.8        # Higher quality threshold
 MAX_RETRIES = 3                   # More retry attempts for poor formatting
-TEST_MODE = "unformatted"
+TEST_MODE = "desiredoutput"
 
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE', 'POSTPROCESSED_FILE',
@@ -65,7 +67,7 @@ __all__ = [
     'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',
     'REPETITION_PENALTY', 'TEMPERATURE', 'TOP_P', 'TOP_K', 'TOP_T', # TOP_T included in __all__
     'MAX_SENTENCE_VALIDATION_ERRORS', 'LOG_DIR', 'LOG_FILE',
-    'DEBUG_LOG_FILE', 'FORMATCHECK', 'PRESERVE_CASE',
+    'DEBUG_LOG_FILE', 'FORMATCHECK', 'PRESERVE_CASE', "TEST_OUTPUT",
     'STRICT_PUNCTUATION', 'PRESERVE_PARAGRAPHS', 'LINECHECK',
     'MIN_SENTENCE_QUALITY', 'MAX_RETRIES', 'TEST_MODE'
 ]
