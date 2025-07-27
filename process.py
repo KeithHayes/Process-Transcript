@@ -212,6 +212,14 @@ class ParseFile:
 
     def getdesiredchunk(self, text):
         try:
+            # Preserve leading whitespace
+            leading_whitespace = ''
+            for char in text:
+                if char in (' ', '\n'):
+                    leading_whitespace += char
+                else:
+                    break
+            
             target_words = text.strip().split()
             num_words = len(target_words)
 
@@ -238,13 +246,25 @@ class ParseFile:
             chunk_locations = word_locations[start_word_index:start_word_index + num_words]
             line_buffer = {}
             for line_index, word_index in chunk_locations:
-                line = lines[line_index].strip().split()
-                word = line[word_index]
-                line_buffer.setdefault(line_index, []).append(word)
+                original_line = lines[line_index]
+                words_in_line = original_line.strip().split()
+                word = words_in_line[word_index]
+                
+                # Preserve original line's leading whitespace for first line
+                if line_index not in line_buffer:
+                    line_leading = original_line[:len(original_line) - len(original_line.lstrip())]
+                    line_buffer[line_index] = {'leading': line_leading, 'words': []}
+                line_buffer[line_index]['words'].append(word)
 
-            ordered_lines = [line_buffer[i] for i in sorted(line_buffer)]
-            desired_chunk = '\n'.join(' '.join(words) for words in ordered_lines)
+            # Reconstruct with original whitespace
+            ordered_lines = []
+            for line_index in sorted(line_buffer):
+                line_data = line_buffer[line_index]
+                reconstructed_line = line_data['leading'] + ' '.join(line_data['words'])
+                ordered_lines.append(reconstructed_line.rstrip('\n'))  # Preserve original line endings
 
+            desired_chunk = leading_whitespace + '\n'.join(ordered_lines)
+            
             return desired_chunk
 
         except Exception as e:
@@ -255,11 +275,11 @@ class ParseFile:
         formatted = ""
         match TEST_MODE:
             case "unformatted":
-                formatted =  text
+                formatted = text
             case "desiredoutput":
-                formatted =  self.getdesiredchunk(text)
+                formatted = self.getdesiredchunk(text)
             case "run":
-                formatted =  await self.formatchunk1(text)
+                formatted = await self.formatchunk1(text)
             case _:
                 formatted = text
         return formatted
@@ -274,58 +294,27 @@ class ParseFile:
         return "Strings are identical"
 
     def split_into_two_chunks(self, text, n):
-        try:
-            if not text.strip():
-                return "", ""
-                
-            lines = text.splitlines(keepends=True)
+        """Split text at word boundaries while preserving all original whitespace"""
+        if not text.strip():
+            return "", ""
+        
+        words = text.split(' ')
+        if n >= len(words):
+            return text, ""
             
-            word_locations = []
-            words_in_lines = []
-            for line_index, line in enumerate(lines):
-                words_in_line = line.strip().split()
-                words_in_lines.append(words_in_line)
-                for word_index in range(len(words_in_line)):
-                    word_locations.append((line_index, word_index))
+        first_part = ' '.join(words[:n])
+        second_part = ' ' + ' '.join(words[n:])  # Preserve the space between chunks
+        
+        if text.endswith(' '):
+            first_part += ' '
+            second_part = second_part[1:] if len(second_part) > 1 else second_part
             
-            if n >= len(word_locations):
-                return text, ""
-            
-            first_chunk_locs = word_locations[:n]
-            second_chunk_locs = word_locations[n:]
-            
-            def build_chunk(locations):
-                line_buffer = {}
-                for line_index, word_index in locations:
-                    word = words_in_lines[line_index][word_index]
-                    line_buffer.setdefault(line_index, []).append(word)
-                
-                ordered_lines = []
-                for line_index in sorted(line_buffer):
-                    original_line = lines[line_index]
-                    line_ending = original_line[len(original_line.rstrip('\r\n')):]
-                    reconstructed_line = ' '.join(line_buffer[line_index]) + line_ending
-                    ordered_lines.append(reconstructed_line)
-                
-                return ''.join(ordered_lines)
-            
-            first_chunk = build_chunk(first_chunk_locs)
-            second_chunk = build_chunk(second_chunk_locs)
-            
-            return first_chunk, second_chunk
-
-        except Exception as e:
-            self.logger.error(f'split_into_two_chunks failed: {e}', exc_info=True)
-            words = text.split()
-            first = ' '.join(words[:n]) if words else ""
-            second = ' '.join(words[n:]) if words else ""
-            return first, second
+        return first_part, second_part
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
         self.cleanedinput_file = PROCESSED_FILE
         self.output_file = POSTPROCESSED_FILE
-        self.logger.debug(f'Processing to: {self.output_file}')
             
         try:
             input_string = self.input_string
@@ -338,11 +327,26 @@ class ParseFile:
             first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
             context_window = await self.format(first_chunk)
                 
-            while remaining_input:
+            while remaining_input.strip():  # Only process if non-whitespace remains
                 output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
                 output_string += output_part
-                next_chunk, remaining_input = self.split_into_two_chunks(remaining_input, chunk_size)
-                context_window = await self.format(overlap_part + " " + next_chunk)
+                
+                next_chunk, remaining_input = self.split_into_two_chunks(
+                    remaining_input, 
+                    chunk_size - overlap_size
+                )
+                
+                # Terminate if we're not getting meaningful content
+                if not next_chunk.strip() and not remaining_input.strip():
+                    break
+                
+                # Combine chunks with proper spacing
+                combined = overlap_part
+                if not overlap_part.endswith((' ', '\n')) and not next_chunk.startswith((' ', '\n')):
+                    combined += ' '
+                combined += next_chunk
+                
+                context_window = await self.format(combined)
 
             output_string += context_window
 

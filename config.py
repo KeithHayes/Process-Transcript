@@ -1,5 +1,4 @@
 # Chunk processing configuration
-CHUNK_SIZE = 200                  # Slightly smaller chunks for better quality
 CHUNK_OVERLAP = 75                # Increased overlap for smoother transitions
 OUTPUT_CHUNK_SIZE = 125           # Adjusted output size
 
