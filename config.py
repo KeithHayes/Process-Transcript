@@ -10,7 +10,6 @@ SENTENCE_MARKER = chr(0x0a)       # Unicode character for boundaries
 # File paths (unchanged)
 SAVEDCHUNKS = 'files/savedchunks'
 INPUT_FILE = 'files/transcript.txt'
-TEST_FILE = 'files/desired_output.txt'
 CLEANED_FILE = 'files/transcript_preprocessed.txt'
 PROCESSED_FILE = 'files/transcript_processed.txt'
 POSTPROCESSED_FILE = 'files/transcript_postprocessed.txt'
@@ -55,8 +54,10 @@ PRESERVE_PARAGRAPHS = True        # Maintain paragraph structure
 MIN_SENTENCE_QUALITY = 0.8        # Higher quality threshold
 MAX_RETRIES = 3                   # More retry attempts for poor formatting
 #TEST_MODE = "run"
-TEST_MODE = "unformatted"
-#TEST_MODE = "desiredoutput"
+#TEST_MODE = "unformatted"
+TEST_MODE = "desiredoutput"
+TEST_FILE = 'files/unformattedtext.txt'
+
 
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE', 'POSTPROCESSED_FILE',

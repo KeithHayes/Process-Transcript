@@ -282,6 +282,12 @@ class ParseFile:
             with open(TEST_OUTPUT, "w", encoding='utf-8') as f:
                 f.write(output_string.strip())
 
+            if TEST_MODE == "unformatted":
+                with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
+                    desiredcontent = f.read()
+                result = self.find_first_mismatch(desiredcontent, output_string)
+                print(result)
+
             if TEST_MODE == "desiredoutput":
                 with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
                     desiredcontent = f.read()

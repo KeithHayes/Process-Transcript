@@ -1,0 +1,2 @@
+testoutput.txt should match desired_output.txt 
+but only the first chunk is captured by getdesiredchunk()
