@@ -104,19 +104,12 @@ class ParseFile:
             return chunktext
 
     def deformat(self, formatted_output):
-        # First protect existing newlines
         protected = formatted_output.replace('\n', SENTENCE_MARKER)
-        # Then process normally
         output = protected.lower()
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
-        # Restore newlines
         return output.replace(SENTENCE_MARKER, '\n')
 
     async def formatlines(self, unformatted_string):
-        """
-        Formats lines of text by sending each line to the LLM API for proper punctuation and capitalization.
-        Maintains original words and order while adding appropriate punctuation and capitalization.
-        """
         if LINECHECK:
             return unformatted_string
 
@@ -190,6 +183,13 @@ class ParseFile:
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 text = f.read()
 
+            if TEST_MODE == "desiredoutput":
+                self.input_string = text
+                self.input_array = text.split()
+                self.textsize = len(text)
+                self._cleaned = True
+                return text
+
             text = text.lower()
             text = text.replace("'", "'").replace('"', '"')
             text = text.replace("—", " -- ")
@@ -250,9 +250,6 @@ class ParseFile:
             return text
 
     async def format(self, text):
-
-        TEST_MODE = "desiredoutput"
-        
         match TEST_MODE:
             case "unformatted":
                 return text
@@ -279,7 +276,6 @@ class ParseFile:
                 
             lines = text.splitlines(keepends=True)
             
-            # Build word position mapping
             word_locations = []
             words_in_lines = []
             for line_index, line in enumerate(lines):
@@ -288,22 +284,18 @@ class ParseFile:
                 for word_index in range(len(words_in_line)):
                     word_locations.append((line_index, word_index))
             
-            # Handle case where n exceeds word count
             if n >= len(word_locations):
                 return text, ""
             
-            # Get locations for both chunks
             first_chunk_locs = word_locations[:n]
             second_chunk_locs = word_locations[n:]
             
             def build_chunk(locations):
-                """Helper to reconstruct text with original line breaks"""
                 line_buffer = {}
                 for line_index, word_index in locations:
                     word = words_in_lines[line_index][word_index]
                     line_buffer.setdefault(line_index, []).append(word)
                 
-                # Reconstruct lines in original order
                 ordered_lines = []
                 for line_index in sorted(line_buffer):
                     original_line = lines[line_index]
@@ -336,38 +328,39 @@ class ParseFile:
         self.logger.debug(f'Processing to: {self.output_file}')
             
         try:
-            input_string = self.input_string
-            output_string = ""
-            context_window = ""
-            chunk_size = OUTPUT_CHUNK_SIZE
-            overlap_size = CHUNK_OVERLAP
-            total_chunk_size = chunk_size + overlap_size
-            
-            first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
-            context_window = await self.format(first_chunk)
-            
-            while remaining_input:
-                output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
-                output_string += output_part + " "
-                next_chunk, remaining_input = self.split_into_two_chunks(remaining_input, chunk_size)
-                context_window = overlap_part + " " + next_chunk
-                context_window = await self.format(context_window)
+            if TEST_MODE == "desiredoutput":
+                output_string = self.getdesiredchunk(self.input_string)
+            else:
+                input_string = self.input_string
+                output_string = ""
+                context_window = ""
+                chunk_size = OUTPUT_CHUNK_SIZE
+                overlap_size = CHUNK_OVERLAP
+                total_chunk_size = chunk_size + overlap_size
+                
+                first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
+                context_window = await self.format(first_chunk)
+                
+                while remaining_input:
+                    output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
+                    output_string += output_part
+                    next_chunk, remaining_input = self.split_into_two_chunks(remaining_input, chunk_size)
+                    context_window = await self.format(overlap_part + " " + next_chunk)
 
-            output_string += context_window
+                output_string += context_window
 
-            with open(os.path.join(TEST_INPUT), "w") as f:
+            with open(TEST_INPUT, "w", encoding='utf-8') as f:
                 f.write(self.input_string)
-            with open(os.path.join(TEST_OUTPUT), "w") as f:
+            with open(TEST_OUTPUT, "w", encoding='utf-8') as f:
                 f.write(output_string)
 
-            with open(os.path.join("files", "testinput.txt"), "r", encoding="utf-8") as f:
-                inputext = f.read()
+            if TEST_MODE == "desiredoutput":
+                with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
+                    desiredcontent = f.read()
+                result = self.find_first_mismatch(desiredcontent, output_string)
+                print(result)
 
-            with open(os.path.join("files", "desired_output.txt"), "r", encoding="utf-8") as f:
-                desiredcontent = f.read()
-
-            result = self.find_first_mismatch(desiredcontent, output_string)
-            print(result)
+            return output_string
 
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
