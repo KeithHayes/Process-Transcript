@@ -250,6 +250,9 @@ class ParseFile:
             return text
 
     async def format(self, text):
+
+        TEST_MODE = "desiredoutput"
+        
         match TEST_MODE:
             case "unformatted":
                 return text
