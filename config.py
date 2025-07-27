@@ -50,16 +50,13 @@ PRESERVE_CASE = True              # Maintain original capitalization
 STRICT_PUNCTUATION = True         # Enforce proper punctuation
 PRESERVE_PARAGRAPHS = True        # Maintain paragraph structure
 
-# Debug flags
-FORMATCHECK = False
-LINECHECK = False
 
 # Quality control
 MIN_SENTENCE_QUALITY = 0.8        # Higher quality threshold
 MAX_RETRIES = 3                   # More retry attempts for poor formatting
 #TEST_MODE = "run"
-#TEST_MODE = "unformatted"
-TEST_MODE = "desiredoutput"
+TEST_MODE = "unformatted"
+#TEST_MODE = "desiredoutput"
 
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE', 'POSTPROCESSED_FILE',
@@ -68,7 +65,7 @@ __all__ = [
     'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',
     'REPETITION_PENALTY', 'TEMPERATURE', 'TOP_P', 'TOP_K', 'TOP_T', # TOP_T included in __all__
     'MAX_SENTENCE_VALIDATION_ERRORS', 'LOG_DIR', 'LOG_FILE',
-    'DEBUG_LOG_FILE', 'FORMATCHECK', 'PRESERVE_CASE', "TEST_OUTPUT",
-    'STRICT_PUNCTUATION', 'PRESERVE_PARAGRAPHS', 'LINECHECK',
+    'DEBUG_LOG_FILE', 'PRESERVE_CASE', "TEST_OUTPUT",
+    'STRICT_PUNCTUATION', 'PRESERVE_PARAGRAPHS',
     'MIN_SENTENCE_QUALITY', 'MAX_RETRIES', 'TEST_MODE'
 ]

@@ -9,12 +9,11 @@ from config import (
     API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, TEST_MODE,
     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
     CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, TEST_INPUT, TEST_OUTPUT,
-    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, TEST_FILE
+    PROCESSED_FILE, POSTPROCESSED_FILE, TEST_FILE
 )
 
 class ParseFile:
     def __init__(self):
-        self.output_pointer = 0
         self.input_string = ""
         self.chunk = ""
         self.output_string = ""
@@ -22,8 +21,6 @@ class ParseFile:
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
         self.session = None
-        self.input_word_pointer = 0
-        self.chunk_word_pointer = 0
         self.input_array = []
 
     async def __aenter__(self):
@@ -34,9 +31,6 @@ class ParseFile:
         if self.session:
             await self.session.close()
 
-    def count_words(self, text):
-        return len(text.split()) if text.strip() else 0
-
     def loadchunk(self, word_count):
         words_loaded = 0
         words = []
@@ -46,9 +40,7 @@ class ParseFile:
             words_loaded += 1
 
         wordschunk = ' '.join(words)
-        self.chunk = (self.chunk + wordschunk).strip()
-        if self.chunk:
-            self.chunk += ' '
+        self.chunk = (self.chunk + ' ' + wordschunk).strip()  # Ensure space between chunks
         self.logger.info(f'Loaded {words_loaded} words (input pointer: {self.input_word_pointer})')
         return self.chunk
     
@@ -111,73 +103,6 @@ class ParseFile:
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
         return output.replace(SENTENCE_MARKER, '\n')
 
-    async def formatlines(self, unformatted_string):
-        if LINECHECK:
-            return unformatted_string
-
-        if self.session is None:
-            self.session = aiohttp.ClientSession()
-
-        lines = unformatted_string.split('\n')
-        formatted_lines = []
-        
-        for line in lines:
-            if not line.strip():
-                formatted_lines.append('')
-                continue
-                
-            try:
-                prompt = textwrap.dedent(f"""\
-                    Your task is to punctuate and capitalize the provided line of text.
-                    Strictly adhere to the following rules:
-                    - Maintain the EXACT original words and their order.
-                    - NEVER add, delete, rephrase, or summarize any words.
-                    - Add periods, question marks, or exclamation points to punctuate complete sentences only at their end.
-                    - Capitalize the first letter of the first word of each complete sentence.
-                    - Incomplete sentence fragments must remain as they are, without added punctuation or capitalization unless they are a proper noun.
-                    - Only add punctuation at the very end of a complete sentence.
-                    - Only capitalize the first word if it starts a sentence.
-                    - ONLY output the reformatted text. DO NOT include any additional commentary, explanations, or instructions.
-                    - Ensure there are no extra spaces before or after any punctuation mark.
-
-                    Text: {line}
-
-                    Formatted text:""")
-
-                async with self.session.post(
-                    self.api_url,
-                    json={
-                        "prompt": prompt,
-                        "max_tokens": MAX_TOKENS,
-                        "temperature": TEMPERATURE,
-                        "stop": STOP_SEQUENCES,
-                        "repetition_penalty": REPETITION_PENALTY,
-                        "top_p": TOP_P,
-                        "top_t": TOP_T
-                    },
-                    timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-                ) as response:
-                    if response.status != 200:
-                        error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
-                        self.logger.error(error_message)
-                        formatted_lines.append(line)
-                        continue
-                    
-                    result = await response.json()
-                    formatted_line = result.get("choices", [{}])[0].get("text", "").strip()
-                    
-                    if not formatted_line:
-                        self.logger.warning(f"Empty response for line: {line}")
-                        formatted_lines.append(line)
-                    else:
-                        formatted_lines.append(formatted_line)
-                        
-            except Exception as e:
-                self.logger.error(f"Error formatting line: {line}. Error: {str(e)}", exc_info=True)
-                formatted_lines.append(line)
-        
-        return '\n'.join(formatted_lines)
-
     def preprocess(self, input_file):
         self.input_file = input_file
         self.logger.debug(f'Preprocessing: {self.input_file}')
@@ -189,7 +114,6 @@ class ParseFile:
                 self.input_string = text
                 self.input_array = text.split()
                 self.textsize = len(text)
-                self._cleaned = True
                 return text
 
             text = text.lower()
@@ -203,7 +127,6 @@ class ParseFile:
             self.input_string = cleaned_text
             self.input_array = words
             self.textsize = len(cleaned_text)
-            self._cleaned = True
             return cleaned_text
 
         except Exception as e:
@@ -212,15 +135,11 @@ class ParseFile:
 
     def getdesiredchunk(self, text):
         try:
-            # Preserve leading whitespace
-            leading_whitespace = ''
-            for char in text:
-                if char in (' ', '\n'):
-                    leading_whitespace += char
-                else:
-                    break
+            # Preserve trailing whitespace but remove leading whitespace
+            stripped_text = text.lstrip()
+            trailing_whitespace = text[len(stripped_text.rstrip()):] if text.rstrip() != text else ''
             
-            target_words = text.strip().split()
+            target_words = stripped_text.split()
             num_words = len(target_words)
 
             input_words = self.input_string.strip().split()
@@ -232,7 +151,7 @@ class ParseFile:
                 raise ValueError("Chunk not found in input_string.")
 
             with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
-                lines = f.readlines()
+                lines = [line.rstrip('\n') for line in f.readlines()]
 
             word_locations = []
             for line_index, line in enumerate(lines):
@@ -250,20 +169,18 @@ class ParseFile:
                 words_in_line = original_line.strip().split()
                 word = words_in_line[word_index]
                 
-                # Preserve original line's leading whitespace for first line
                 if line_index not in line_buffer:
-                    line_leading = original_line[:len(original_line) - len(original_line.lstrip())]
-                    line_buffer[line_index] = {'leading': line_leading, 'words': []}
+                    line_buffer[line_index] = {'words': []}
                 line_buffer[line_index]['words'].append(word)
 
-            # Reconstruct with original whitespace
+            # Reconstruct lines without leading whitespace
             ordered_lines = []
             for line_index in sorted(line_buffer):
                 line_data = line_buffer[line_index]
-                reconstructed_line = line_data['leading'] + ' '.join(line_data['words'])
-                ordered_lines.append(reconstructed_line.rstrip('\n'))  # Preserve original line endings
+                reconstructed_line = ' '.join(line_data['words'])
+                ordered_lines.append(reconstructed_line)
 
-            desired_chunk = leading_whitespace + '\n'.join(ordered_lines)
+            desired_chunk = '\n'.join(ordered_lines) + trailing_whitespace
             
             return desired_chunk
 
@@ -294,22 +211,22 @@ class ParseFile:
         return "Strings are identical"
 
     def split_into_two_chunks(self, text, n):
-        """Split text at word boundaries while preserving all original whitespace"""
+        """Improved version that preserves word boundaries and spacing"""
         if not text.strip():
             return "", ""
-        
-        words = text.split(' ')
+            
+        words = re.findall(r'\S+\s*', text)  # Preserve original spacing
         if n >= len(words):
             return text, ""
             
-        first_part = ' '.join(words[:n])
-        second_part = ' ' + ' '.join(words[n:])  # Preserve the space between chunks
+        first_part = ''.join(words[:n])
+        second_part = ''.join(words[n:])
         
-        if text.endswith(' '):
+        # Ensure proper spacing between chunks
+        if not first_part.endswith((' ', '\n')) and not second_part.startswith((' ', '\n')):
             first_part += ' '
-            second_part = second_part[1:] if len(second_part) > 1 else second_part
             
-        return first_part, second_part
+        return first_part.rstrip(), second_part
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
@@ -327,8 +244,12 @@ class ParseFile:
             first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
             context_window = await self.format(first_chunk)
                 
-            while remaining_input.strip():  # Only process if non-whitespace remains
+            while remaining_input.strip():
                 output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
+                
+                # Ensure proper spacing when combining
+                if output_string and not output_string.endswith((' ', '\n')):
+                    output_string += ' '
                 output_string += output_part
                 
                 next_chunk, remaining_input = self.split_into_two_chunks(
@@ -336,24 +257,30 @@ class ParseFile:
                     chunk_size - overlap_size
                 )
                 
-                # Terminate if we're not getting meaningful content
                 if not next_chunk.strip() and not remaining_input.strip():
                     break
                 
-                # Combine chunks with proper spacing
+                # Combine with proper spacing
                 combined = overlap_part
-                if not overlap_part.endswith((' ', '\n')) and not next_chunk.startswith((' ', '\n')):
-                    combined += ' '
+                if combined and next_chunk:
+                    if not combined.endswith((' ', '\n')) and not next_chunk.startswith((' ', '\n')):
+                        combined += ' '
                 combined += next_chunk
                 
                 context_window = await self.format(combined)
 
+            # Add final chunk with proper spacing
+            if output_string and not output_string.endswith((' ', '\n')):
+                output_string += ' '
             output_string += context_window
 
+            # Clean up any double spaces
+            output_string = re.sub(r' +', ' ', output_string)
+            
             with open(TEST_INPUT, "w", encoding='utf-8') as f:
                 f.write(self.input_string)
             with open(TEST_OUTPUT, "w", encoding='utf-8') as f:
-                f.write(output_string)
+                f.write(output_string.strip())
 
             if TEST_MODE == "desiredoutput":
                 with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
@@ -361,7 +288,7 @@ class ParseFile:
                 result = self.find_first_mismatch(desiredcontent, output_string)
                 print(result)
 
-            return output_string
+            return output_string.strip()
 
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)

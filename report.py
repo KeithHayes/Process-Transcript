@@ -32,7 +32,7 @@ def create_report():
     # Paths to include in the report
     boilerplate_files = [
         os.path.join(base_path, 'instructions.txt'),
-        os.path.join(base_path, 'algorithm.txt'),
+        #os.path.join(base_path, 'algorithm.txt'),
         #os.path.join(base_path, 'README.md'),
     ]
 
@@ -40,7 +40,6 @@ def create_report():
         os.path.join(base_path, 'config.py'),
         os.path.join(base_path, 'logger.py'),
         os.path.join(base_path, 'process.py'),
-        os.path.join(base_path, 'run.py'),
         #os.path.join(base_path, 'test.py'),
     ]
 

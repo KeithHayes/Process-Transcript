@@ -1,16 +1,16 @@
 # Transcript Formatter
 
 ## Overview
-This project processes long unformatted text files (such as audio transcripts) and converts them into properly formatted content with complete sentences.
+This project is intended to processes long unformatted text files (such as a raw audio transcripts) converting them into 
+formatted content with complete sentences.
 
-Future processing intends to use cosine similarity to build paragraphs from sentences.
 
 ## Key Features
 
 - Converts raw unformatted transcripts into readable, well-structured text.
-- Maintains content without change.
 - Handles text of any length using chunked processing.
-- Produces output with proper punctuation of sentences and un-formatted fragments.
+- Produces output with punctuation of sentences
+- Un-formatted fragments remain unchanged.
 
 ## Installation & Setup
 
@@ -34,21 +34,9 @@ Future processing intends to use cosine similarity to build paragraphs from sent
 
 ### Running the Formatter
 
-1. Activate your virtual environment if you build one:
-
-   **Linux/Mac:**
+   Run the formatter:
    ```bash
-   source venv/bin/activate
-   ```
-
-   **Windows:**
-   ```cmd
-   venv\Scripts\activate
-   ```
-
-2. Run the formatter:
-   ```bash
-   python run.py
+   python process.py
    * config.py defines file paths
    ```
 
@@ -57,14 +45,17 @@ Future processing intends to use cosine similarity to build paragraphs from sent
 ### The system:
 - Processes text in chunks that fit within the LLM's context window  
 - Applies proper formatting to each chunk  
-- Intelligently combines results while maintaining smooth transitions  
+- Combines chunks results correctly 
 - Preserves the original content's meaning and intent  
 
 ### Output Format:
 - Proper sentence structure with correct punctuation  
 
-
 ### Technical Approach:
 - Uses chunked processing to handle unlimited length input  
 - Maintains overlap between chunks for seamless transitions  
 
+### Status:
+- Preliminary results shows that a LoRA will need to be trained.
+- Proper chunking and combining of chunks is essential and is the current priority.
+- Proper chunking facilitates the production of training data.
