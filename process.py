@@ -3,10 +3,12 @@ import re
 import logging
 import textwrap
 import aiohttp
-from config import (API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, TEST_MODE,
-                    REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
-                    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK, 
-                    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, SAVEDCHUNKS)
+from config import (
+    API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, TEST_MODE,
+    REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
+    CHUNK_SIZE, CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, FORMATCHECK,
+    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, SAVEDCHUNKS
+)
 
 class ParseFile:
     def __init__(self):
@@ -17,9 +19,10 @@ class ParseFile:
         self._cleaned = False
         self.api_url = API_URL
         self.logger = logging.getLogger(__name__)
-        self.session = None  # Will hold our aiohttp session
+        self.session = None
         self.input_word_pointer = 0
         self.chunk_word_pointer = 0
+        self.input_array = []
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession()
@@ -113,12 +116,6 @@ class ParseFile:
         """
         Formats lines of text by sending each line to the LLM API for proper punctuation and capitalization.
         Maintains original words and order while adding appropriate punctuation and capitalization.
-        
-        Args:
-            unformatted_string: Input string with one sentence per line
-        
-        Returns:
-            Formatted string with proper punctuation and capitalization
         """
         if LINECHECK:
             return unformatted_string
@@ -152,7 +149,6 @@ class ParseFile:
 
                     Formatted text:""")
 
-
                 async with self.session.post(
                     self.api_url,
                     json={
@@ -169,7 +165,7 @@ class ParseFile:
                     if response.status != 200:
                         error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
                         self.logger.error(error_message)
-                        formatted_lines.append(line)  # Fall back to original line if API fails
+                        formatted_lines.append(line)
                         continue
                     
                     result = await response.json()
@@ -177,110 +173,90 @@ class ParseFile:
                     
                     if not formatted_line:
                         self.logger.warning(f"Empty response for line: {line}")
-                        formatted_lines.append(line)  # Fall back to original line if empty response
+                        formatted_lines.append(line)
                     else:
                         formatted_lines.append(formatted_line)
                         
             except Exception as e:
                 self.logger.error(f"Error formatting line: {line}. Error: {str(e)}", exc_info=True)
-                formatted_lines.append(line)  # Fall back to original line on error
+                formatted_lines.append(line)
         
         return '\n'.join(formatted_lines)
 
     def preprocess(self, input_file):
-            self.input_file = input_file
-            self.logger.debug(f'Preprocessing: {self.input_file}')
-            try:
-                with open(self.input_file, 'r', encoding='utf-8') as f:
-                    text = f.read()
+        self.input_file = input_file
+        self.logger.debug(f'Preprocessing: {self.input_file}')
+        try:
+            with open(self.input_file, 'r', encoding='utf-8') as f:
+                text = f.read()
 
-                text = text.lower()
-                text = text.replace("’", "'").replace("“", '"').replace("”", '"')
-                text = text.replace("—", " -- ") # Normalize em-dashes to spaces
-                text = re.sub(r"[^A-Za-z0-9'\-]+", " ", text)
-                text = re.sub(r'\s+', ' ', text).strip()
+            text = text.lower()
+            text = text.replace("'", "'").replace('"', '"')
+            text = text.replace("—", " -- ")
+            text = re.sub(r"[^a-z0-9'\-\s]", " ", text)
+            text = re.sub(r'\s+', ' ', text).strip()
 
-                words = [word for word in text.split(' ') if word]
-                cleaned_text = ' '.join(words)
-                self.textsize = len(cleaned_text)
-                self._cleaned = True
-                return cleaned_text
+            words = [word for word in text.split(' ') if word]
+            cleaned_text = ' '.join(words)
+            self.input_string = cleaned_text
+            self.input_array = words
+            self.textsize = len(cleaned_text)
+            self._cleaned = True
+            return cleaned_text
 
-            except Exception as e:
-                self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
-                raise
-
-    # the entry point
+        except Exception as e:
+            self.logger.error(f'Preprocessing failed: {e}', exc_info=True)
+            raise
 
     def getdesiredchunk(self, text):
-            """
-            Given a chunk from self.input_string (which has no punctuation),
-            find its word index in self.input_string,
-            then extract a chunk of the same word length starting at that index from files/desired_output.txt,
-            preserving original line breaks.
-            """
-            try:
-                # Tokenize by space
-                target_words = text.strip().split()
-                num_words = len(target_words)
+        try:
+            target_words = text.strip().split()
+            num_words = len(target_words)
 
-                # Tokenize self.input_string
-                input_words = self.input_string.strip().split()
-                for i in range(len(input_words) - num_words + 1):
-                    if input_words[i:i + num_words] == target_words:
-                        start_word_index = i
-                        break
-                else:
-                    raise ValueError("Chunk not found in input_string.")
+            input_words = self.input_string.strip().split()
+            for i in range(len(input_words) - num_words + 1):
+                if input_words[i:i + num_words] == target_words:
+                    start_word_index = i
+                    break
+            else:
+                raise ValueError("Chunk not found in input_string.")
 
-                # Load desired_output with original line breaks
-                with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
-                    lines = f.readlines()
+            with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
+                lines = f.readlines()
 
-                # Flatten words across lines while keeping mapping: word index → (line index, word index in line)
-                word_locations = []
-                for line_index, line in enumerate(lines):
-                    words_in_line = line.strip().split()
-                    for word_index, word in enumerate(words_in_line):
-                        word_locations.append((line_index, word_index))
+            word_locations = []
+            for line_index, line in enumerate(lines):
+                words_in_line = line.strip().split()
+                for word_index, word in enumerate(words_in_line):
+                    word_locations.append((line_index, word_index))
 
-                if start_word_index + num_words > len(word_locations):
-                    raise ValueError("Chunk exceeds length of desired output.")
+            if start_word_index + num_words > len(word_locations):
+                raise ValueError("Chunk exceeds length of desired output.")
 
-                # Collect the chunk words with their line positions
-                chunk_locations = word_locations[start_word_index:start_word_index + num_words]
+            chunk_locations = word_locations[start_word_index:start_word_index + num_words]
+            line_buffer = {}
+            for line_index, word_index in chunk_locations:
+                line = lines[line_index].strip().split()
+                word = line[word_index]
+                line_buffer.setdefault(line_index, []).append(word)
 
-                # Reconstruct the chunk with preserved line breaks
-                line_buffer = {}
-                for line_index, word_index in chunk_locations:
-                    line = lines[line_index].strip().split()
-                    word = line[word_index]
-                    line_buffer.setdefault(line_index, []).append(word)
+            ordered_lines = [line_buffer[i] for i in sorted(line_buffer)]
+            desired_chunk = '\n'.join(' '.join(words) for words in ordered_lines)
 
-                # Combine the chunk lines in order
-                ordered_lines = [line_buffer[i] for i in sorted(line_buffer)]
-                desired_chunk = '\n'.join(' '.join(words) for words in ordered_lines)
+            return desired_chunk
 
-                return desired_chunk
-
-            except Exception as e:
-                self.logger.error(f'getdesiredchunk failed: {e}', exc_info=True)
-                return text  # fallback
+        except Exception as e:
+            self.logger.error(f'getdesiredchunk failed: {e}', exc_info=True)
+            return text
 
     async def format(self, text):
-        TEST_MODE = 'desiredoutput'
         match TEST_MODE:
             case "unformatted":
                 return text
             case "desiredoutput":
-                print("Desired output mode")
-                newtext = self.getdesiredchunk(text)
-
-
-                return newtext
+                return self.getdesiredchunk(text)
             case "run":
-                formatted_chunk = await self.formatchunk1(text)
-                return text
+                return await self.formatchunk1(text)
             case _:
                 return text
     
@@ -293,18 +269,54 @@ class ParseFile:
             return f"Mismatch at index {min_len}: One string is longer"
         return "Strings are identical"
 
-    
-
     def split_into_two_chunks(self, text, n):
-        words = text.split()
-        first_chunk = ' '.join(words[:n]) if words else ""
-        second_chunk = ' '.join(words[n:]) if words else ""
-        return first_chunk, second_chunk
+        try:
+            lines = text.splitlines(keepends=True)
+            
+            word_locations = []
+            words_in_lines = []
+            for line_index, line in enumerate(lines):
+                words_in_line = line.strip().split()
+                words_in_lines.append(words_in_line)
+                for word_index in range(len(words_in_line)):
+                    word_locations.append((line_index, word_index))
+            
+            if n > len(word_locations):
+                raise ValueError("Split index exceeds total word count")
+            
+            first_chunk_locs = word_locations[:n]
+            second_chunk_locs = word_locations[n:]
+            
+            def build_chunk(locations):
+                line_buffer = {}
+                for line_index, word_index in locations:
+                    words = words_in_lines[line_index]
+                    word = words[word_index]
+                    line_buffer.setdefault(line_index, []).append(word)
+                
+                ordered_lines = []
+                for line_index in sorted(line_buffer):
+                    original_line = lines[line_index]
+                    line_ending = original_line[len(original_line.rstrip('\r\n')):]
+                    reconstructed_line = ' '.join(line_buffer[line_index]) + line_ending
+                    ordered_lines.append(reconstructed_line)
+                
+                return ''.join(ordered_lines)
+            
+            first_chunk = build_chunk(first_chunk_locs)
+            second_chunk = build_chunk(second_chunk_locs)
+            
+            return first_chunk, second_chunk
 
+        except Exception as e:
+            self.logger.error(f'split_into_two_chunks failed: {e}', exc_info=True)
+            words = text.split()
+            first = ' '.join(words[:n]) if words else ""
+            second = ' '.join(words[n:]) if words else ""
+            return first, second
 
     async def process(self, input_file: str):
         self.input_string = self.preprocess(input_file)
-        # file paths defined
         self.cleanedinput_file = PROCESSED_FILE
         self.output_file = POSTPROCESSED_FILE
 
@@ -314,15 +326,16 @@ class ParseFile:
         self.logger.debug(f'Processing to: {self.output_file}')
             
         try:
-
             input_string = self.input_string
             output_string = ""
             context_window = ""
             chunk_size = OUTPUT_CHUNK_SIZE
             overlap_size = CHUNK_OVERLAP
             total_chunk_size = chunk_size + overlap_size
+            
             first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
             context_window = await self.format(first_chunk)
+            
             while remaining_input:
                 output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
                 output_string += output_part + " "
@@ -331,25 +344,18 @@ class ParseFile:
                 context_window = await self.format(context_window)
 
             output_string += context_window
-            
-
 
             with open(os.path.join("files", "testinput.txt"), "w") as f:
                 f.write(self.input_string)
             with open(os.path.join("files", "testoutput.txt"), "w") as f:
                 f.write(output_string)
 
-            #result = self.find_first_mismatch(self.input_string, output_string)
-
             with open(os.path.join("files", "desired_output.txt"), "r", encoding="utf-8") as f:
                 desiredcontent = f.read()
 
             result = self.find_first_mismatch(desiredcontent, output_string)
-            
-            print(result)  # Output: Mismatch at index 3: 'd' != 'x'
+            print(result)
 
-
-                
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
             raise
