@@ -58,6 +58,8 @@ LINECHECK = False
 # Quality control
 MIN_SENTENCE_QUALITY = 0.8        # Higher quality threshold
 MAX_RETRIES = 3                   # More retry attempts for poor formatting
+#TEST_MODE = "run"
+#TEST_MODE = "unformatted"
 TEST_MODE = "desiredoutput"
 
 __all__ = [

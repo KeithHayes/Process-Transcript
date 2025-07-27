@@ -1,13 +1,15 @@
 import os
 import re
 import logging
+from logger import configure_logging
 import textwrap
 import aiohttp
+import asyncio
 from config import (
     API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, TEST_MODE,
     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
     CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, TEST_INPUT, TEST_OUTPUT,
-    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK
+    PROCESSED_FILE, POSTPROCESSED_FILE, LINECHECK, TEST_FILE
 )
 
 class ParseFile:
@@ -250,15 +252,17 @@ class ParseFile:
             return text
 
     async def format(self, text):
+        formatted = ""
         match TEST_MODE:
             case "unformatted":
-                return text
+                formatted =  text
             case "desiredoutput":
-                return self.getdesiredchunk(text)
+                formatted =  self.getdesiredchunk(text)
             case "run":
-                return await self.formatchunk1(text)
+                formatted =  await self.formatchunk1(text)
             case _:
-                return text
+                formatted = text
+        return formatted
     
     def find_first_mismatch(self, str1, str2):
         min_len = min(len(str1), len(str2))
@@ -321,33 +325,26 @@ class ParseFile:
         self.input_string = self.preprocess(input_file)
         self.cleanedinput_file = PROCESSED_FILE
         self.output_file = POSTPROCESSED_FILE
-
-        if not self._cleaned:
-            raise RuntimeError("Must call preprocess() before process()")
-            
         self.logger.debug(f'Processing to: {self.output_file}')
             
         try:
-            if TEST_MODE == "desiredoutput":
-                output_string = self.getdesiredchunk(self.input_string)
-            else:
-                input_string = self.input_string
-                output_string = ""
-                context_window = ""
-                chunk_size = OUTPUT_CHUNK_SIZE
-                overlap_size = CHUNK_OVERLAP
-                total_chunk_size = chunk_size + overlap_size
+            input_string = self.input_string
+            output_string = ""
+            context_window = ""
+            chunk_size = OUTPUT_CHUNK_SIZE
+            overlap_size = CHUNK_OVERLAP
+            total_chunk_size = chunk_size + overlap_size
                 
-                first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
-                context_window = await self.format(first_chunk)
+            first_chunk, remaining_input = self.split_into_two_chunks(input_string, total_chunk_size)
+            context_window = await self.format(first_chunk)
                 
-                while remaining_input:
-                    output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
-                    output_string += output_part
-                    next_chunk, remaining_input = self.split_into_two_chunks(remaining_input, chunk_size)
-                    context_window = await self.format(overlap_part + " " + next_chunk)
+            while remaining_input:
+                output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
+                output_string += output_part
+                next_chunk, remaining_input = self.split_into_two_chunks(remaining_input, chunk_size)
+                context_window = await self.format(overlap_part + " " + next_chunk)
 
-                output_string += context_window
+            output_string += context_window
 
             with open(TEST_INPUT, "w", encoding='utf-8') as f:
                 f.write(self.input_string)
@@ -365,3 +362,17 @@ class ParseFile:
         except Exception as e:
             self.logger.error(f'Processing failed: {e}', exc_info=True)
             raise
+
+async def main():
+    configure_logging()
+    logger = logging.getLogger('main')
+    try:
+        async with ParseFile() as parser:
+            await parser.process(TEST_FILE)
+        logger.info("Processing completed successfully")
+    except Exception as e:
+        logger.error(f"Processing failed: {str(e)}", exc_info=True)
+        raise
+
+if __name__ == "__main__":
+    asyncio.run(main())
