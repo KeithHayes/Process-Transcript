@@ -223,7 +223,6 @@ class ParseFile:
         first_part = ''.join(words[:n])
         second_part = ''.join(words[n:])
         
-        # Ensure proper spacing between chunks
         if not first_part.endswith((' ', '\n')) and not second_part.startswith((' ', '\n')):
             first_part += ' '
             
@@ -248,7 +247,6 @@ class ParseFile:
             while remaining_input.strip():
                 output_part, overlap_part = self.split_into_two_chunks(context_window, chunk_size)
                 
-                # Ensure proper spacing when combining
                 if output_string and not output_string.endswith((' ', '\n')):
                     output_string += ' '
                 output_string += output_part
@@ -261,7 +259,6 @@ class ParseFile:
                 if not next_chunk.strip() and not remaining_input.strip():
                     break
                 
-                # Combine with proper spacing
                 combined = overlap_part
                 if combined and next_chunk:
                     if not combined.endswith((' ', '\n')) and not next_chunk.startswith((' ', '\n')):
@@ -270,7 +267,6 @@ class ParseFile:
                 
                 context_window = await self.format(combined)
 
-            # Add final chunk with proper spacing
             if output_string and not output_string.endswith((' ', '\n')):
                 output_string += ' '
             output_string += context_window
