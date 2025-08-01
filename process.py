@@ -5,11 +5,12 @@ from logger import configure_logging
 import textwrap
 import aiohttp
 import asyncio
+import json
 from config import (
     API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, TEST_MODE,
     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
     CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, TEST_INPUT, TEST_OUTPUT,
-    PROCESSED_FILE, POSTPROCESSED_FILE, TEST_FILE
+    PROCESSED_FILE, POSTPROCESSED_FILE, TEST_FILE, TRAINING_FILE
 )
 
 class ParseFile:
@@ -101,7 +102,7 @@ class ParseFile:
         protected = formatted_output.replace('\n', SENTENCE_MARKER)
         output = protected.lower()
         output = re.sub(f'[^a-z\\s{re.escape(SENTENCE_MARKER)}]', '', output)
-        return output.replace(SENTENCE_MARKER, '\n')
+        return output.replace(SENTENCE_MARKER, ' ')
 
     def preprocess(self, input_file):
         self.input_file = input_file
@@ -109,12 +110,6 @@ class ParseFile:
         try:
             with open(self.input_file, 'r', encoding='utf-8') as f:
                 text = f.read()
-
-            if TEST_MODE == "desiredoutput":
-                self.input_string = text
-                self.input_array = text.split()
-                self.textsize = len(text)
-                return text
 
             text = text.lower()
             text = text.replace("'", "'").replace('"', '"')
@@ -188,6 +183,30 @@ class ParseFile:
             self.logger.error(f'getdesiredchunk failed: {e}', exc_info=True)
             return text
 
+    def generateIOpair(self, chunk, formatted):
+        command = "Punctuate sentences."
+        input_text = chunk
+        output_text = formatted
+   
+        new_entry = {
+            "input": input_text,
+            "command": command,
+            "output": output_text
+        }
+        if not os.path.exists(TRAINING_FILE):
+            with open(TRAINING_FILE, 'w', encoding='utf-8') as f:
+                json.dump([new_entry], f, indent=4)
+        else:
+            with open(TRAINING_FILE, 'r+', encoding='utf-8') as f:
+                try:
+                    data = json.load(f)
+                except json.JSONDecodeError:  # Handle empty/corrupted file
+                    data = []
+                data.append(new_entry)
+                f.seek(0)  # Rewind to overwrite
+                json.dump(data, f, indent=4)
+                f.truncate()  # Clear remaining data if new content is shorter
+
     async def format(self, text):
         formatted = ""
         chunk = self.deformat(text)
@@ -196,6 +215,7 @@ class ParseFile:
                 formatted = chunk
             case "desiredoutput":
                 formatted = self.getdesiredchunk(chunk)
+                self.generateIOpair(chunk, formatted)
             case "run":
                 formatted = await self.formatchunk(chunk)
             case _:

@@ -3,8 +3,6 @@ CHUNK_OVERLAP = 75                # Increased overlap for smoother transitions
 OUTPUT_CHUNK_SIZE = 125           # Adjusted output size
 
 # Text processing parameters
-MIN_SENTENCE_LENGTH = 6           # Balanced minimum length
-MAX_FRAGMENT_LENGTH = 35          # Allows for moderate-length sentences
 SENTENCE_MARKER = chr(0x0a)       # Unicode character for boundaries
 
 # File paths (unchanged)
@@ -51,22 +49,22 @@ PRESERVE_PARAGRAPHS = True        # Maintain paragraph structure
 
 
 # Quality control
-MIN_SENTENCE_QUALITY = 0.8        # Higher quality threshold
-MAX_RETRIES = 3                   # More retry attempts for poor formatting
+MIN_SENTENCE_QUALITY = 0.8        
+MAX_RETRIES = 3                   
 #TEST_MODE = "run"
 #TEST_MODE = "unformatted"
 TEST_MODE = "desiredoutput"
 TEST_FILE = 'files/unformattedtext.txt'
+TRAINING_FILE = 'files/trainingchunks.txt'
 
 
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE', 'POSTPROCESSED_FILE',
-    'MIN_SENTENCE_LENGTH', 'MAX_FRAGMENT_LENGTH', 'SENTENCE_MARKER',
-    'INPUT_FILE', 'CLEANED_FILE', 'PROCESSED_FILE', 'OUTPUT_FILE',
-    'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',
-    'REPETITION_PENALTY', 'TEMPERATURE', 'TOP_P', 'TOP_K', 'TOP_T', # TOP_T included in __all__
+    'SENTENCE_MARKER', 'INPUT_FILE', 'CLEANED_FILE', 'PROCESSED_FILE', 
+    'OUTPUT_FILE', 'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',
+    'REPETITION_PENALTY', 'TEMPERATURE', 'TOP_P', 'TOP_K', 'TOP_T',
     'MAX_SENTENCE_VALIDATION_ERRORS', 'LOG_DIR', 'LOG_FILE',
     'DEBUG_LOG_FILE', 'PRESERVE_CASE', "TEST_OUTPUT",
-    'STRICT_PUNCTUATION', 'PRESERVE_PARAGRAPHS',
+    'STRICT_PUNCTUATION', 'PRESERVE_PARAGRAPHS', 'TRAINING_FILE',
     'MIN_SENTENCE_QUALITY', 'MAX_RETRIES', 'TEST_MODE'
 ]
