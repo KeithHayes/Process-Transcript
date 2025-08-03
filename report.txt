@@ -295,24 +295,29 @@ class ParseFile:
     def generateIOpair(self, chunk, formatted):
         command = "Punctuate sentences."
         input_text = chunk
-        output_text = formatted.replace('\n', '\\n')  # Escape newlines within the JSON string
-
-        # Create the new entry
-        entry = {"instruction": command,"input": input_text,"output": output_text}
+        # Properly escape newlines and ensure consistent formatting
+        output_text = formatted.replace('\n', '\\n').replace('\\n\\n', '\\n')  # Ensure single newlines
+        
+        # Create the new entry with consistent formatting
+        entry = {
+            "instruction": command,
+            "input": input_text,
+            "output": output_text
+        }
 
         # Convert to compact JSON string on one line
         json_str = json.dumps(entry, ensure_ascii=False, separators=(',', ':'))
-
-        if not os.path.exists(TRAINING_FILE):
-            # Create new file with first entry
-            with open(TRAINING_FILE, 'w', encoding='utf-8') as f:
-                f.write(json_str + '\n')  # Newline only after complete JSON
-        else:
-            # Append new entry (with newline) if not a duplicate
-            with open(TRAINING_FILE, 'r+', encoding='utf-8') as f:
-                content = f.read()
-                if json_str not in content:
-                    f.write(json_str + '\n')  # Newline only after complete JSON
+        
+        # Check for existing content to avoid duplicates
+        existing_content = []
+        if os.path.exists(TRAINING_FILE):
+            with open(TRAINING_FILE, 'r', encoding='utf-8') as f:
+                existing_content = [line.strip() for line in f.readlines() if line.strip()]
+        
+        # Only write if this exact entry doesn't exist
+        if json_str not in existing_content:
+            with open(TRAINING_FILE, 'a', encoding='utf-8') as f:
+                f.write(json_str + '\n')
 
     async def format(self, text):
         formatted = ""
