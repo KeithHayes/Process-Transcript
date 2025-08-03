@@ -146,7 +146,8 @@ class ParseFile:
                 raise ValueError("Chunk not found in input_string.")
 
             with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
-                lines = [line.rstrip('\n') for line in f.readlines()]
+                desired_content = f.read()
+                lines = desired_content.split('\n')
 
             word_locations = []
             for line_index, line in enumerate(lines):
@@ -165,14 +166,16 @@ class ParseFile:
                 word = words_in_line[word_index]
                 
                 if line_index not in line_buffer:
-                    line_buffer[line_index] = {'words': []}
+                    line_buffer[line_index] = {'words': [], 'line_end': original_line.endswith(('.', '?', '!'))}
                 line_buffer[line_index]['words'].append(word)
 
-            # Reconstruct lines without leading whitespace
+            # Reconstruct lines with original punctuation
             ordered_lines = []
             for line_index in sorted(line_buffer):
                 line_data = line_buffer[line_index]
                 reconstructed_line = ' '.join(line_data['words'])
+                if line_data['line_end'] and not reconstructed_line.endswith(('.', '?', '!')):
+                    reconstructed_line += '.'
                 ordered_lines.append(reconstructed_line)
 
             desired_chunk = '\n'.join(ordered_lines) + trailing_whitespace
@@ -213,7 +216,7 @@ class ParseFile:
         if json_str not in existing_content:
             with open(TRAINING_FILE, 'a', encoding='utf-8') as f:
                 f.write(json_str + '\n')
-                
+
     async def format(self, text):
         formatted = ""
         chunk = self.deformat(text)
