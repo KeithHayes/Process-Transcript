@@ -54,10 +54,9 @@ MAX_RETRIES = 3
 #TEST_MODE = "run"
 #TEST_MODE = "unformatted"
 TEST_MODE = "desiredoutput"
-TEST_FILE = 'files/alicewarren.txt'
-DESIRED_OUTPUT = 'alicewarrenformatted.txt'
+TEST_FILE = 'files/omelas.txt'
+DESIRED_OUTPUT = 'omelasformatted.txt'
 TRAINING_FILE = 'files/trainingchunks.txt'
-
 
 __all__ = [
     'CHUNK_SIZE', 'CHUNK_OVERLAP', 'OUTPUT_CHUNK_SIZE', 'POSTPROCESSED_FILE',
