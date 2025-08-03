@@ -45,9 +45,11 @@ def create_report():
     txt_files = [
         #os.path.join(base_path, 'files', 'transcript.txt'),
         #os.path.join(base_path, 'files', 'transcript.txt'),
-        os.path.join(base_path, 'files', 'unformattedtext.txt'),
-        os.path.join(base_path, 'files', 'testoutput.txt'),
-        os.path.join(base_path, 'files', 'desired_output.txt'),
+        #os.path.join(base_path, 'files', 'unformattedtext.txt'),
+        #os.path.join(base_path, 'files', 'testoutput.txt'),
+        #os.path.join(base_path, 'files', 'desired_output.txt'),
+        os.path.join(base_path, 'training', 'datasets', 'augmented_dataset.jsonl'),
+        os.path.join(base_path, 'training', 'datasets', 'config.yaml'),
     ]
 
     # Report file path
