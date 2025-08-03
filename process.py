@@ -9,7 +9,7 @@ import json
 from config import (
     API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, TEST_MODE,
     REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
-    CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, TEST_INPUT, TEST_OUTPUT,
+    CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, TEST_INPUT, TEST_OUTPUT, DESIRED_OUTPUT,
     PROCESSED_FILE, POSTPROCESSED_FILE, TEST_FILE, TRAINING_FILE
 )
 
@@ -145,7 +145,7 @@ class ParseFile:
             else:
                 raise ValueError("Chunk not found in input_string.")
 
-            with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
+            with open(os.path.join("files", DESIRED_OUTPUT), "r", encoding='utf-8') as f:
                 desired_content = f.read()
                 lines = desired_content.split('\n')
 
@@ -309,13 +309,13 @@ class ParseFile:
                 f.write(output_string.strip())
 
             if TEST_MODE == "unformatted":
-                with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
+                with open(os.path.join("files", DESIRED_OUTPUT), "r", encoding='utf-8') as f:
                     desiredcontent = f.read()
                 result = self.find_first_mismatch(desiredcontent, output_string)
                 print(result)
 
             if TEST_MODE == "desiredoutput":
-                with open(os.path.join("files", "desired_output.txt"), "r", encoding='utf-8') as f:
+                with open(os.path.join("files", DESIRED_OUTPUT), "r", encoding='utf-8') as f:
                     desiredcontent = f.read()
                 result = self.find_first_mismatch(desiredcontent, output_string)
                 print(result)

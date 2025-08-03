@@ -54,7 +54,8 @@ MAX_RETRIES = 3
 #TEST_MODE = "run"
 #TEST_MODE = "unformatted"
 TEST_MODE = "desiredoutput"
-TEST_FILE = 'files/unformattedtext.txt'
+TEST_FILE = 'files/alicewarren.txt'
+DESIRED_OUTPUT = 'alicewarrenformatted.txt'
 TRAINING_FILE = 'files/trainingchunks.txt'
 
 
@@ -64,7 +65,7 @@ __all__ = [
     'OUTPUT_FILE', 'API_URL', 'API_TIMEOUT', 'MAX_TOKENS', 'STOP_SEQUENCES',
     'REPETITION_PENALTY', 'TEMPERATURE', 'TOP_P', 'TOP_K', 'TOP_T',
     'MAX_SENTENCE_VALIDATION_ERRORS', 'LOG_DIR', 'LOG_FILE',
-    'DEBUG_LOG_FILE', 'PRESERVE_CASE', "TEST_OUTPUT",
+    'DEBUG_LOG_FILE', 'PRESERVE_CASE', "TEST_OUTPUT", "DESIRED_OUTPUT"
     'STRICT_PUNCTUATION', 'PRESERVE_PARAGRAPHS', 'TRAINING_FILE',
     'MIN_SENTENCE_QUALITY', 'MAX_RETRIES', 'TEST_MODE'
 ]
