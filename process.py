@@ -194,7 +194,7 @@ class ParseFile:
         formatted = self.getdesiredchunk(self.deformat(formatted))
         
         # Properly escape newlines and ensure consistent formatting
-        output_text = formatted.replace('\n', '\\n')
+        output_text = formatted.replace('\n', '\n')
         
         # Create the new entry with consistent formatting
         entry = {
@@ -204,7 +204,7 @@ class ParseFile:
         }
 
         # Convert to compact JSON string on one line
-        json_str = json.dumps(entry, ensure_ascii=False, separators=(',', ':'))
+        json_str = json.dumps(entry, ensure_ascii=False, separators=(', ', ': '))
         
         # Check for existing content to avoid duplicates
         existing_content = []

@@ -2,6 +2,13 @@
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from peft import PeftModel
 import torch
+import re
+
+def preprocess_text(text):
+    """Convert to lowercase and remove punctuation"""
+    text = text.lower()
+    text = re.sub(r'[^\w\s]', '', text)  # Remove punctuation
+    return text
 
 def load_model_and_tokenizer():
     """Load the base model, adapter, and tokenizer"""
@@ -59,11 +66,19 @@ def main():
     
     # Test cases
     test_cases = [
+        # Original test cases
         "i cant believe its not butter",
         "the meeting is at 3pm tomorrow dont forget",
         "she said im going to the store then ill be back",
         "having trouble with my computer its very slow and keeps freezing",
-        "we went to paris france and rome italy last summer"
+        "we went to paris france and rome italy last summer",
+        
+        # New preprocessed test cases from Alice Warren's story
+        "alice warren sat beside a wide window in the corner of her study",
+        "the late afternoon light slanted gently across the hardwood floor illuminating endless rows of books that lined the walls",
+        "she loved the hush of quiet contemplation the soft rustle of turning pages and the subtle comfort of stories held within paper and ink",
+        "it was in this exact space that she found solace after a long day of meetings presentations and endless email chains",
+        "the silence was not merely an absence of noise it was a presence in itself a companion that whispered in comfortable tones and allowed thoughts to drift unencumbered"
     ]
     
     print("\nTesting punctuation model:")
