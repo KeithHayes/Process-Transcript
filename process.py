@@ -186,8 +186,12 @@ class ParseFile:
     def generateIOpair(self, chunk, formatted):
         command = "Punctuate sentences."
         input_text = chunk
+        
+        # Ensure we're working with the properly formatted text from desired_output.txt
+        formatted = self.getdesiredchunk(self.deformat(formatted))
+        
         # Properly escape newlines and ensure consistent formatting
-        output_text = formatted.replace('\n', '\\n').replace('\\n\\n', '\\n')  # Ensure single newlines
+        output_text = formatted.replace('\n', '\\n')
         
         # Create the new entry with consistent formatting
         entry = {
@@ -209,7 +213,7 @@ class ParseFile:
         if json_str not in existing_content:
             with open(TRAINING_FILE, 'a', encoding='utf-8') as f:
                 f.write(json_str + '\n')
-
+                
     async def format(self, text):
         formatted = ""
         chunk = self.deformat(text)
