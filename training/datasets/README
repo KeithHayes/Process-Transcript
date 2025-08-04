@@ -1,7 +1,4 @@
 
-kdog@kdogsputer:~/text-generation-webui/training/datasets$
-
-
 
 axolotl preprocess config.yaml
 

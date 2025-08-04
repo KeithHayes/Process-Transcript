@@ -8,7 +8,7 @@ import asyncio
 import json
 from config import (
     API_URL, API_TIMEOUT, MAX_TOKENS, STOP_SEQUENCES, TEST_MODE,
-    REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_T, SENTENCE_MARKER,
+    REPETITION_PENALTY, TEMPERATURE, TOP_P, TOP_K, SENTENCE_MARKER,
     CHUNK_OVERLAP, OUTPUT_CHUNK_SIZE, TEST_INPUT, TEST_OUTPUT, DESIRED_OUTPUT,
     PROCESSED_FILE, POSTPROCESSED_FILE, TEST_FILE, TRAINING_FILE
 )
@@ -46,57 +46,59 @@ class ParseFile:
         return self.chunk
     
     async def formatchunk(self, chunktext: str) -> str:
+        """
+        Formats a text chunk strictly using the LoRA model for punctuation and sentence formatting.
+        Raises exceptions for any failures to force proper error handling upstream.
+        """
         if self.session is None:
             self.session = aiohttp.ClientSession()
         
-        prompt = textwrap.dedent(f"""\
-            Your task is to reformat the provided text.
-            Strictly adhere to the following rules:
-            - Maintain the EXACT original words and their order.
-            - NEVER add, delete, rephrase, or summarize any words.
-            - Put each complete sentence on its own line.
-            - Do NOT merge sentences together.
-            - Do NOT let proper names end sentences if they are part of an ongoing thought.
-            - Add proper punctuation (periods, question marks, exclamation points) to complete sentences only at their end.
-            - Capitalize the first word of each complete sentence.
-            - Leave incomplete fragments as-is on their own line.
-            - ONLY output the reformatted text. DO NOT include any additional commentary, explanations, or instructions.
-            - Ensure there are no extra spaces before or after any punctuation mark.
+        # Prepare the structured prompt matching the training data format
+        prompt = {
+            "instruction": "Punctuate sentences.", 
+            "input": chunktext,
+            "output": ""
+        }
 
-            Example:
-            Input: "the cat sat the dog ran"
-            Output: "The cat sat.\nThe dog ran."
-
-            Text: {chunktext}
-
-            Formatted text:""")
-
-        try:
-            async with self.session.post(
-                API_URL,
-                json={
-                    "prompt": prompt,
-                    "max_tokens": MAX_TOKENS,
-                    "temperature": TEMPERATURE,
-                    "stop": STOP_SEQUENCES,
-                    "repetition_penalty": REPETITION_PENALTY,
-                    "top_p": TOP_P,
-                    "top_t": TOP_T
-                },
-                timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
-            ) as response:
-                if response.status != 200:
-                    error_message = f"API returned non-200 status: {response.status}. Response: {await response.text()}"
-                    self.logger.error(error_message)
-                    return chunktext
+        async with self.session.post(
+            API_URL,
+            json={
+                "prompt": json.dumps(prompt),
+                "max_tokens": MAX_TOKENS,
+                "temperature": TEMPERATURE,
+                "stop": STOP_SEQUENCES,
+                "repetition_penalty": REPETITION_PENALTY,
+                "top_p": TOP_P,
+                "top_k": TOP_K
+            },
+            timeout=aiohttp.ClientTimeout(total=API_TIMEOUT)
+        ) as response:
+            # Strict status code checking
+            if response.status != 200:
+                error_content = await response.text()
+                raise ValueError(f"API request failed with status {response.status}: {error_content}")
+            
+            result = await response.json()
+            
+            # Strict response parsing - expect properly formatted JSON response
+            if not result.get("choices"):
+                raise ValueError("Invalid API response format: missing 'choices' field")
+            
+            response_text = result["choices"][0].get("text", "").strip()
+            if not response_text:
+                raise ValueError("Empty response from model")
+            
+            # Parse the JSON response from the model
+            try:
+                response_data = json.loads(response_text)
+                formatted_text = response_data["output"]
+            except (json.JSONDecodeError, KeyError) as e:
+                raise ValueError(f"Invalid model output format: {str(e)}")
+            
+            if not formatted_text:
+                raise ValueError("Model returned empty formatted text")
                 
-                result = await response.json()
-                formatted = result.get("choices", [{}])[0].get("text", "").strip()
-                return formatted if formatted else chunktext
-                
-        except Exception as e:
-            self.logger.error(f"Error formatting chunk: {str(e)}")
-            return chunktext
+            return formatted_text
 
     def deformat(self, formatted_output):
         protected = formatted_output.replace('\n', SENTENCE_MARKER)

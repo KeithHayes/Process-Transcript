@@ -6,11 +6,11 @@ tags:
 - lora
 - transformers
 datasets:
-- /home/kdog/text-generation-webui/training/datasets/augmented_dataset.jsonl
-base_model: /media/external_drive1/ai/textdata/models/TinyLlama-1.1B-Chat-v1.0
+- /home/kdog/pythonprojects/process_transcript/training/datasets/augmented_dataset.jsonl
 pipeline_tag: text-generation
+base_model: /media/external_drive1/ai/textdata/models/TinyLlama-1.1B-Chat-v1.0
 model-index:
-- name: home/kdog/text-generation-webui/training/trained_checkpoints/tinyllama_punctuation
+- name: home/kdog/pythonprojects/process_transcript/training/trained_checkpoints/tinyllama_punctuation
   results: []
 ---
 
@@ -31,26 +31,27 @@ trust_remote_code: true
 load_in_4bit: true
 use_qlora: true
 adapter: qlora
-lora_r: 8  # <<< MUST ADD THIS (typical values: 8, 16, 32, 64)
-lora_alpha: 16  # <<< MUST ADD THIS (typically 2x lora_r)
-lora_target_modules: "all-linear"  # or specific modules like ["q_proj", "v_proj"]
+lora_r: 8
+lora_alpha: 16
+lora_target_modules: "all-linear"
 lora_dropout: 0.05
 bnb_4bit_compute_dtype: float16
 bnb_4bit_quant_type: nf4
 bnb_4bit_use_double_quant: true
-torch_dtype: float16
+fp16: true
 
-# Dataset and training settings remain the same as before
+# Dataset
 datasets:
-  - path: /home/kdog/text-generation-webui/training/datasets/augmented_dataset.jsonl
+  - path: /home/kdog/pythonprojects/process_transcript/training/datasets/augmented_dataset.jsonl
     type: alpaca
-    dataset_prepared_path: /home/kdog/text-generation-webui/training/datasets/prepared
+    dataset_prepared_path: /home/kdog/pythonprojects/process_transcript/training/datasets/prepared
     field_mapping:
       instruction: "instruction"
       input: "input"
       output: "output"
 
-output_dir: /home/kdog/text-generation-webui/training/trained_checkpoints/tinyllama_punctuation
+# Training
+output_dir: /home/kdog/pythonprojects/process_transcript/training/trained_checkpoints/tinyllama_punctuation
 num_epochs: 5
 learning_rate: 1e-5
 lr_scheduler: cosine
@@ -58,7 +59,7 @@ warmup_steps: 50
 optimizer: adamw_torch
 weight_decay: 0.01
 
-# Memory settings
+# Memory
 sequence_len: 300
 micro_batch_size: 1
 gradient_accumulation_steps: 4
@@ -66,25 +67,23 @@ gradient_checkpointing: true
 train_on_inputs: false
 add_eos_token: true
 
-# Other settings
-bf16: false
-fp16: true
+# Logging/Saving
 logging_steps: 10
 save_strategy: steps
 save_steps: 200
 save_total_limit: 2
 eval_steps: 200
 eval_strategy: steps
-preprocessing_num_workers: 4
+preprocessing_num_workers: 1  # Start low
 dataloader_num_workers: 2
 group_by_length: true
 ```
 
 </details><br>
 
-# home/kdog/text-generation-webui/training/trained_checkpoints/tinyllama_punctuation
+# home/kdog/pythonprojects/process_transcript/training/trained_checkpoints/tinyllama_punctuation
 
-This model was trained from scratch on the /home/kdog/text-generation-webui/training/datasets/augmented_dataset.jsonl dataset.
+This model was trained from scratch on the /home/kdog/pythonprojects/process_transcript/training/datasets/augmented_dataset.jsonl dataset.
 
 ## Model description
 
@@ -121,7 +120,7 @@ The following hyperparameters were used during training:
 
 ### Framework versions
 
-- PEFT 0.16.0
+- PEFT 0.17.0
 - Transformers 4.54.1
 - Pytorch 2.6.0+cu124
 - Datasets 4.0.0
