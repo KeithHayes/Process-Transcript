@@ -24,10 +24,10 @@ micro_batch_size: 1
 gradient_accumulation_steps: 8
 
 # Training Schedule
-max_steps: 600
+max_steps: 10800
 learning_rate: 2.5e-5
 lr_scheduler_type: cosine
-warmup_ratio: 0.1
+warmup_ratio: 0.05
 max_grad_norm: 0.5
 
 # Dataset - UPDATED SECTION
@@ -44,5 +44,5 @@ weight_decay: 0.01
 
 # Logging/Saving
 save_strategy: steps
-save_steps: 200
+save_steps: 500
 logging_steps: 20

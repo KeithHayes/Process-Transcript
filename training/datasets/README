@@ -2,8 +2,4 @@
 
 axolotl preprocess config.yaml
 
-python3 -c "import torch; torch.cuda.empty_cache()"
-
-accelerate launch -m axolotl.cli.train config.yaml
-
-PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True accelerate launch -m axolotl.cli.train config.yaml
+axolotl train config.yaml
