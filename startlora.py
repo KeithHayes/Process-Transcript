@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 # Configuration
 CONFIG = {
     'base_model': '/media/external_drive1/ai/textdata/models/TinyLlama-1.1B-Chat-v1.0',
-    'lora_dir': '/home/kdog/pythonprojects/process_transcript/training/trained_checkpoints/tinyllama_punctuation',
+    'lora_dir': '/home/kdog/pythonprojects/process_transcript/training/datasets/model-out',
     'webui_dir': '/home/kdog/text-generation-webui',
     'listen_port': 5001,
     'timeout': 300,

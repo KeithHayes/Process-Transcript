@@ -44,10 +44,10 @@ micro_batch_size: 1
 gradient_accumulation_steps: 8
 
 # Training Schedule
-max_steps: 600
+max_steps: 10800
 learning_rate: 2.5e-5
 lr_scheduler_type: cosine
-warmup_ratio: 0.1
+warmup_ratio: 0.05
 max_grad_norm: 0.5
 
 # Dataset - UPDATED SECTION
@@ -64,7 +64,7 @@ weight_decay: 0.01
 
 # Logging/Saving
 save_strategy: steps
-save_steps: 200
+save_steps: 500
 logging_steps: 20
 ```
 
@@ -99,7 +99,7 @@ The following hyperparameters were used during training:
 - total_train_batch_size: 8
 - optimizer: Use adamw_torch_fused with betas=(0.9,0.999) and epsilon=1e-08 and optimizer_args=No additional optimizer arguments
 - lr_scheduler_type: cosine
-- training_steps: 600
+- training_steps: 10800
 - mixed_precision_training: Native AMP
 
 ### Training results
